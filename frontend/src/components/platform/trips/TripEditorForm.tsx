@@ -38,7 +38,7 @@ export default function TripEditorForm({
   tripsIndexLabel,
 }: TripEditorFormProps) {
   const router = useRouter();
-  const [, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -73,7 +73,7 @@ export default function TripEditorForm({
 
   return (
     <form id="tripMainForm" onSubmit={handleSubmit} method="post" encType="multipart/form-data">
-      <TripFormUploadPendingOverlay formId="tripMainForm" />
+      <TripFormUploadPendingOverlay busy={isSubmitting} />
 
       <input type="hidden" name="trip_id" value={editTrip?.id ?? 0} />
 

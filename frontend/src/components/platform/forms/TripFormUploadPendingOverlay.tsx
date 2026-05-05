@@ -1,19 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 /** Full-page overlay while the trip multipart form is posting (cover / hero uploads). */
-export default function TripFormUploadPendingOverlay({ formId }: { formId: string }) {
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    const el = document.getElementById(formId);
-    if (!el || !(el instanceof HTMLFormElement)) return;
-    const onSubmit = () => setBusy(true);
-    el.addEventListener("submit", onSubmit);
-    return () => el.removeEventListener("submit", onSubmit);
-  }, [formId]);
-
+export default function TripFormUploadPendingOverlay({ busy }: { busy: boolean }) {
   if (!busy) return null;
 
   return (
