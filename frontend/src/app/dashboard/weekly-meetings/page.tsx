@@ -12,12 +12,13 @@ export const dynamic = "force-dynamic";
 export default async function WeeklyMeetingsListPage() {
   const user = await getPlatformSession();
   if (!user) return null;
+  const userAccountId = BigInt(user.id);
 
   const wm = dbBusyWeeklyMeeting();
   const meetings = wm
     ? await wm
         .findMany({
-          where: { group: { organizerAccountId: user.id } },
+          where: { group: { organizerAccountId: userAccountId } },
           orderBy: [{ meetingDate: "desc" }, { startTime: "desc" }],
           take: 80,
           include: {

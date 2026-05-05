@@ -14,11 +14,12 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardProfilePage() {
   const user = await getPlatformSession();
+  const userAccountId = user ? BigInt(user.id) : null;
   let profile: { displayName: string; companyName: string | null; businessPhone: string | null; businessEmail: string | null } | null = null;
-  if (user) {
+  if (userAccountId != null) {
     profile = await prisma.platformProfile
       .findUnique({
-        where: { accountId: user.id },
+        where: { accountId: userAccountId },
         select: {
           displayName: true,
           companyName: true,
