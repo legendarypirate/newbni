@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { BusinessTrip } from "@prisma/client";
 import { mediaUrl } from "@/lib/media-url";
 import PlatformTripRegistrationJsonBuilder from "@/components/platform/forms/PlatformTripRegistrationJsonBuilder";
-import TripFormUploadPendingOverlay from "@/components/platform/forms/TripFormUploadPendingOverlay";
+import TripFormUploadPendingOverlay from "@admin/components/platform/forms/TripFormUploadPendingOverlay";
 import TripEditorRegistrationQrAside from "@/components/platform/trips/TripEditorRegistrationQrAside";
 import TripCoverHero from "@/components/platform/forms/TripCoverHero";
 import TripDateDuration from "@/components/platform/forms/TripDateDuration";

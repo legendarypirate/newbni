@@ -3,18 +3,31 @@
 import { useEffect, useState } from "react";
 
 /** Full-page overlay while the trip multipart form is posting (cover / hero uploads). */
-export default function TripFormUploadPendingOverlay({ formId }: { formId: string }) {
+type Props = {
+  /** Legacy mode: listen to native submit event on this form id. */
+  formId?: string;
+  /** Controlled mode: explicitly show/hide overlay from parent state. */
+  busy?: boolean;
+};
+
+export default function TripFormUploadPendingOverlay({ formId, busy: controlledBusy }: Props) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (typeof controlledBusy === "boolean") {
+      return;
+    }
+    if (!formId) return;
     const el = document.getElementById(formId);
     if (!el || !(el instanceof HTMLFormElement)) return;
     const onSubmit = () => setBusy(true);
     el.addEventListener("submit", onSubmit);
     return () => el.removeEventListener("submit", onSubmit);
-  }, [formId]);
+  }, [formId, controlledBusy]);
 
-  if (!busy) return null;
+  const visible = typeof controlledBusy === "boolean" ? controlledBusy : busy;
+
+  if (!visible) return null;
 
   return (
     <div
