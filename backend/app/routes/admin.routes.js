@@ -6,6 +6,7 @@ module.exports = (app) => {
   const upload = multer({ storage });
   const admin = require("../controllers/admin.controller");
   const uploads = require("../controllers/admin/uploads.controller");
+  const adminEvents = require("../controllers/admin/events-admin.controller");
   const platformAccounts = require("../controllers/admin/platform-accounts.controller");
   const authMiddleware = require("../middleware/auth.middleware");
   const requirePlatformAdminJwt = require("../middleware/admin-role.middleware");
@@ -28,6 +29,10 @@ module.exports = (app) => {
     requirePlatformAdminJwt,
     platformAccounts.ensureBusyRbacSeedHttp,
   );
+  router.get("/events/bootstrap", authMiddleware, requirePlatformAdminJwt, adminEvents.bootstrap);
+  router.post("/events", authMiddleware, requirePlatformAdminJwt, adminEvents.upsert);
+  router.patch("/events/:id", authMiddleware, requirePlatformAdminJwt, adminEvents.upsert);
+  router.delete("/events/:id", authMiddleware, requirePlatformAdminJwt, adminEvents.remove);
   router.post(
     "/marketing-listing-hero-upload",
     authMiddleware,

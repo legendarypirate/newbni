@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { getPlatformSession } from "@/lib/platform-session";
 import { prisma } from "@/lib/prisma";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 import { parseEventDatetimeWireUb } from "@/lib/event-datetime-ub";
 import { syncEventRegistrationFormFromLegacyJson } from "@/lib/trip-registration-form/sync-event-registration-form-from-json";
 
@@ -13,21 +14,6 @@ const PLATFORM_EVENTS_PATH = "/platform/events";
 
 function eventListPathFromFormData(formData: FormData): typeof ADMIN_EVENTS_PATH | typeof PLATFORM_EVENTS_PATH {
   return String(formData.get("return_context") ?? "").trim() === "admin" ? ADMIN_EVENTS_PATH : PLATFORM_EVENTS_PATH;
-}
-
-async function assertAdminForEventCrud(accountId: bigint): Promise<void> {
-  const row = await prisma.platformAccount.findUnique({
-    where: { id: accountId },
-    select: { role: true, status: true },
-  });
-  const role = String(row?.role ?? "");
-  const okRole =
-    row &&
-    row.status === "active" &&
-    (role === "admin" || role === "super_admin" || role === "event_manager" || role === "director");
-  if (!okRole) {
-    redirect(`/admin/login?next=${encodeURIComponent(ADMIN_EVENTS_PATH)}`);
-  }
 }
 
 function parseMoney(raw: string): Prisma.Decimal | null {
@@ -92,11 +78,6 @@ export async function saveEventAction(formData: FormData): Promise<void> {
         : "/auth/login?next=/platform/events",
     );
   }
-  const sessionAccountId = BigInt(session.id);
-  if (listPath === ADMIN_EVENTS_PATH) {
-    await assertAdminForEventCrud(sessionAccountId);
-  }
-
   const eventIdRaw = String(formData.get("event_id") ?? "0").trim();
   let eventId = BigInt(0);
   try {
@@ -152,7 +133,7 @@ export async function saveEventAction(formData: FormData): Promise<void> {
 
   let existingRegistrationJson: unknown | undefined;
   let existingEnvelope: Record<string, unknown> = {};
-  if (eventId > BigInt(0)) {
+  if (eventId > BigInt(0) && listPath !== ADMIN_EVENTS_PATH) {
     const exists = await prisma.bniEvent.findUnique({
       where: { id: eventId },
       select: { id: true, curriculumOverrideJson: true, registrationFormJson: true },
@@ -234,6 +215,41 @@ export async function saveEventAction(formData: FormData): Promise<void> {
     regParsedRaw === null ? Prisma.DbNull : regParsedRaw;
 
   let savedEventId = eventId;
+  if (listPath === ADMIN_EVENTS_PATH) {
+    const adminPayload = {
+      eventId: Number(eventId),
+      chapterId,
+      eventType,
+      title,
+      startsAt: startsAt.toISOString(),
+      endsAt: endsAt.toISOString(),
+      location,
+      isOnline,
+      scheduleId,
+      curriculumId,
+      curriculumOverrideJson: Object.keys(envelope).length > 0 ? envelope : null,
+      registrationFormJson: regParsedRaw,
+      priceMnt: priceMnt?.toString() ?? null,
+      advanceOrderMnt: advanceOrderMnt?.toString() ?? null,
+    };
+    const res = await serverAuthedFetch(eventId > BigInt(0) ? `/admin/events/${eventId.toString()}` : "/admin/events", {
+      method: eventId > BigInt(0) ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(adminPayload),
+    });
+    const out = (await res.json().catch(() => ({}))) as { ok?: boolean; id?: string; errorKey?: string };
+    if (!res.ok || !out.ok) {
+      if (out.errorKey === "notfound") redirect(`${listPath}?error=notfound`);
+      redirect(`${listPath}?error=missing`);
+    }
+    savedEventId = BigInt(String(out.id ?? "0"));
+    revalidatePath("/platform/events");
+    revalidatePath(ADMIN_EVENTS_PATH);
+    revalidatePath("/events");
+    revalidatePath(`/events/${savedEventId.toString()}`);
+    redirect(listPath);
+  }
+
   if (eventId > BigInt(0)) {
     const updateData: typeof rowBase & { registrationFormJson?: Prisma.InputJsonValue | typeof Prisma.DbNull } = {
       ...rowBase,
@@ -279,11 +295,6 @@ export async function deleteEventAction(formData: FormData): Promise<void> {
         : "/auth/login?next=/platform/events",
     );
   }
-  const sessionAccountId = BigInt(session.id);
-  if (listPath === ADMIN_EVENTS_PATH) {
-    await assertAdminForEventCrud(sessionAccountId);
-  }
-
   const raw = String(formData.get("event_id") ?? "0").trim();
   let eventId = BigInt(0);
   try {
@@ -293,6 +304,15 @@ export async function deleteEventAction(formData: FormData): Promise<void> {
   }
 
   if (eventId < BigInt(1)) {
+    redirect(listPath);
+  }
+
+  if (listPath === ADMIN_EVENTS_PATH) {
+    await serverAuthedFetch(`/admin/events/${eventId.toString()}`, { method: "DELETE" });
+    revalidatePath("/platform/events");
+    revalidatePath(ADMIN_EVENTS_PATH);
+    revalidatePath("/events");
+    revalidatePath(`/events/${eventId.toString()}`);
     redirect(listPath);
   }
 
