@@ -256,9 +256,12 @@ exports.me = async (req, res) => {
     const jwtUser = req.user;
     const id = jwtUser.id;
     const account = await db.PlatformAccount.findByPk(id, {
-      attributes: ["id", "email", "role"],
+      attributes: ["id", "email", "role", "status"],
       include: [{ model: db.PlatformProfile, as: "profile", attributes: ["displayName", "photoUrl"] }],
     });
+    if (!account || account.status !== "active") {
+      return res.status(403).json({ ok: false, message: "inactive_or_missing" });
+    }
     const authz = await fetchBusyAuthzForAccount(id);
     const displayName =
       jwtUser.displayName || account?.profile?.displayName || account?.email || jwtUser.email || "";

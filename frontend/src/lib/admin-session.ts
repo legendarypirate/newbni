@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { getPlatformSession, type PlatformUser } from "@/lib/platform-session";
 
 export type PlatformRole = "admin" | "super_admin" | "trip_manager" | "event_manager" | "visitor" | "member" | "director";
@@ -59,16 +58,7 @@ export async function requireAdminUser(nextPath = "/admin"): Promise<PlatformUse
   if (!u) {
     redirect(`/admin/login${q}`);
   }
-  try {
-    const accountId = BigInt(u.id);
-    const row = await prisma.platformAccount.findUnique({
-      where: { id: accountId },
-      select: { role: true, status: true },
-    });
-    if (!row || row.status !== "active" || !isAdminPanelRole(row.role)) {
-      redirect(`/admin/login${q}`);
-    }
-  } catch {
+  if (!isAdminPanelRole(u.role)) {
     redirect(`/admin/login${q}`);
   }
   return u;
