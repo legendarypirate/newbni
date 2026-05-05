@@ -5,17 +5,21 @@ function normalizeApiUrl(raw: string | undefined): string {
 }
 
 function runtimeApiUrl(): string {
+  if (typeof window === "undefined") {
+    const internal = normalizeApiUrl(process.env.API_INTERNAL_URL);
+    if (internal) return internal;
+    const publicApi = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL);
+    if (publicApi) return publicApi;
+    return "http://localhost:3001/api";
+  }
+
   const fromEnv = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL);
   if (fromEnv) return fromEnv;
 
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-    if (host === "test.busy.mn") return "https://testapi.busy.mn/api";
-    if (host === "busy.mn" || host === "www.busy.mn") return "https://api.busy.mn/api";
-  }
+  const host = window.location.hostname;
+  if (host === "test.busy.mn") return "https://testapi.busy.mn/api";
+  if (host === "busy.mn" || host === "www.busy.mn") return "https://api.busy.mn/api";
 
-  const internal = normalizeApiUrl(process.env.API_INTERNAL_URL);
-  if (internal) return internal;
   return "http://localhost:3001/api";
 }
 

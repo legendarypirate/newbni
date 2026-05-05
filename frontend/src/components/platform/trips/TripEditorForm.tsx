@@ -28,6 +28,7 @@ export type TripEditorFormProps = {
   formAction: string;
   tripsIndexHref: string;
   tripsIndexLabel: string;
+  onSaved?: () => void;
 };
 
 export default function TripEditorForm({
@@ -36,6 +37,7 @@ export default function TripEditorForm({
   formAction,
   tripsIndexHref,
   tripsIndexLabel,
+  onSaved,
 }: TripEditorFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,6 +52,7 @@ export default function TripEditorForm({
         body: formData,
       });
       if (res.ok) {
+        onSaved?.();
         router.push(tripsIndexHref);
         router.refresh();
       } else {
@@ -72,7 +75,7 @@ export default function TripEditorForm({
   const statusBadge = editTrip?.statusLabel?.trim() === "Нийтлэгдсэн" ? "Нийтлэгдсэн" : "Ноорог";
 
   return (
-    <form id="tripMainForm" onSubmit={handleSubmit} method="post" encType="multipart/form-data">
+    <form id="tripMainForm" action={formAction} onSubmit={handleSubmit} method="post" encType="multipart/form-data">
       <TripFormUploadPendingOverlay busy={isSubmitting} />
 
       <input type="hidden" name="trip_id" value={editTrip?.id ?? 0} />

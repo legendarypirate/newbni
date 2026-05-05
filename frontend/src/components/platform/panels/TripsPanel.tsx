@@ -1,11 +1,13 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import TripEditorForm from "@/components/platform/trips/TripEditorForm";
 import { deleteTripAction, toggleTripFeaturedAction } from "@/app/platform/trips-actions";
-import { getPlatformSession } from "@/lib/platform-session";
 import { apiFetch } from "@/lib/api-client";
 import {
   errorBanner,
-  firstParam,
   fmtMoney,
   toInputDate,
 } from "@/components/platform/trips/trip-editor-helpers";
@@ -24,30 +26,74 @@ type ManagedTripRow = {
   isFeatured: number;
 };
 
-export default async function TripsPanel({ searchParams }: Props) {
-  const viewer = await getPlatformSession();
-  const greetingName = viewer?.displayName?.trim() || "Та";
-  const err = errorBanner(firstParam(searchParams?.error));
-  const editRaw = firstParam(searchParams?.edit_trip) ?? firstParam(searchParams?.edit);
-  const editTripId = Math.max(0, Number(editRaw ?? ""));
+function toManagedTripRow(row: Record<string, unknown>): ManagedTripRow {
+  return {
+    id: Number(row.id ?? 0),
+    destination: String(row.destination ?? ""),
+    seatsLabel: row.seatsLabel == null ? null : String(row.seatsLabel),
+    startDate: new Date(String(row.startDate ?? row.start_date ?? "")),
+    endDate: new Date(String(row.endDate ?? row.end_date ?? "")),
+    priceMnt: row.priceMnt == null ? null : (row.priceMnt as number | string),
+    isFeatured: Number(row.isFeatured ?? row.is_featured ?? 0),
+  };
+}
 
-  const tripsRes = await apiFetch("/platform/trips");
-  const managedTrips: ManagedTripRow[] = tripsRes.ok
-    ? (((await tripsRes.json()) as { trips?: Array<Record<string, unknown>> }).trips ?? []).map((row) => ({
-        id: Number(row.id ?? 0),
-        destination: String(row.destination ?? ""),
-        seatsLabel: row.seatsLabel == null ? null : String(row.seatsLabel),
-        startDate: new Date(String(row.startDate ?? row.start_date ?? "")),
-        endDate: new Date(String(row.endDate ?? row.end_date ?? "")),
-        priceMnt: row.priceMnt == null ? null : (row.priceMnt as number | string),
-        isFeatured: Number(row.isFeatured ?? row.is_featured ?? 0),
-      }))
-    : [];
+export default function TripsPanel({ searchParams: _searchParams }: Props) {
+  const qp = useSearchParams();
+  const [greetingName, setGreetingName] = useState("Та");
+  const [managedTrips, setManagedTrips] = useState<ManagedTripRow[]>([]);
+  const [editTrip, setEditTrip] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [reloadTick, setReloadTick] = useState(0);
 
-  const editTripRes = editTripId > 0 ? await apiFetch(`/platform/trips/${editTripId}`) : null;
-  const editTrip = editTripRes?.ok ? (await editTripRes.json()).trip : null;
+  const err = errorBanner(qp.get("error") ?? undefined);
+  const editRaw = qp.get("edit_trip") ?? qp.get("edit") ?? "";
+  const editTripId = Math.max(0, Number(editRaw));
 
-  if (editTripId > 0 && !editTrip) {
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      try {
+        const meRes = await apiFetch("/auth/me");
+        if (meRes.ok) {
+          const meData = (await meRes.json()) as { user?: { displayName?: string } };
+          const name = meData.user?.displayName?.trim();
+          if (!cancelled && name) setGreetingName(name);
+        }
+
+        const tripsRes = await apiFetch("/platform/trips");
+        if (tripsRes.ok) {
+          const data = (await tripsRes.json()) as { trips?: Array<Record<string, unknown>> };
+          if (!cancelled) setManagedTrips((data.trips ?? []).map(toManagedTripRow));
+        } else if (!cancelled) {
+          setManagedTrips([]);
+        }
+
+        if (editTripId > 0) {
+          const editTripRes = await apiFetch(`/platform/trips/${editTripId}`);
+          if (!cancelled) {
+            if (editTripRes.ok) {
+              const data = (await editTripRes.json()) as { trip?: unknown };
+              setEditTrip(data.trip ?? null);
+            } else {
+              setEditTrip(null);
+            }
+          }
+        } else if (!cancelled) {
+          setEditTrip(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [editTripId, reloadTick]);
+
+  if (!loading && editTripId > 0 && !editTrip) {
     return (
       <div className="pl-panel-inner px-3 py-4">
         <div className="alert alert-warning">{errorBanner("notfound")}</div>
@@ -186,6 +232,7 @@ export default async function TripsPanel({ searchParams }: Props) {
         formAction={(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api") + "/platform/trips/save"}
         tripsIndexHref="/platform/trips"
         tripsIndexLabel="Аялал"
+        onSaved={() => setReloadTick((x) => x + 1)}
       />
     </div>
   );
