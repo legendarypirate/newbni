@@ -216,38 +216,42 @@ export async function saveEventAction(formData: FormData): Promise<void> {
 
   let savedEventId = eventId;
   if (listPath === ADMIN_EVENTS_PATH) {
-    const adminPayload = {
-      eventId: Number(eventId),
-      chapterId,
-      eventType,
-      title,
-      startsAt: startsAt.toISOString(),
-      endsAt: endsAt.toISOString(),
-      location,
-      isOnline,
-      scheduleId,
-      curriculumId,
-      curriculumOverrideJson: Object.keys(envelope).length > 0 ? envelope : null,
-      registrationFormJson: regParsedRaw,
-      priceMnt: priceMnt?.toString() ?? null,
-      advanceOrderMnt: advanceOrderMnt?.toString() ?? null,
-    };
-    const res = await serverAuthedFetch(eventId > BigInt(0) ? `/admin/events/${eventId.toString()}` : "/admin/events", {
-      method: eventId > BigInt(0) ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(adminPayload),
-    });
-    const out = (await res.json().catch(() => ({}))) as { ok?: boolean; id?: string; errorKey?: string };
-    if (!res.ok || !out.ok) {
-      if (out.errorKey === "notfound") redirect(`${listPath}?error=notfound`);
+    try {
+      const adminPayload = {
+        eventId: Number(eventId),
+        chapterId,
+        eventType,
+        title,
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        location,
+        isOnline,
+        scheduleId,
+        curriculumId,
+        curriculumOverrideJson: Object.keys(envelope).length > 0 ? envelope : null,
+        registrationFormJson: regParsedRaw,
+        priceMnt: priceMnt?.toString() ?? null,
+        advanceOrderMnt: advanceOrderMnt?.toString() ?? null,
+      };
+      const res = await serverAuthedFetch(eventId > BigInt(0) ? `/admin/events/${eventId.toString()}` : "/admin/events", {
+        method: eventId > BigInt(0) ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(adminPayload),
+      });
+      const out = (await res.json().catch(() => ({}))) as { ok?: boolean; id?: string; errorKey?: string };
+      if (!res.ok || !out.ok) {
+        if (out.errorKey === "notfound") redirect(`${listPath}?error=notfound`);
+        redirect(`${listPath}?error=missing`);
+      }
+      savedEventId = BigInt(String(out.id ?? "0"));
+      revalidatePath("/platform/events");
+      revalidatePath(ADMIN_EVENTS_PATH);
+      revalidatePath("/events");
+      revalidatePath(`/events/${savedEventId.toString()}`);
+      redirect(listPath);
+    } catch {
       redirect(`${listPath}?error=missing`);
     }
-    savedEventId = BigInt(String(out.id ?? "0"));
-    revalidatePath("/platform/events");
-    revalidatePath(ADMIN_EVENTS_PATH);
-    revalidatePath("/events");
-    revalidatePath(`/events/${savedEventId.toString()}`);
-    redirect(listPath);
   }
 
   if (eventId > BigInt(0)) {
@@ -308,7 +312,11 @@ export async function deleteEventAction(formData: FormData): Promise<void> {
   }
 
   if (listPath === ADMIN_EVENTS_PATH) {
-    await serverAuthedFetch(`/admin/events/${eventId.toString()}`, { method: "DELETE" });
+    try {
+      await serverAuthedFetch(`/admin/events/${eventId.toString()}`, { method: "DELETE" });
+    } catch {
+      redirect(listPath);
+    }
     revalidatePath("/platform/events");
     revalidatePath(ADMIN_EVENTS_PATH);
     revalidatePath("/events");

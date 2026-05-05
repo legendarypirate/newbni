@@ -139,14 +139,16 @@ export default async function EventsPanel({ searchParams, venue = "platform" }: 
   let curriculums: { id: number; name: string; chapter: { name: string } | null }[] = [];
   let managedEvents: EventPanelRow[] = [];
   let existing: EventPanelRow | null = null;
+  let adminBootstrapError = false;
 
   if (venue === "admin") {
-    const bootstrapPath =
-      editEventId > BigInt(0)
-        ? `/admin/events/bootstrap?edit_event=${encodeURIComponent(editEventId.toString())}`
-        : "/admin/events/bootstrap";
-    const res = await serverAuthedFetch(bootstrapPath);
-    const data = (await res.json().catch(() => ({}))) as {
+    try {
+      const bootstrapPath =
+        editEventId > BigInt(0)
+          ? `/admin/events/bootstrap?edit_event=${encodeURIComponent(editEventId.toString())}`
+          : "/admin/events/bootstrap";
+      const res = await serverAuthedFetch(bootstrapPath);
+      const data = (await res.json().catch(() => ({}))) as {
       ok?: boolean;
       chapters?: Array<{ id: number; name: string; region?: { name?: string } }>;
       schedules?: Array<{ id: number; chapter?: { name?: string }; curriculum?: { name?: string } }>;
@@ -184,53 +186,56 @@ export default async function EventsPanel({ searchParams, venue = "platform" }: 
         registrationFormJson?: unknown;
       } | null;
     };
-    chapters = (data.chapters ?? []).map((ch) => ({ id: ch.id, name: ch.name, region: { name: ch.region?.name ?? "" } }));
-    schedules = (data.schedules ?? []).map((s) => ({
-      id: s.id,
-      chapter: { name: s.chapter?.name ?? "" },
-      curriculum: { name: s.curriculum?.name ?? "" },
-    }));
-    curriculums = (data.curriculums ?? []).map((c) => ({
-      id: c.id,
-      name: c.name,
-      chapter: c.chapter ? { name: c.chapter.name ?? "" } : null,
-    }));
-    managedEvents = (data.managedEvents ?? []).map((ev) => ({
-      id: BigInt(ev.id),
-      title: ev.title,
-      chapterId: ev.chapterId,
-      chapter: ev.chapter ? { name: ev.chapter.name ?? "" } : null,
-      curriculum: ev.curriculum ? { name: ev.curriculum.name ?? "" } : null,
-      eventType: ev.eventType,
-      startsAt: new Date(ev.startsAt),
-      endsAt: new Date(ev.endsAt),
-      location: ev.location,
-      isOnline: ev.isOnline,
-      scheduleId: ev.scheduleId,
-      curriculumId: ev.curriculumId,
-      priceMnt: ev.priceMnt,
-      advanceOrderMnt: ev.advanceOrderMnt,
-    }));
-    existing = data.existing
-      ? {
-          id: BigInt(data.existing.id),
-          title: data.existing.title,
-          chapterId: data.existing.chapterId,
-          chapter: null,
-          curriculum: null,
-          eventType: data.existing.eventType,
-          startsAt: new Date(data.existing.startsAt),
-          endsAt: new Date(data.existing.endsAt),
-          location: data.existing.location,
-          isOnline: data.existing.isOnline,
-          scheduleId: data.existing.scheduleId,
-          curriculumId: data.existing.curriculumId,
-          priceMnt: data.existing.priceMnt,
-          advanceOrderMnt: data.existing.advanceOrderMnt,
-          curriculumOverrideJson: data.existing.curriculumOverrideJson,
-          registrationFormJson: data.existing.registrationFormJson,
-        }
-      : null;
+      chapters = (data.chapters ?? []).map((ch) => ({ id: ch.id, name: ch.name, region: { name: ch.region?.name ?? "" } }));
+      schedules = (data.schedules ?? []).map((s) => ({
+        id: s.id,
+        chapter: { name: s.chapter?.name ?? "" },
+        curriculum: { name: s.curriculum?.name ?? "" },
+      }));
+      curriculums = (data.curriculums ?? []).map((c) => ({
+        id: c.id,
+        name: c.name,
+        chapter: c.chapter ? { name: c.chapter.name ?? "" } : null,
+      }));
+      managedEvents = (data.managedEvents ?? []).map((ev) => ({
+        id: BigInt(ev.id),
+        title: ev.title,
+        chapterId: ev.chapterId,
+        chapter: ev.chapter ? { name: ev.chapter.name ?? "" } : null,
+        curriculum: ev.curriculum ? { name: ev.curriculum.name ?? "" } : null,
+        eventType: ev.eventType,
+        startsAt: new Date(ev.startsAt),
+        endsAt: new Date(ev.endsAt),
+        location: ev.location,
+        isOnline: ev.isOnline,
+        scheduleId: ev.scheduleId,
+        curriculumId: ev.curriculumId,
+        priceMnt: ev.priceMnt,
+        advanceOrderMnt: ev.advanceOrderMnt,
+      }));
+      existing = data.existing
+        ? {
+            id: BigInt(data.existing.id),
+            title: data.existing.title,
+            chapterId: data.existing.chapterId,
+            chapter: null,
+            curriculum: null,
+            eventType: data.existing.eventType,
+            startsAt: new Date(data.existing.startsAt),
+            endsAt: new Date(data.existing.endsAt),
+            location: data.existing.location,
+            isOnline: data.existing.isOnline,
+            scheduleId: data.existing.scheduleId,
+            curriculumId: data.existing.curriculumId,
+            priceMnt: data.existing.priceMnt,
+            advanceOrderMnt: data.existing.advanceOrderMnt,
+            curriculumOverrideJson: data.existing.curriculumOverrideJson,
+            registrationFormJson: data.existing.registrationFormJson,
+          }
+        : null;
+    } catch {
+      adminBootstrapError = true;
+    }
   } else {
     const rows = await Promise.all([
       prisma.chapter.findMany({
@@ -317,6 +322,11 @@ export default async function EventsPanel({ searchParams, venue = "platform" }: 
 
   return (
     <div className="pl-panel-inner px-3 py-4">
+      {adminBootstrapError ? (
+        <div className="alert alert-danger py-2 small mb-3">
+          Админ API холболт алдаатай байна. API (backend) ажиллаж байгаа эсэхийг шалгаад дахин оролдоно уу.
+        </div>
+      ) : null}
       {err ? <div className="alert alert-warning py-2 small mb-3">{err}</div> : null}
 
       <div className="pm-card mb-4" id="managedEventsCard">
