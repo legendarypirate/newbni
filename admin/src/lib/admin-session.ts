@@ -45,9 +45,18 @@ export function defaultAdminLandingPath(role: PlatformRole, requestedNextRaw: st
 export function getAdminLoginNextPath(h: Headers): string {
   const raw = h.get("x-pathname")?.trim() ?? "";
   if (raw.startsWith("/admin") && !raw.startsWith("//")) {
-    const sliced = raw.slice(0, 512);
-    if (sliced === "" || sliced === "/admin") return "/admin/dashboard";
-    return sliced;
+    const sliced = (raw.split("?")[0] ?? "").slice(0, 512);
+    const pathOnly = (sliced.replace(/\/$/, "") || "/admin") as string;
+    if (
+      pathOnly === "/admin/login" ||
+      pathOnly.startsWith("/admin/login/") ||
+      pathOnly === "/auth/logout" ||
+      pathOnly.startsWith("/auth/logout/")
+    ) {
+      return "/admin/dashboard";
+    }
+    if (pathOnly === "" || pathOnly === "/admin") return "/admin/dashboard";
+    return pathOnly;
   }
   return "/admin/dashboard";
 }
