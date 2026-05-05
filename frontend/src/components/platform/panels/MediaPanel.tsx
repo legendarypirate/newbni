@@ -20,9 +20,10 @@ export default async function MediaPanel() {
   if (!session) {
     redirect("/auth/login?next=/platform/media");
   }
+  const accountId = BigInt(session.id);
 
   const profile = await prisma.platformProfile.findUnique({
-    where: { accountId: session.id },
+    where: { accountId },
     select: { businessJson: true },
   });
 

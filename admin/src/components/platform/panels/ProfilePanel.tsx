@@ -17,9 +17,10 @@ export default async function ProfilePanel() {
   if (!session) {
     redirect("/auth/login?next=/platform/profile");
   }
+  const accountId = BigInt(session.id);
 
   const profile = await prisma.platformProfile.findUnique({
-    where: { accountId: session.id },
+    where: { accountId },
   });
 
   const biz = asRecord(profile?.businessJson);

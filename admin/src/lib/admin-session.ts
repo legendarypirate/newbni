@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
-import type { PlatformRole } from "@prisma/client";
 import { getPlatformSession, type PlatformUser } from "@/lib/platform-session";
+
+export type PlatformRole = "admin" | "super_admin" | "trip_manager" | "event_manager" | "visitor" | "member" | "director";
 
 /** Roles allowed to sign in at `/admin/login`. */
 export const ADMIN_PANEL_ROLES: PlatformRole[] = ["admin", "super_admin", "trip_manager", "event_manager"];

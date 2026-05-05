@@ -20,12 +20,11 @@ async function assertAdminForEventCrud(accountId: bigint): Promise<void> {
     where: { id: accountId },
     select: { role: true, status: true },
   });
+  const role = String(row?.role ?? "");
   const okRole =
     row &&
     row.status === "active" &&
-    (row.role === "admin" ||
-      row.role === "super_admin" ||
-      row.role === "event_manager");
+    (role === "admin" || role === "super_admin" || role === "event_manager" || role === "director");
   if (!okRole) {
     redirect(`/admin/login?next=${encodeURIComponent(ADMIN_EVENTS_PATH)}`);
   }
@@ -93,8 +92,9 @@ export async function saveEventAction(formData: FormData): Promise<void> {
         : "/auth/login?next=/platform/events",
     );
   }
+  const sessionAccountId = BigInt(session.id);
   if (listPath === ADMIN_EVENTS_PATH) {
-    await assertAdminForEventCrud(session.id);
+    await assertAdminForEventCrud(sessionAccountId);
   }
 
   const eventIdRaw = String(formData.get("event_id") ?? "0").trim();
@@ -279,8 +279,9 @@ export async function deleteEventAction(formData: FormData): Promise<void> {
         : "/auth/login?next=/platform/events",
     );
   }
+  const sessionAccountId = BigInt(session.id);
   if (listPath === ADMIN_EVENTS_PATH) {
-    await assertAdminForEventCrud(session.id);
+    await assertAdminForEventCrud(sessionAccountId);
   }
 
   const raw = String(formData.get("event_id") ?? "0").trim();

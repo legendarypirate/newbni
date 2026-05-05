@@ -34,8 +34,9 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: S
   const u = await getPlatformSession();
   if (u) {
     try {
+      const accountId = BigInt(u.id);
       const row = await prisma.platformAccount.findUnique({
-        where: { id: u.id },
+        where: { id: accountId },
         select: { role: true, status: true },
       });
       if (row?.status === "active" && isAdminPanelRole(row.role)) {

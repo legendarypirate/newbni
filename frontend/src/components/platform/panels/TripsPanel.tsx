@@ -14,6 +14,16 @@ type Props = {
   searchParams?: Record<string, string | string[] | undefined>;
 };
 
+type ManagedTripRow = {
+  id: number;
+  destination: string;
+  seatsLabel?: string | null;
+  startDate: Date;
+  endDate: Date;
+  priceMnt?: number | string | null;
+  isFeatured: number;
+};
+
 export default async function TripsPanel({ searchParams }: Props) {
   const viewer = await getPlatformSession();
   const greetingName = viewer?.displayName?.trim() || "Та";
@@ -22,7 +32,17 @@ export default async function TripsPanel({ searchParams }: Props) {
   const editTripId = Math.max(0, Number(editRaw ?? ""));
 
   const tripsRes = await apiFetch("/platform/trips");
-  const managedTrips = tripsRes.ok ? (await tripsRes.json()).trips : [];
+  const managedTrips: ManagedTripRow[] = tripsRes.ok
+    ? (((await tripsRes.json()) as { trips?: Array<Record<string, unknown>> }).trips ?? []).map((row) => ({
+        id: Number(row.id ?? 0),
+        destination: String(row.destination ?? ""),
+        seatsLabel: row.seatsLabel == null ? null : String(row.seatsLabel),
+        startDate: new Date(String(row.startDate ?? row.start_date ?? "")),
+        endDate: new Date(String(row.endDate ?? row.end_date ?? "")),
+        priceMnt: row.priceMnt == null ? null : (row.priceMnt as number | string),
+        isFeatured: Number(row.isFeatured ?? row.is_featured ?? 0),
+      }))
+    : [];
 
   const editTripRes = editTripId > 0 ? await apiFetch(`/platform/trips/${editTripId}`) : null;
   const editTrip = editTripRes?.ok ? (await editTripRes.json()).trip : null;

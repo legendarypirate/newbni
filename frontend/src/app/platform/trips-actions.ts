@@ -14,7 +14,8 @@ export async function saveTripAction(formData: FormData): Promise<void> {
     redirect("/auth/login?next=/platform/trips");
   }
 
-  const result = await executeSaveTrip(session.id, formData);
+  const accountId = BigInt(session.id);
+  const result = await executeSaveTrip(accountId, formData);
   if (result.kind === "redirect") {
     redirect(result.to);
   }

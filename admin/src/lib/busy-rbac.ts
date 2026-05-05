@@ -1,5 +1,6 @@
-import type { PlatformRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+
+type PlatformRole = string;
 
 /** Permission keys — keep stable; wire to `BusyPermission` after seeding. */
 export const BUSY_PERMISSIONS = {

@@ -1,4 +1,4 @@
-import type { PlatformRole } from "@prisma/client";
+import type { PlatformRole } from "@/lib/admin-session";
 import { prisma } from "@/lib/prisma";
 import { requirePlatformUserManagement } from "@/lib/admin-access";
 import CreateStaffUserCard from "./CreateStaffUserCard";

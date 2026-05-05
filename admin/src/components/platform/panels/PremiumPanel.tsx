@@ -22,9 +22,10 @@ export default async function PremiumPanel() {
   if (!session) {
     redirect("/auth/login?next=/platform/premium");
   }
+  const accountId = BigInt(session.id);
 
   const profile = await prisma.platformProfile.findUnique({
-    where: { accountId: session.id },
+    where: { accountId },
     select: { businessJson: true },
   });
 

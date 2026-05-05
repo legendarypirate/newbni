@@ -1,4 +1,4 @@
-import type { PlatformRole } from "@prisma/client";
+import type { PlatformRole } from "@/lib/admin-session";
 import { createPlatformStaffUserAction } from "./actions";
 
 const CREATABLE_ROLES: { value: PlatformRole; label: string }[] = [

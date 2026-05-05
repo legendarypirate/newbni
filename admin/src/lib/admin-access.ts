@@ -1,26 +1,27 @@
 import { redirect } from "next/navigation";
-import type { PlatformRole } from "@prisma/client";
 import { ADMIN_NAV_BNI, ADMIN_NAV_MAIN, type AdminNavItem } from "@/lib/admin-nav";
 import { requireAdminUser } from "@/lib/admin-session";
 
+type AdminAccessRole = string;
+
 /** Full sidebar + platform user management (assign managers). */
-export function canManagePlatformUsers(role: PlatformRole): boolean {
+export function canManagePlatformUsers(role: AdminAccessRole): boolean {
   return role === "admin" || role === "super_admin";
 }
 
-export function legacyRoleAllowsFullAdminApi(role: PlatformRole): boolean {
+export function legacyRoleAllowsFullAdminApi(role: AdminAccessRole): boolean {
   return role === "admin" || role === "super_admin";
 }
 
-export function legacyRoleAllowsTripAdminApi(role: PlatformRole): boolean {
+export function legacyRoleAllowsTripAdminApi(role: AdminAccessRole): boolean {
   return role === "admin" || role === "super_admin" || role === "trip_manager";
 }
 
-export function legacyRoleAllowsEventAdminApi(role: PlatformRole): boolean {
+export function legacyRoleAllowsEventAdminApi(role: AdminAccessRole): boolean {
   return role === "admin" || role === "super_admin" || role === "event_manager";
 }
 
-export function canManageEventsInAdminVenue(role: PlatformRole): boolean {
+export function canManageEventsInAdminVenue(role: AdminAccessRole): boolean {
   return legacyRoleAllowsEventAdminApi(role);
 }
 
@@ -28,7 +29,7 @@ const TRIP_NAV_KEYS = new Set(["trips", "trip_registrations"]);
 const EVENT_MAIN_NAV_KEYS = new Set(["meetings"]);
 const EVENT_BNI_NAV_KEYS = new Set(["bni_events"]);
 
-export function filterAdminNavForRole(role: PlatformRole): {
+export function filterAdminNavForRole(role: AdminAccessRole): {
   main: AdminNavItem[];
   bni: AdminNavItem[];
   showBniHeader: boolean;
@@ -54,7 +55,7 @@ export function filterAdminNavForRole(role: PlatformRole): {
 }
 
 /** Block managers from bookmarking other `/admin/*` routes. */
-export function enforceAdminPathAllowedForRole(role: PlatformRole, pathname: string): void {
+export function enforceAdminPathAllowedForRole(role: AdminAccessRole, pathname: string): void {
   const path = (pathname.split("?")[0] || "/admin").replace(/\/$/, "") || "/admin";
 
   if (role === "admin" || role === "super_admin") return;
@@ -80,7 +81,7 @@ export function enforceAdminPathAllowedForRole(role: PlatformRole, pathname: str
 
 export async function requirePlatformUserManagement(nextPath = "/admin/bni-platform-users") {
   const u = await requireAdminUser(nextPath);
-  const role = u.role as PlatformRole;
+  const role = String(u.role ?? "");
   if (!canManagePlatformUsers(role)) {
     redirect(role === "trip_manager" ? "/admin/trips" : "/admin/meetings");
   }
