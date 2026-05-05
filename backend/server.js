@@ -11,18 +11,24 @@ const PORT = Number(process.env.PORT || 3001);
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:3000";
 const ADMIN_ORIGIN = process.env.ADMIN_ORIGIN || "http://localhost:3002";
 
-const defaultOrigins = [FRONTEND_ORIGIN, ADMIN_ORIGIN];
+const defaultOrigins = [
+  FRONTEND_ORIGIN,
+  ADMIN_ORIGIN,
+  "https://test.busy.mn",
+  "https://testadmin.busy.mn",
+];
 const parsedOrigins = (process.env.CORS_ORIGINS || defaultOrigins.join(","))
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
+const allowAllOrigins = parsedOrigins.includes("*");
 
 const app = express();
 
 app.use(
   cors({
     origin(origin, cb) {
-      if (!origin || parsedOrigins.includes(origin)) {
+      if (!origin || allowAllOrigins || parsedOrigins.includes(origin)) {
         return cb(null, true);
       }
       return cb(null, false);
@@ -53,7 +59,7 @@ db.sequelize
   .then(() => {
     app.listen(PORT, () => {
       console.log(`newbni-backend listening on http://localhost:${PORT}`);
-      console.log(`CORS origins: ${parsedOrigins.join(", ")}`);
+      console.log(`CORS origins: ${allowAllOrigins ? "*" : parsedOrigins.join(", ")}`);
     });
   })
   .catch((err) => {
