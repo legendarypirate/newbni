@@ -33,6 +33,7 @@ export default async function TripResponsesPage({ params, searchParams }: Props)
 
   const nextPath = `/dashboard/trips/${tripId}/responses${formId ? `?formId=${encodeURIComponent(formId)}` : ""}`;
   const user = await requirePlatformUser(nextPath);
+  const userAccountId = BigInt(user.id);
 
   const trip = await prisma.businessTrip.findUnique({ where: { id: tripId } }).catch(() => null);
   if (!trip) notFound();
@@ -59,7 +60,7 @@ export default async function TripResponsesPage({ params, searchParams }: Props)
   }
 
   try {
-    await assertFormEditableByAccount(formId, user.id);
+    await assertFormEditableByAccount(formId, userAccountId);
   } catch {
     redirect("/dashboard/trips");
   }

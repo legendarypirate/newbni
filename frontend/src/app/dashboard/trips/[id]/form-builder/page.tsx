@@ -26,12 +26,13 @@ export default async function TripFormBuilderPage({ params }: Props) {
 
   const nextPath = `/dashboard/trips/${tripId}/form-builder`;
   const user = await requirePlatformUser(nextPath);
+  const userAccountId = BigInt(user.id);
 
   const trip = await prisma.businessTrip.findUnique({ where: { id: tripId } }).catch(() => null);
   if (!trip) notFound();
 
   try {
-    await assertTripEditableByAccount(tripId, user.id);
+    await assertTripEditableByAccount(tripId, userAccountId);
   } catch {
     redirect("/dashboard/trips");
   }
