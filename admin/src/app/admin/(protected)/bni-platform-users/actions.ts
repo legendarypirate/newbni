@@ -2,15 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import bcrypt from "bcryptjs";
-import type { PlatformRole as PrismaPlatformRole } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
 import { requirePlatformUserManagement } from "@/lib/admin-access";
-import { ensureOrganizerRoleForEligibleAccount } from "@/lib/busy-rbac";
+import { serverAuthedFetch } from "@admin/lib/server-authed-fetch";
 
-const BCRYPT_ROUNDS = 12;
-
-type EditableRole = PrismaPlatformRole | "super_admin" | "trip_manager" | "event_manager";
+type EditableRole =
+  | "visitor"
+  | "member"
+  | "director"
+  | "admin"
+  | "super_admin"
+  | "trip_manager"
+  | "event_manager";
 
 const ROLES: EditableRole[] = [
   "visitor",
@@ -22,7 +24,6 @@ const ROLES: EditableRole[] = [
   "event_manager",
 ];
 
-/** Roles allowed when creating a new account (no `super_admin` via this form). */
 const CREATABLE_ROLES: EditableRole[] = [
   "trip_manager",
   "event_manager",
@@ -34,13 +35,6 @@ const CREATABLE_ROLES: EditableRole[] = [
 
 function normalizeEmail(raw: string): string {
   return raw.trim().toLowerCase();
-}
-
-function toPrismaRole(role: EditableRole): PrismaPlatformRole {
-  if (role === "super_admin" || role === "trip_manager" || role === "event_manager") {
-    return "admin";
-  }
-  return role;
 }
 
 export async function createPlatformStaffUserAction(formData: FormData): Promise<void> {
@@ -57,34 +51,27 @@ export async function createPlatformStaffUserAction(formData: FormData): Promise
     redirect("/admin/bni-platform-users?create=weak_password");
   }
 
-  const existing = await prisma.platformAccount.findUnique({
-    where: { email },
-    select: { id: true },
+  const res = await serverAuthedFetch("/admin/platform-accounts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email,
+      password,
+      display_name: displayNameRaw || undefined,
+      role: roleRaw,
+    }),
   });
-  if (existing) {
+
+  const data = (await res.json().catch(() => ({}))) as { errorKey?: string };
+
+  if (res.status === 409 || data.errorKey === "email_taken") {
     redirect("/admin/bni-platform-users?create=email_taken");
   }
-
-  const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-  const displayName = displayNameRaw || email.split("@")[0] || email;
-
-  const created = await prisma.platformAccount.create({
-    data: {
-      email,
-      passwordHash,
-      role: toPrismaRole(roleRaw),
-      status: "active",
-      profile: {
-        create: { displayName },
-      },
-    },
-    select: { id: true },
-  });
-
-  try {
-    await ensureOrganizerRoleForEligibleAccount(created.id);
-  } catch {
-    /* non-fatal */
+  if (!res.ok) {
+    if (data.errorKey === "weak_password") {
+      redirect("/admin/bni-platform-users?create=weak_password");
+    }
+    redirect("/admin/bni-platform-users?create=invalid");
   }
 
   revalidatePath("/admin/bni-platform-users");
@@ -96,16 +83,17 @@ export async function updatePlatformAccountRoleAction(formData: FormData): Promi
   const idStr = String(formData.get("account_id") ?? "").trim();
   const roleRaw = String(formData.get("role") ?? "").trim() as EditableRole;
   if (!idStr || !ROLES.includes(roleRaw)) redirect("/admin/bni-platform-users");
-  let id: bigint;
-  try {
-    id = BigInt(idStr);
-  } catch {
+
+  const res = await serverAuthedFetch(`/admin/platform-accounts/${idStr}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role: roleRaw }),
+  });
+
+  if (!res.ok) {
     redirect("/admin/bni-platform-users");
   }
-  await prisma.platformAccount.update({
-    where: { id },
-    data: { role: toPrismaRole(roleRaw) },
-  });
+
   revalidatePath("/admin/bni-platform-users");
   redirect("/admin/bni-platform-users");
 }

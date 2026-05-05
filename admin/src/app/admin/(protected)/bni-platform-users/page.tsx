@@ -1,6 +1,6 @@
 import type { PlatformRole } from "@/lib/admin-session";
-import { prisma } from "@/lib/prisma";
 import { requirePlatformUserManagement } from "@/lib/admin-access";
+import { serverAuthedFetch } from "@admin/lib/server-authed-fetch";
 import CreateStaffUserCard from "./CreateStaffUserCard";
 import { updatePlatformAccountRoleAction } from "./actions";
 
@@ -24,6 +24,13 @@ function firstString(v: string | string[] | undefined): string {
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
+type PlatformAccountRow = {
+  id: string;
+  email: string;
+  role: string;
+  profile: { displayName?: string | null; companyName?: string | null } | null;
+};
+
 export default async function AdminBniPlatformUsersPage({ searchParams }: { searchParams: SearchParams }) {
   await requirePlatformUserManagement("/admin/bni-platform-users");
 
@@ -34,11 +41,9 @@ export default async function AdminBniPlatformUsersPage({ searchParams }: { sear
       ? createRaw
       : null;
 
-  const rows = await prisma.platformAccount.findMany({
-    orderBy: { id: "desc" },
-    take: 300,
-    include: { profile: { select: { displayName: true, companyName: true } } },
-  });
+  const res = await serverAuthedFetch("/admin/platform-accounts");
+  const payload = (await res.json().catch(() => ({}))) as { ok?: boolean; rows?: PlatformAccountRow[] };
+  const rows: PlatformAccountRow[] = payload.ok && Array.isArray(payload.rows) ? payload.rows : [];
 
   return (
     <div>

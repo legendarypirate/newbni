@@ -6,6 +6,7 @@ const bcrypt = require("bcryptjs");
 const db = require("../models");
 const { upsertPlatformAccountFromGoogle } = require("../lib/platform-google-upsert");
 const { ensureOrganizerRoleForEligibleAccount } = require("../lib/busy-rbac");
+const { fetchBusyAuthzForAccount } = require("../lib/busy-authz");
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret-for-dev-only";
 
@@ -251,6 +252,31 @@ exports.googleCallback = async (req, res) => {
 };
 
 exports.me = async (req, res) => {
-  // req.user is populated by auth middleware
-  res.json({ ok: true, user: req.user });
+  try {
+    const jwtUser = req.user;
+    const id = jwtUser.id;
+    const account = await db.PlatformAccount.findByPk(id, {
+      attributes: ["id", "email", "role"],
+      include: [{ model: db.PlatformProfile, as: "profile", attributes: ["displayName", "photoUrl"] }],
+    });
+    const authz = await fetchBusyAuthzForAccount(id);
+    const displayName =
+      jwtUser.displayName || account?.profile?.displayName || account?.email || jwtUser.email || "";
+
+    res.json({
+      ok: true,
+      user: {
+        id: String(account?.id ?? id),
+        email: account?.email ?? jwtUser.email,
+        displayName,
+        role: account?.role ?? jwtUser.role,
+        photoUrl: account?.profile?.photoUrl ?? null,
+        busyRoleSlugs: authz.roleSlugs,
+        busyPermissionKeys: authz.permissionKeys,
+      },
+    });
+  } catch (err) {
+    console.error("auth.me enrich failed:", err);
+    res.json({ ok: true, user: req.user });
+  }
 };

@@ -1,5 +1,9 @@
 import type { PlatformRole } from "@prisma/client";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { readBniTokenFromCookieHeader } from "@/lib/auth-cookie-token";
+import { resolveServerApiBase } from "@/lib/resolve-api-base";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 /** Permission keys — keep stable; wire to `BusyPermission` after seeding. */
 export const BUSY_PERMISSIONS = {
@@ -21,87 +25,48 @@ export const BUSY_ROLE_SLUGS = {
   superAdmin: "super_admin",
 } as const;
 
-/** Bootstrap RBAC rows so assignments and future admin UI work. Idempotent. */
-export async function ensureBusyRbacSeed(): Promise<void> {
-  try {
-    const roleCount = await prisma.busyRole.count();
-    if (roleCount > 0) return;
-  } catch {
-    return;
-  }
-
-  const roles = [
-    { slug: BUSY_ROLE_SLUGS.guest, label: "Guest" },
-    { slug: BUSY_ROLE_SLUGS.registeredUser, label: "Registered user" },
-    { slug: BUSY_ROLE_SLUGS.businessMember, label: "Business member" },
-    { slug: BUSY_ROLE_SLUGS.organizer, label: "Organizer" },
-    { slug: BUSY_ROLE_SLUGS.supplier, label: "Supplier" },
-    { slug: BUSY_ROLE_SLUGS.investor, label: "Investor" },
-    { slug: BUSY_ROLE_SLUGS.admin, label: "Admin" },
-    { slug: BUSY_ROLE_SLUGS.superAdmin, label: "Super admin" },
-  ];
-
-  const perms = [
-    { key: BUSY_PERMISSIONS.weeklyMeetingManageOwn, description: "Create and manage own weekly meetings" },
-    { key: BUSY_PERMISSIONS.weeklyMeetingManageAny, description: "Manage any weekly meeting" },
-    { key: BUSY_PERMISSIONS.adminUsersRead, description: "Read users (admin panel)" },
-  ];
-
-  try {
-    await prisma.$transaction(async (tx) => {
-    await tx.busyRole.createMany({ data: roles, skipDuplicates: true });
-    await tx.busyPermission.createMany({ data: perms, skipDuplicates: true });
-
-    const dbRoles = await tx.busyRole.findMany();
-    const dbPerms = await tx.busyPermission.findMany();
-    const bySlug = new Map(dbRoles.map((r) => [r.slug, r.id]));
-    const byKey = new Map(dbPerms.map((p) => [p.key, p.id]));
-
-    const links: { roleId: number; permissionId: number }[] = [];
-    const organizerId = bySlug.get(BUSY_ROLE_SLUGS.organizer);
-    const adminId = bySlug.get(BUSY_ROLE_SLUGS.admin);
-    const superId = bySlug.get(BUSY_ROLE_SLUGS.superAdmin);
-    const pOwn = byKey.get(BUSY_PERMISSIONS.weeklyMeetingManageOwn);
-    const pAny = byKey.get(BUSY_PERMISSIONS.weeklyMeetingManageAny);
-    const pUsers = byKey.get(BUSY_PERMISSIONS.adminUsersRead);
-
-    if (organizerId && pOwn) links.push({ roleId: organizerId, permissionId: pOwn });
-    if (adminId && pAny) links.push({ roleId: adminId, permissionId: pAny });
-    if (adminId && pUsers) links.push({ roleId: adminId, permissionId: pUsers });
-    if (superId && pAny) links.push({ roleId: superId, permissionId: pAny });
-    if (superId && pUsers) links.push({ roleId: superId, permissionId: pUsers });
-
-    if (links.length) {
-      await tx.busyRolePermission.createMany({ data: links, skipDuplicates: true });
-    }
-    });
-  } catch {
-    /* concurrent first boot: another request may have seeded */
-  }
-}
-
 export function legacyRoleCanManageAnyWeeklyMeeting(role: PlatformRole): boolean {
   return role === "admin" || role === "director";
 }
 
-/** MVP: platform admin/director, or meeting group owner, or explicit RBAC assignment. */
-export async function accountCanManageWeeklyMeeting(accountId: bigint, organizerAccountId: bigint): Promise<boolean> {
+export function accountCanManageWeeklyMeetingSnapshot(
+  accountId: bigint,
+  organizerAccountId: bigint,
+  legacyRole: string,
+  busyPermissionKeys: readonly string[],
+): boolean {
   if (organizerAccountId === accountId) return true;
+  if (legacyRoleCanManageAnyWeeklyMeeting(legacyRole as PlatformRole)) return true;
+  return busyPermissionKeys.includes(BUSY_PERMISSIONS.weeklyMeetingManageAny);
+}
 
-  const acc = await prisma.platformAccount.findUnique({ where: { id: accountId }, select: { role: true } });
-  if (acc && legacyRoleCanManageAnyWeeklyMeeting(acc.role)) return true;
-
-  const rows = await prisma.busyUserRoleAssignment.findMany({
-    where: { accountId },
-    include: { role: { include: { permissions: { include: { permission: true } } } } },
-  });
-
-  for (const row of rows) {
-    for (const rp of row.role.permissions) {
-      if (rp.permission.key === BUSY_PERMISSIONS.weeklyMeetingManageAny) return true;
-    }
+async function fetchMeForWeeklyGate(): Promise<{ role: string; busyPermissionKeys: string[] } | null> {
+  const h = await headers();
+  const cookieHeader = h.get("cookie");
+  const hdrs = new Headers();
+  if (cookieHeader) hdrs.set("cookie", cookieHeader);
+  const tok = readBniTokenFromCookieHeader(cookieHeader);
+  if (tok) hdrs.set("Authorization", `Bearer ${tok}`);
+  try {
+    const res = await fetch(`${resolveServerApiBase()}/auth/me`, { headers: hdrs, cache: "no-store" });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      user?: { role?: string; busyPermissionKeys?: unknown };
+    };
+    const u = data.user;
+    if (!u) return null;
+    const keys = Array.isArray(u.busyPermissionKeys) ? u.busyPermissionKeys.map(String) : [];
+    return { role: String(u.role ?? ""), busyPermissionKeys: keys };
+  } catch {
+    return null;
   }
-  return false;
+}
+
+/** MVP: platform admin/director, or meeting group owner, or explicit RBAC assignment (via `/auth/me`). */
+export async function accountCanManageWeeklyMeeting(accountId: bigint, organizerAccountId: bigint): Promise<boolean> {
+  const me = await fetchMeForWeeklyGate();
+  if (!me) return false;
+  return accountCanManageWeeklyMeetingSnapshot(accountId, organizerAccountId, me.role, me.busyPermissionKeys);
 }
 
 /** Non-visitor legacy roles may create weekly meetings (MVP gate before Busy RBAC UI). */
@@ -114,7 +79,7 @@ export type BusyAuthzSnapshot = {
   permissionKeys: string[];
 };
 
-/** Busy role slugs + permission keys for this account (from `busy_user_role_assignments`). */
+/** Busy role slugs + permission keys (Prisma — used when session is cookie-based without JWT busy payload). */
 export async function fetchBusyAuthzForAccount(accountId: bigint): Promise<BusyAuthzSnapshot> {
   try {
     const rows = await prisma.busyUserRoleAssignment.findMany({
@@ -134,40 +99,24 @@ export async function fetchBusyAuthzForAccount(accountId: bigint): Promise<BusyA
   }
 }
 
-/**
- * Idempotent: gives active non-visitor accounts the `organizer` Busy role so `weekly_meeting.manage_own` applies.
- * Call after successful login (email + Google).
- */
+/** Idempotent Busy RBAC seed — backend. */
+export async function ensureBusyRbacSeed(): Promise<void> {
+  try {
+    const res = await serverAuthedFetch("/admin/system/ensure-busy-rbac-seed", { method: "POST" });
+    if (!res.ok) return;
+  } catch {
+    /* ignore — parity with legacy seed helper */
+  }
+}
+
+/** Idempotent organizer assignment — backend. */
 export async function ensureOrganizerRoleForEligibleAccount(accountId: bigint): Promise<void> {
-  let acc: { role: PlatformRole } | null;
   try {
-    acc = await prisma.platformAccount.findUnique({ where: { id: accountId }, select: { role: true } });
-  } catch {
-    return;
-  }
-  if (!acc || acc.role === "visitor") return;
-
-  await ensureBusyRbacSeed();
-
-  let organizerId: number | undefined;
-  try {
-    const organizer = await prisma.busyRole.findUnique({
-      where: { slug: BUSY_ROLE_SLUGS.organizer },
-      select: { id: true },
+    const res = await serverAuthedFetch(`/admin/platform-accounts/${accountId.toString()}/ensure-organizer`, {
+      method: "POST",
     });
-    organizerId = organizer?.id;
+    if (!res.ok) return;
   } catch {
-    return;
-  }
-  if (organizerId === undefined) return;
-
-  try {
-    await prisma.busyUserRoleAssignment.upsert({
-      where: { accountId_roleId: { accountId, roleId: organizerId } },
-      create: { accountId, roleId: organizerId },
-      update: {},
-    });
-  } catch {
-    /* concurrent upsert */
+    /* non-fatal */
   }
 }
