@@ -20,6 +20,20 @@ function resolveProjectRoot(): string {
   return process.cwd();
 }
 
+function resolveFrontendRoot(startDir: string): string | null {
+  let dir = startDir;
+  for (let i = 0; i < 10; i++) {
+    const frontendDir = join(dir, "frontend");
+    if (existsSync(join(frontendDir, "prisma", "schema.prisma"))) {
+      return frontendDir;
+    }
+    const parent = join(dir, "..");
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
 /** Минимал .env парсер (гэдсэн тайлбар, `KEY=value`, хашилттай утга). */
 function parseDotenvFile(filePath: string): Record<string, string> {
   const out: Record<string, string> = {};
@@ -63,6 +77,20 @@ function resolveDatabaseUrl(root: string): string | undefined {
   if (fromDotenv) {
     process.env.DATABASE_URL = fromDotenv;
     return fromDotenv;
+  }
+
+  const frontendRoot = resolveFrontendRoot(root);
+  if (frontendRoot) {
+    const fromFrontendLocal = parseDotenvFile(join(frontendRoot, ".env.local")).DATABASE_URL?.trim();
+    if (fromFrontendLocal) {
+      process.env.DATABASE_URL = fromFrontendLocal;
+      return fromFrontendLocal;
+    }
+    const fromFrontendDotenv = parseDotenvFile(join(frontendRoot, ".env")).DATABASE_URL?.trim();
+    if (fromFrontendDotenv) {
+      process.env.DATABASE_URL = fromFrontendDotenv;
+      return fromFrontendDotenv;
+    }
   }
   return undefined;
 }
