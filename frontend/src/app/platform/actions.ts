@@ -36,6 +36,7 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
   if (!session) {
     return { ok: false, message: "Нэвтэрнэ үү." };
   }
+  const accountId = BigInt(session.id);
 
   const displayName = String(formData.get("display_name") ?? "").trim();
   const companyName = String(formData.get("company_name") ?? "").trim();
@@ -85,7 +86,7 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
   }
 
   const existing = await prisma.platformProfile.findUnique({
-    where: { accountId: session.id },
+    where: { accountId },
   });
 
   const existingBiz = asRecord(existing?.businessJson);
@@ -124,7 +125,7 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
 
   const memberFile = formData.get("profile_photo_file");
   if (memberFile instanceof File && memberFile.size > 0) {
-    const up = await writePlatformUploadImage(session.id, memberFile, 5 * 1024 * 1024);
+    const up = await writePlatformUploadImage(accountId, memberFile, 5 * 1024 * 1024);
     if (up.ok) {
       if (previousMemberPhoto && previousMemberPhoto !== up.url) {
         await destroyCloudinaryBySecureUrl(previousMemberPhoto);
@@ -137,7 +138,7 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
 
   const coverFile = formData.get("cover_photo_file");
   if (coverFile instanceof File && coverFile.size > 0) {
-    const up = await writePlatformUploadImage(session.id, coverFile, 10 * 1024 * 1024);
+    const up = await writePlatformUploadImage(accountId, coverFile, 10 * 1024 * 1024);
     if (up.ok) {
       if (previousProfileCover && previousProfileCover !== up.url) {
         await destroyCloudinaryBySecureUrl(previousProfileCover);
@@ -151,7 +152,7 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
   let photoUrl = existing?.photoUrl?.trim() ?? "";
   const logoFile = formData.get("photo_file");
   if (logoFile instanceof File && logoFile.size > 0) {
-    const up = await writePlatformUploadImage(session.id, logoFile, 10 * 1024 * 1024);
+    const up = await writePlatformUploadImage(accountId, logoFile, 10 * 1024 * 1024);
     if (up.ok) {
       if (previousPhotoUrl && previousPhotoUrl !== up.url) {
         await destroyCloudinaryBySecureUrl(previousPhotoUrl);
@@ -165,9 +166,9 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
   const businessJson = mergedBusiness as Prisma.InputJsonValue;
 
   await prisma.platformProfile.upsert({
-    where: { accountId: session.id },
+    where: { accountId },
     create: {
-      accountId: session.id,
+      accountId,
       displayName: displayName || session.email,
       companyName: companyName || null,
       businessPhone: businessPhone || null,
@@ -192,7 +193,7 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
   });
 
   const navDisplay = displayName !== "" ? displayName : session.email;
-  await setPlatformSessionCookies(session.id, navDisplay);
+  await setPlatformSessionCookies(accountId, navDisplay);
 
   revalidatePath("/platform/profile");
 
@@ -205,9 +206,10 @@ export async function saveHeroSlidesAction(_prev: ProfileSaveState | null, formD
   if (!session) {
     return { ok: false, message: "Нэвтэрнэ үү." };
   }
+  const accountId = BigInt(session.id);
 
   const existing = await prisma.platformProfile.findUnique({
-    where: { accountId: session.id },
+    where: { accountId },
   });
   const biz = asRecord(existing?.businessJson);
   let slides: string[] = Array.isArray(biz.hero_slides)
@@ -230,7 +232,7 @@ export async function saveHeroSlidesAction(_prev: ProfileSaveState | null, formD
     if (slides.length >= 10) {
       break;
     }
-    const up = await writePlatformUploadImage(session.id, f, 10 * 1024 * 1024);
+    const up = await writePlatformUploadImage(accountId, f, 10 * 1024 * 1024);
     if (up.ok) {
       slides.push(up.url);
     }
@@ -239,9 +241,9 @@ export async function saveHeroSlidesAction(_prev: ProfileSaveState | null, formD
   biz.hero_slides = slides;
 
   await prisma.platformProfile.upsert({
-    where: { accountId: session.id },
+    where: { accountId },
     create: {
-      accountId: session.id,
+      accountId,
       displayName: session.email,
       businessJson: biz as Prisma.InputJsonValue,
     },
