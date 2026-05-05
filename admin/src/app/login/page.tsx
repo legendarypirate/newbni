@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { prisma } from "@/lib/prisma";
-import { isAdminPanelRole } from "@/lib/admin-session";
 import { getPlatformSession } from "@/lib/platform-session";
 import AdminLoginForm from "./AdminLoginForm";
 
@@ -32,19 +30,8 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: S
   const defaultEmail = firstString(sp.email);
 
   const u = await getPlatformSession();
-  if (u) {
-    try {
-      const accountId = BigInt(u.id);
-      const row = await prisma.platformAccount.findUnique({
-        where: { id: accountId },
-        select: { role: true, status: true },
-      });
-      if (row?.status === "active" && isAdminPanelRole(row.role)) {
-        redirect("/admin");
-      }
-    } catch {
-      /* show login */
-    }
+  if (u?.role === "admin") {
+    redirect("/admin");
   }
 
   return (

@@ -1,16 +1,13 @@
 import type { NextRequest } from "next/server";
-import { PLATFORM_ACCOUNT_REF_COOKIE, readCookieValueFromHeader } from "@/lib/platform-session-cookies";
-import { prisma } from "@/lib/prisma";
 import { fetchBusyAuthzForAccount } from "@/lib/busy-rbac";
-import type { PlatformAccount, PlatformProfile } from "@prisma/client";
 
 export type ApiPlatformUser = {
   id: bigint;
   email: string;
   displayName: string;
   /** Legacy `PlatformRole` from `bni_platform_accounts.role`. */
-  legacyRole: PlatformAccount["role"];
-  profile: Pick<PlatformProfile, "displayName" | "photoUrl"> | null;
+  legacyRole: string;
+  profile: { displayName?: string | null; photoUrl?: string | null } | null;
 };
 
 export type ApiPlatformUserWithBusyAuthz = ApiPlatformUser & {
@@ -18,63 +15,69 @@ export type ApiPlatformUserWithBusyAuthz = ApiPlatformUser & {
   busyPermissionKeys: string[];
 };
 
-function parseAccountId(raw: string | undefined): bigint | null {
-  if (!raw) return null;
-  try {
-    return BigInt(raw);
-  } catch {
-    return null;
-  }
+function normalizeApiBase(raw: string | undefined): string {
+  const base = (raw || "").replace(/\/$/, "");
+  if (!base) return "";
+  return base.endsWith("/api") ? base : `${base}/api`;
 }
 
-/** Same resolution order as `getPlatformSession` (raw `Cookie` header, then parsed jar). */
-function resolveAccountIdFromRequest(req: NextRequest): bigint | null {
-  const raw = req.headers.get("cookie");
-  const fromHeader =
-    parseAccountId(readCookieValueFromHeader(raw, "bni_platform_account_id")) ??
-    parseAccountId(readCookieValueFromHeader(raw, PLATFORM_ACCOUNT_REF_COOKIE));
-  if (fromHeader) return fromHeader;
-
-  return (
-    parseAccountId(req.cookies.get("bni_platform_account_id")?.value) ??
-    parseAccountId(req.cookies.get(PLATFORM_ACCOUNT_REF_COOKIE)?.value)
-  );
+function resolveApiBase(): string {
+  const internal = normalizeApiBase(process.env.API_INTERNAL_URL);
+  if (internal) return internal;
+  const publicApi = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL);
+  if (publicApi) return publicApi;
+  return "http://localhost:3001/api";
 }
 
-async function loadApiPlatformUserByAccountId(id: bigint): Promise<ApiPlatformUser | null> {
-  let account: (PlatformAccount & { profile: PlatformProfile | null }) | null;
+function readTokenFromCookieHeader(cookieHeader: string | null): string | null {
+  if (!cookieHeader) return null;
+  const tokenCookie = cookieHeader
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith("bni_token="));
+  return tokenCookie ? decodeURIComponent(tokenCookie.split("=")[1] || "") : null;
+}
+
+async function loadApiPlatformUser(req: NextRequest): Promise<ApiPlatformUser | null> {
+  const cookieHeader = req.headers.get("cookie");
+  const token = readTokenFromCookieHeader(cookieHeader);
+  const headers = new Headers();
+  if (cookieHeader) headers.set("cookie", cookieHeader);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
   try {
-    account = await prisma.platformAccount.findUnique({
-      where: { id },
-      include: { profile: true },
+    const res = await fetch(`${resolveApiBase()}/auth/me`, {
+      headers,
+      cache: "no-store",
     });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      user?: {
+        id?: string | number;
+        email?: string;
+        displayName?: string;
+        role?: string;
+        photoUrl?: string | null;
+      };
+    };
+    const u = data.user;
+    if (!u?.id || !u?.email) return null;
+    const id = BigInt(u.id);
+    return {
+      id,
+      email: String(u.email),
+      displayName: String(u.displayName ?? u.email),
+      legacyRole: String(u.role ?? ""),
+      profile: { displayName: u.displayName ?? null, photoUrl: u.photoUrl ?? null },
+    };
   } catch {
     return null;
   }
-
-  if (!account || account.status !== "active") return null;
-
-  const display =
-    account.profile?.displayName && account.profile.displayName.trim() !== ""
-      ? account.profile.displayName.trim()
-      : account.email;
-
-  return {
-    id: account.id,
-    email: account.email,
-    displayName: display,
-    legacyRole: account.role,
-    profile: account.profile
-      ? { displayName: account.profile.displayName, photoUrl: account.profile.photoUrl }
-      : null,
-  };
 }
 
 /** Resolve logged-in platform user from platform session cookies (same as `getPlatformSession`). */
 export async function getApiPlatformUser(req: NextRequest): Promise<ApiPlatformUser | null> {
-  const id = resolveAccountIdFromRequest(req);
-  if (!id) return null;
-  return loadApiPlatformUserByAccountId(id);
+  return loadApiPlatformUser(req);
 }
 
 export async function getApiPlatformUserWithBusyAuthz(req: NextRequest): Promise<ApiPlatformUserWithBusyAuthz | null> {
