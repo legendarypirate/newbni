@@ -15,6 +15,7 @@ type Props = { params: Promise<{ id: string }> };
 export default async function WeeklyMeetingDetailPage({ params }: Props) {
   const user = await getPlatformSession();
   if (!user) return null;
+  const userAccountId = BigInt(user.id);
 
   const { id } = await params;
   let meetingId: bigint;
@@ -33,7 +34,7 @@ export default async function WeeklyMeetingDetailPage({ params }: Props) {
 
   if (!meeting) notFound();
 
-  const allowed = await accountCanManageWeeklyMeeting(user.id, meeting.group.organizerAccountId);
+  const allowed = await accountCanManageWeeklyMeeting(userAccountId, meeting.group.organizerAccountId);
   if (!allowed) notFound();
 
   const feeLabel =
