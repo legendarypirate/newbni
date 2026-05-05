@@ -10,14 +10,14 @@ export default function TokenHandler() {
 
   useEffect(() => {
     const token = searchParams.get("token");
+    const nextPath = searchParams.get("next");
     const oauthError = searchParams.get("error");
     if (token) {
       setAuthToken(token);
-      // Remove token from URL
-      const newParams = new URLSearchParams(searchParams.toString());
-      newParams.delete("token");
-      const cleanUrl = window.location.pathname + (newParams.toString() ? "?" + newParams.toString() : "");
-      router.replace(cleanUrl);
+      // After storing token, continue to requested path (default platform).
+      const safeNext =
+        nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/platform";
+      router.replace(safeNext);
       return;
     }
     // If OAuth failed/cancelled, purge stale token so previous admin session is not reused.
