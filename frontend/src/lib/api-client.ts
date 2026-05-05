@@ -1,9 +1,23 @@
 function normalizeApiUrl(raw: string | undefined): string {
-  const base = (raw || "http://localhost:3001/api").replace(/\/$/, "");
+  const base = (raw || "").replace(/\/$/, "");
+  if (!base) return "";
   return base.endsWith("/api") ? base : `${base}/api`;
 }
 
-const API_URL = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL);
+function runtimeApiUrl(): string {
+  const fromEnv = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL);
+  if (fromEnv) return fromEnv;
+
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "test.busy.mn") return "https://testapi.busy.mn/api";
+    if (host === "busy.mn" || host === "www.busy.mn") return "https://api.busy.mn/api";
+  }
+
+  const internal = normalizeApiUrl(process.env.API_INTERNAL_URL);
+  if (internal) return internal;
+  return "http://localhost:3001/api";
+}
 
 export function getAuthToken(cookieHeader?: string) {
   if (typeof window === "undefined") {
@@ -39,6 +53,7 @@ export function removeAuthToken() {
 }
 
 export async function apiFetch(path: string, options: RequestInit = {}, cookieHeader?: string) {
+  const API_URL = runtimeApiUrl();
   const token = getAuthToken(cookieHeader);
   const headers = new Headers(options.headers || {});
   
