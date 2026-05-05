@@ -234,10 +234,13 @@ exports.googleCallback = async (req, res) => {
     res.clearCookie(NEXT_COOKIE);
     
     const isAdmin = account.role === "admin";
+    const nextTarget = isAdmin ? "/admin" : nextPath === "/" ? "/platform" : nextPath;
     const dest = new URL(isAdmin ? adminOrigin() : frontendOrigin());
-    dest.pathname = isAdmin ? "/admin" : nextPath === "/" ? "/platform" : nextPath;
+    // Redirect to login first so client TokenHandler can persist token before hitting protected routes.
+    dest.pathname = isAdmin ? "/admin/login" : "/auth/login";
+    dest.searchParams.set("next", nextTarget);
     dest.searchParams.set("token", token);
-    // Make token available to Next SSR guards immediately on first redirect hit.
+    // Best-effort cookie for same-origin deployments.
     res.cookie("bni_token", token, tokenCookieOptions(req));
 
     res.redirect(dest.toString());
