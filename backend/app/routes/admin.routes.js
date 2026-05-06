@@ -17,6 +17,10 @@ module.exports = (app) => {
   router.get("/news", authMiddleware, requirePlatformAdminJwt, admin.newsList);
   router.get("/bni-memberships", authMiddleware, requirePlatformAdminJwt, admin.membershipsList);
   router.get("/payment-orders", authMiddleware, requirePlatformAdminJwt, admin.paymentOrdersList);
+  router.post("/site-settings/upsert", authMiddleware, requirePlatformAdminJwt, admin.upsertSiteSetting);
+  router.post("/regions", authMiddleware, requirePlatformAdminJwt, admin.upsertRegion);
+  router.delete("/regions/:id", authMiddleware, requirePlatformAdminJwt, admin.deleteRegion);
+  router.post("/chapters", authMiddleware, requirePlatformAdminJwt, admin.createChapter);
 
   router.get("/platform-accounts", authMiddleware, requirePlatformAdminJwt, platformAccounts.listPlatformAccounts);
   router.post("/platform-accounts", authMiddleware, requirePlatformAdminJwt, platformAccounts.createPlatformStaffUser);

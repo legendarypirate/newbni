@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdminUser } from "@/lib/admin-session";
-import { dbBusinessTrip } from "@/lib/prisma";
+import { serverAuthedFetch } from "@admin/lib/server-authed-fetch";
 
 export async function adminDeleteTripAction(formData: FormData): Promise<void> {
   await connection();
@@ -15,8 +15,7 @@ export async function adminDeleteTripAction(formData: FormData): Promise<void> {
     redirect("/admin/trips");
   }
 
-  const trips = dbBusinessTrip();
-  await trips.delete({ where: { id: tripId } }).catch(() => null);
+  await serverAuthedFetch(`/platform/trips/${tripId}`, { method: "DELETE" }).catch(() => null);
 
   revalidatePath("/admin/trips");
   revalidatePath("/trips");

@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { requireAdminUser } from "@/lib/admin-session";
+import { serverAuthedFetch } from "@admin/lib/server-authed-fetch";
 
 function slugifyChapter(name: string): string {
   const base = name
@@ -28,24 +28,16 @@ export async function saveChapterAction(formData: FormData): Promise<void> {
   }
   if (slug === "") slug = slugifyChapter(name);
 
-  let finalSlug = slug.slice(0, 190);
-  for (let i = 0; i < 8; i++) {
-    const clash = await prisma.chapter.findFirst({
-      where: { regionId, slug: finalSlug },
-      select: { id: true },
-    });
-    if (!clash) break;
-    finalSlug = `${slug.slice(0, 160)}-${Math.random().toString(36).slice(2, 7)}`;
-  }
-
-  await prisma.chapter.create({
-    data: {
+  await serverAuthedFetch("/admin/chapters", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
       regionId,
       name: name.slice(0, 190),
-      slug: finalSlug,
+      slug: slug.slice(0, 190),
       maxMembers,
       timezone: timezone.slice(0, 64),
-    },
+    }),
   });
 
   revalidatePath("/admin/bni-chapters");

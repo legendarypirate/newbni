@@ -22,6 +22,7 @@ module.exports = (app) => {
 
   router.get("/trips", authMiddleware, trips.listTrips);
   router.get("/trips/:id", authMiddleware, trips.getTrip);
+  router.delete("/trips/:id", authMiddleware, trips.deleteTrip);
 
   app.use("/api/platform", router);
 };

@@ -14,13 +14,13 @@ import {
   parseFooterPublicConfigJson,
   serializeFooterPublicConfig,
 } from "@/lib/footer-public-config";
-import { prisma } from "@/lib/prisma";
+import { serverAuthedFetch } from "@admin/lib/server-authed-fetch";
 
 async function upsertSetting(name: string, value: string) {
-  await prisma.siteSetting.upsert({
-    where: { settingName: name },
-    create: { settingName: name, settingValue: value },
-    update: { settingValue: value },
+  await serverAuthedFetch("/admin/site-settings/upsert", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ settingName: name, settingValue: value }),
   });
 }
 

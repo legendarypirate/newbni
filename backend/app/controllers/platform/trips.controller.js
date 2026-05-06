@@ -154,3 +154,16 @@ exports.getTrip = async (req, res) => {
   }
 };
 
+exports.deleteTrip = async (req, res) => {
+  const id = Math.max(0, Number(req.params.id || "0"));
+  if (id < 1) return res.status(400).json({ ok: false, errorKey: "invalid_trip_id" });
+  try {
+    const deleted = await db.BusinessTrip.destroy({ where: { id } });
+    if (!deleted) return res.status(404).json({ ok: false, errorKey: "not_found" });
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("Delete trip failed:", err);
+    return res.status(500).json({ ok: false, message: "Internal server error" });
+  }
+};
+

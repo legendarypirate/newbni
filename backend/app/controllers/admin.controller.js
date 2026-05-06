@@ -153,3 +153,74 @@ exports.paymentOrdersList = async (_req, res) => {
     res.status(500).json({ ok: false, message: err instanceof Error ? err.message : String(err) });
   }
 };
+
+exports.upsertSiteSetting = async (req, res) => {
+  const settingName = String(req.body?.settingName || "").trim();
+  const settingValue = String(req.body?.settingValue || "");
+  if (!settingName) {
+    return res.status(400).json({ ok: false, errorKey: "missing_setting_name" });
+  }
+  try {
+    const [row] = await db.SiteSetting.findOrCreate({
+      where: { settingName },
+      defaults: { settingName, settingValue },
+    });
+    if (row.settingValue !== settingValue) {
+      row.settingValue = settingValue;
+      await row.save();
+    }
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ ok: false, message: err instanceof Error ? err.message : String(err) });
+  }
+};
+
+exports.upsertRegion = async (req, res) => {
+  const id = Number(req.body?.id || 0);
+  const name = String(req.body?.name || "").trim();
+  const slug = String(req.body?.slug || "").trim().toLowerCase();
+  const sortOrder = Number(req.body?.sortOrder || 0);
+  if (!name || !slug) return res.status(400).json({ ok: false, errorKey: "missing_fields" });
+  try {
+    if (id > 0) {
+      const row = await db.Region.findByPk(id);
+      if (!row) return res.status(404).json({ ok: false, errorKey: "not_found" });
+      await row.update({ name, slug, sortOrder });
+      return res.json({ ok: true, id: row.id });
+    }
+    const row = await db.Region.create({ name, slug, sortOrder });
+    return res.json({ ok: true, id: row.id });
+  } catch (err) {
+    return res.status(500).json({ ok: false, message: err instanceof Error ? err.message : String(err) });
+  }
+};
+
+exports.deleteRegion = async (req, res) => {
+  const id = Number(req.params?.id || 0);
+  if (!(id > 0)) return res.status(400).json({ ok: false, errorKey: "invalid_id" });
+  try {
+    const chapterCount = await db.Chapter.count({ where: { regionId: id } });
+    if (chapterCount > 0) return res.status(409).json({ ok: false, errorKey: "region_has_chapters" });
+    await db.Region.destroy({ where: { id } });
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ ok: false, message: err instanceof Error ? err.message : String(err) });
+  }
+};
+
+exports.createChapter = async (req, res) => {
+  const regionId = Number(req.body?.regionId || 0);
+  const name = String(req.body?.name || "").trim();
+  const slug = String(req.body?.slug || "").trim().toLowerCase();
+  const maxMembers = Number(req.body?.maxMembers || 40);
+  const timezone = String(req.body?.timezone || "Asia/Ulaanbaatar").trim() || "Asia/Ulaanbaatar";
+  if (!(regionId > 0) || !name || !slug) {
+    return res.status(400).json({ ok: false, errorKey: "missing_fields" });
+  }
+  try {
+    const row = await db.Chapter.create({ regionId, name, slug, maxMembers, timezone });
+    return res.json({ ok: true, id: row.id });
+  } catch (err) {
+    return res.status(500).json({ ok: false, message: err instanceof Error ? err.message : String(err) });
+  }
+};
