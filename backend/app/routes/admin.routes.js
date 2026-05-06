@@ -13,6 +13,7 @@ module.exports = (app) => {
   const router = require("express").Router();
 
   router.get("/dashboard-stats", admin.dashboardStats);
+  router.get("/members", authMiddleware, requirePlatformAdminJwt, admin.membersList);
 
   router.get("/platform-accounts", authMiddleware, requirePlatformAdminJwt, platformAccounts.listPlatformAccounts);
   router.post("/platform-accounts", authMiddleware, requirePlatformAdminJwt, platformAccounts.createPlatformStaffUser);

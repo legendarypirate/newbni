@@ -57,3 +57,21 @@ exports.dashboardStats = async (_req, res) => {
     });
   }
 };
+
+/** Mirrors admin members list previously loaded via Prisma. */
+exports.membersList = async (_req, res) => {
+  try {
+    const rows = await db.LegacyMember.findAll({
+      order: [["id", "DESC"]],
+      limit: 300,
+      attributes: ["id", "name", "company", "industry", "email", "status"],
+      raw: true,
+    });
+    res.json({ ok: true, rows });
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
+};
