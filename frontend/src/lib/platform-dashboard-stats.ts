@@ -49,3 +49,8 @@ export async function loadPlatformDashboardStats(): Promise<PlatformDashboardSta
 export function formatPlatformInteger(n: number): string {
   return Math.round(n).toLocaleString("mn-MN");
 }
+
+export function formatPlatformRevenue(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return "0₮";
+  return `${Math.round(n).toLocaleString("mn-MN")}₮`;
+}

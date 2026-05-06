@@ -30,8 +30,6 @@ function asRecord(json: unknown): Record<string, unknown> {
   return {};
 }
 
-import { serverAuthedFetch } from "@/lib/server-authed-fetch";
-
 export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, formData: FormData): Promise<ProfileSaveState> {
   const session = await getPlatformSession();
   if (!session) {
