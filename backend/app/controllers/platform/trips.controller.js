@@ -132,11 +132,87 @@ exports.saveTrip = async (req, res) => {
 
 exports.listTrips = async (req, res) => {
   try {
+    const { country, focus, date_from, date_to, trip_type, budget_max } = req.query;
+    const where = {};
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    if (country) {
+      where.destination = { [Op.iLike]: `%${country}%` };
+    }
+
+    if (focus) {
+      where[Op.or] = [
+        { focus: { [Op.iLike]: `%${focus}%` } },
+        { description: { [Op.iLike]: `%${focus}%` } },
+      ];
+    }
+
+    if (date_from || date_to) {
+      where.startDate = {};
+      if (date_from) where.startDate[Op.gte] = new Date(date_from);
+      if (date_to) where.startDate[Op.lte] = new Date(date_to);
+    }
+
+    if (trip_type === "near") {
+      const next90Days = new Date(now);
+      next90Days.setDate(next90Days.getDate() + 90);
+      where.startDate = { [Op.gte]: now, [Op.lte]: next90Days };
+    } else if (trip_type === "vip") {
+      where.statusLabel = { [Op.iLike]: "%VIP%" };
+    } else if (trip_type === "factory") {
+      where[Op.or] = [
+        { focus: { [Op.iLike]: "%үйлдвэр%" } },
+        { description: { [Op.iLike]: "%үйлдвэр%" } },
+      ];
+    } else if (trip_type === "expo") {
+      where[Op.or] = [
+        { focus: { [Op.iLike]: "%үзэсгэлэн%" } },
+        { description: { [Op.iLike]: "%үзэсгэлэн%" } },
+      ];
+    } else if (trip_type === "trip") {
+      where[Op.or] = [
+        { focus: { [Op.iLike]: "%business trip%" } },
+        { focus: { [Op.iLike]: "%аялал%" } },
+        { description: { [Op.iLike]: "%business trip%" } },
+      ];
+    }
+
+    const budgetMax = parseInt(budget_max);
+    if (!isNaN(budgetMax) && budgetMax > 0) {
+      where.priceMnt = { [Op.lte]: budgetMax };
+    }
+
     const rows = await db.BusinessTrip.findAll({
-      order: [["isFeatured", "DESC"], ["startDate", "DESC"]],
+      where,
+      order: [
+        ["isFeatured", "DESC"],
+        ["startDate", "ASC"],
+        ["id", "ASC"],
+      ],
       limit: 200,
     });
-    res.json({ ok: true, trips: rows });
+
+    const next90 = new Date(now);
+    next90.setDate(next90.getDate() + 90);
+
+    const [totalTrips, nearTrips, registeredMembers] = await Promise.all([
+      db.BusinessTrip.count(),
+      db.BusinessTrip.count({ where: { startDate: { [Op.gte]: now, [Op.lte]: next90 } } }),
+      db.PaymentOrder.count({
+        where: { targetType: "trip", status: { [Op.in]: ["paid", "success"] } },
+      }),
+    ]);
+
+    res.json({
+      ok: true,
+      data: {
+        trips: rows,
+        totalTrips,
+        nearTrips,
+        registeredMembers,
+      },
+    });
   } catch (err) {
     console.error("List trips failed:", err);
     res.status(500).json({ ok: false, message: "Internal server error" });
@@ -164,6 +240,33 @@ exports.deleteTrip = async (req, res) => {
   } catch (err) {
     console.error("Delete trip failed:", err);
     return res.status(500).json({ ok: false, message: "Internal server error" });
+  }
+};
+
+exports.toggleFeatured = async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { isFeatured } = req.body;
+  const { Op } = require("sequelize");
+  if (isNaN(id) || id < 1) return res.status(400).json({ ok: false });
+
+  try {
+    const trip = await db.BusinessTrip.findByPk(id);
+    if (!trip) return res.status(404).json({ ok: false, errorKey: "notfound" });
+
+    if (isFeatured) {
+      const featuredCount = await db.BusinessTrip.count({
+        where: { isFeatured: 1, id: { [Op.ne]: id } },
+      });
+      if (trip.isFeatured !== 1 && featuredCount >= 3) {
+        return res.status(400).json({ ok: false, errorKey: "featured_limit" });
+      }
+    }
+
+    await trip.update({ isFeatured: isFeatured ? 1 : 0 });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Toggle featured failed:", err);
+    res.status(500).json({ ok: false });
   }
 };
 

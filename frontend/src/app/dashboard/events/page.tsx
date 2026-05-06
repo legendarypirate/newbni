@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatMnDate } from "@/lib/format-date";
-import { prisma } from "@/lib/prisma";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 export const metadata: Metadata = {
   title: "Хурал, эвентүүд | Удирдлагын самбар",
@@ -14,17 +14,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function DashboardEventsPage() {
-  const now = new Date();
-  const events = await prisma.bniEvent
-    .findMany({
-      where: { endsAt: { gte: now } },
-      orderBy: [{ startsAt: "asc" }],
-      take: 80,
-      include: {
-        chapter: { include: { region: true } },
-      },
-    })
-    .catch(() => []);
+  const res = await serverAuthedFetch("/events?status=upcoming").then(r => r.json()).catch(() => ({ ok: false }));
+  const events = res.ok ? res.data.events : [];
 
   const title = (ev: (typeof events)[number]) =>
     ev.title?.trim() || ev.chapter?.name?.trim() || "Хурал / эвент";

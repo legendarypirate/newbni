@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { mediaUrl } from "@/lib/media-url";
+import { internalApiUrl } from "@/lib/backend-api";
 
 export const dynamic = "force-dynamic";
 
@@ -10,16 +10,11 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function CompanyPublicPage({ params }: Props) {
   const { id } = await params;
-  let accountId: bigint;
-  try {
-    accountId = BigInt(id);
-  } catch {
-    notFound();
-  }
-
-  const profile = await prisma.platformProfile.findUnique({
-    where: { accountId },
-  });
+  
+  const res = await fetch(internalApiUrl(`/api/profiles/${id}`), { cache: "no-store" });
+  if (!res.ok) notFound();
+  const json = await res.json();
+  const profile = json.data;
 
   if (!profile) {
     notFound();

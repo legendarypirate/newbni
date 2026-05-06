@@ -1,23 +1,12 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
 import { formatClockUtc, formatMnDate } from "@/lib/format-date";
+import { internalApiUrl } from "@/lib/backend-api";
 
 export const dynamic = "force-dynamic";
 
 export default async function MeetingsPage() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const meetings = await prisma.legacyMeeting
-    .findMany({
-      where: {
-        status: "active",
-        meetingDate: { gte: today },
-      },
-      orderBy: [{ meetingDate: "asc" }, { startTime: "asc" }],
-      take: 60,
-    })
-    .catch(() => []);
+  const res = await fetch(internalApiUrl("/api/legacy-meetings"), { cache: "no-store" }).then(r => r.json()).catch(() => ({ ok: false }));
+  const meetings = res.ok ? res.data : [];
 
   return (
     <main className="container py-4">

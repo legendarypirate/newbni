@@ -52,20 +52,16 @@ export const googleOAuthCookieBase = {
   ...domainOpts(),
 } as const;
 
-export async function setPlatformSessionCookies(accountId: bigint, display: string): Promise<void> {
+export async function setPlatformSessionCookies(token: string, display: string): Promise<void> {
   const jar = await cookies();
-  const idStr = accountId.toString();
   const so = sessionCookieOpts();
-  jar.set("bni_platform_account_id", idStr, { ...so, httpOnly: true });
-  jar.set(PLATFORM_ACCOUNT_REF_COOKIE, idStr, { ...so, httpOnly: false });
+  jar.set("bni_token", token, { ...so, httpOnly: true });
   jar.set("bni_platform_nav_display", display, { ...so, httpOnly: false });
 }
 
-export function attachPlatformSessionToResponse(res: NextResponse, accountId: bigint, display: string): void {
-  const idStr = accountId.toString();
+export function attachPlatformSessionToResponse(res: NextResponse, token: string, display: string): void {
   const so = sessionCookieOpts();
-  res.cookies.set("bni_platform_account_id", idStr, { ...so, httpOnly: true });
-  res.cookies.set(PLATFORM_ACCOUNT_REF_COOKIE, idStr, { ...so, httpOnly: false });
+  res.cookies.set("bni_token", token, { ...so, httpOnly: true });
   res.cookies.set("bni_platform_nav_display", display, { ...so, httpOnly: false });
 }
 
@@ -78,15 +74,13 @@ const clearCookieOpts = {
 };
 
 export function attachClearPlatformSessionToResponse(res: NextResponse): void {
-  res.cookies.set("bni_platform_account_id", "", { ...clearCookieOpts, httpOnly: true });
-  res.cookies.set(PLATFORM_ACCOUNT_REF_COOKIE, "", { ...clearCookieOpts, httpOnly: false });
+  res.cookies.set("bni_token", "", { ...clearCookieOpts, httpOnly: true });
   res.cookies.set("bni_platform_nav_display", "", { ...clearCookieOpts, httpOnly: false });
 }
 
 export async function clearPlatformSessionCookies(): Promise<void> {
   const jar = await cookies();
-  jar.set("bni_platform_account_id", "", { ...clearCookieOpts, httpOnly: true });
-  jar.set(PLATFORM_ACCOUNT_REF_COOKIE, "", { ...clearCookieOpts, httpOnly: false });
+  jar.set("bni_token", "", { ...clearCookieOpts, httpOnly: true });
   jar.set("bni_platform_nav_display", "", { ...clearCookieOpts, httpOnly: false });
 }
 

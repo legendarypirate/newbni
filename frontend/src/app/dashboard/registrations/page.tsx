@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatMnDate } from "@/lib/format-date";
-import { prisma } from "@/lib/prisma";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 export const metadata: Metadata = {
   title: "Бүртгэлүүд | Удирдлагын самбар",
@@ -15,12 +15,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function DashboardRegistrationsPage() {
-  const orders = await prisma.paymentOrder
-    .findMany({
-      orderBy: { createdAt: "desc" },
-      take: 60,
-    })
-    .catch(() => []);
+  const res = await serverAuthedFetch("/payments").then(r => r.json()).catch(() => ({ ok: false, data: [] }));
+  const orders = res.ok ? res.data : [];
 
   return (
     <DashboardPage>

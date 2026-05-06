@@ -8,6 +8,9 @@ export type PlatformUser = {
   displayName: string;
   role: string;
   photoUrl: string | null;
+  companyName: string | null;
+  businessPhone: string | null;
+  businessEmail: string | null;
 };
 
 export async function getPlatformSession(): Promise<PlatformUser | null> {

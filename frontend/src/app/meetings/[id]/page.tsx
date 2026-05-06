@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { formatClockUtc, formatMnDate } from "@/lib/format-date";
+import { internalApiUrl } from "@/lib/backend-api";
 
 export const dynamic = "force-dynamic";
 
@@ -9,14 +9,9 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function MeetingDetailPage({ params }: Props) {
   const { id } = await params;
-  const num = Number(id);
-  if (!Number.isFinite(num)) {
-    notFound();
-  }
-  const m = await prisma.legacyMeeting.findUnique({ where: { id: num } }).catch(() => null);
-  if (!m) {
-    notFound();
-  }
+  const res = await fetch(internalApiUrl(`/api/legacy-meetings/${id}`), { cache: "no-store" }).then(r => r.json()).catch(() => ({ ok: false }));
+  if (!res.ok) notFound();
+  const m = res.data;
 
   return (
     <main className="container py-4">

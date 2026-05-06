@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { DashboardPage } from "@/components/dashboard/DashboardPage";
 import TripsDashboardTable from "@/components/dashboard/TripsDashboardTable";
 import { Button } from "@/components/ui/button";
-import { dbBusinessTrip } from "@/lib/prisma";
 import { getPlatformSession } from "@/lib/platform-session";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 export const metadata: Metadata = {
   title: "Аялалууд | Удирдлагын самбар",
@@ -12,21 +12,18 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
+
 export default async function DashboardTripsPage() {
   const user = await getPlatformSession();
-  const tripDb = dbBusinessTrip();
-  const trips = await tripDb
-    .findMany({
-      orderBy: [{ startDate: "desc" }],
-      take: 80,
-    })
-    .catch(() => []);
+  const res = await serverAuthedFetch("/platform/trips").then(r => r.json()).catch(() => ({ ok: false }));
+  const trips = res.ok ? res.data.trips : [];
 
-  const tripRows = trips.map((t) => ({
+  const tripRows = (trips || []).map((t: any) => ({
     id: t.id,
     destination: t.destination,
-    startDate: t.startDate.toISOString(),
-    endDate: t.endDate.toISOString(),
+    startDate: t.startDate,
+    endDate: t.endDate,
     statusLabel: t.statusLabel,
     coverImageUrl: t.coverImageUrl,
     managerAccountId: t.managerAccountId != null ? Number(t.managerAccountId) : null,

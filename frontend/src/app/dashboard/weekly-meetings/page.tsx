@@ -4,30 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatMnDate } from "@/lib/format-date";
-import { getPlatformSession } from "@/lib/platform-session";
-import { dbBusyWeeklyMeeting } from "@/lib/prisma";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 export const dynamic = "force-dynamic";
 
 export default async function WeeklyMeetingsListPage() {
-  const user = await getPlatformSession();
-  if (!user) return null;
-  const userAccountId = BigInt(user.id);
-
-  const wm = dbBusyWeeklyMeeting();
-  const meetings = wm
-    ? await wm
-        .findMany({
-          where: { group: { organizerAccountId: userAccountId } },
-          orderBy: [{ meetingDate: "desc" }, { startTime: "desc" }],
-          take: 80,
-          include: {
-            group: true,
-            _count: { select: { registrations: true } },
-          },
-        })
-        .catch(() => [])
-    : [];
+  const res = await serverAuthedFetch("/meetings/weekly").then(r => r.json()).catch(() => ({ ok: false }));
+  const meetings = res.meetings || [];
 
   return (
     <DashboardPage maxWidthClass="max-w-5xl">

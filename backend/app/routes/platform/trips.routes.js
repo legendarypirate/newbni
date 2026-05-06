@@ -23,6 +23,7 @@ module.exports = (app) => {
   router.get("/trips", authMiddleware, trips.listTrips);
   router.get("/trips/:id", authMiddleware, trips.getTrip);
   router.delete("/trips/:id", authMiddleware, trips.deleteTrip);
+  router.post("/trips/:id/toggle-featured", authMiddleware, trips.toggleFeatured);
 
   app.use("/api/platform", router);
 };

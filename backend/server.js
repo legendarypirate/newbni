@@ -52,7 +52,11 @@ require("./app/routes/site-settings.routes")(app);
 require("./app/routes/trip-forms.routes")(app);
 require("./app/routes/form-org.routes")(app);
 require("./app/routes/public-form.routes")(app);
+require("./app/routes/news.routes")(app);
+require("./app/routes/members.routes")(app);
 require("./app/routes/meetings-weekly.routes")(app);
+require("./app/routes/payments.routes")(app);
+require("./app/routes/legacy-meetings.routes")(app);
 
 db.sequelize
   .authenticate()

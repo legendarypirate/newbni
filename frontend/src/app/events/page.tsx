@@ -9,7 +9,7 @@ import {
 import { formatMnDate } from "@/lib/format-date";
 import { getMarketingListingHeroSlides } from "@/lib/marketing-listing-hero";
 import { mediaUrl } from "@/lib/media-url";
-import { prisma } from "@/lib/prisma";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -33,67 +33,18 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
   const dateFrom = searchParams.date_from?.trim() || "";
   const dateTo = searchParams.date_to?.trim() || "";
 
-  const where: any = {};
+  const urlParams = new URLSearchParams();
+  if (chapterFilter > 0) urlParams.set("chapter", chapterFilter.toString());
+  urlParams.set("status", status);
+  if (eventType !== "all") urlParams.set("event_type", eventType);
+  if (q) urlParams.set("q", q);
+  if (dateFrom) urlParams.set("date_from", dateFrom);
+  if (dateTo) urlParams.set("date_to", dateTo);
 
-  const now = new Date();
-  
-  if (status === "upcoming") {
-    where.endsAt = { gte: now };
-  } else if (status === "past") {
-    where.endsAt = { lt: now };
-  }
+  const res = await serverAuthedFetch(`/events?${urlParams.toString()}`).then(r => r.json()).catch(() => ({ ok: false }));
+  const data = res.ok ? res.data : { events: [], totalUpcoming: 0, totalPast: 0, chaptersWithEvents: 0 };
 
-  if (!isNaN(chapterFilter) && chapterFilter > 0) {
-    where.chapterId = chapterFilter;
-  }
-
-  if (eventType !== "all") {
-    where.eventType = eventType;
-  }
-
-  if (q) {
-    where.OR = [
-      { title: { contains: q, mode: 'insensitive' } },
-      { chapter: { name: { contains: q, mode: 'insensitive' } } },
-      { chapter: { region: { name: { contains: q, mode: 'insensitive' } } } }
-    ];
-  }
-
-  if (dateFrom || dateTo) {
-    if (!where.startsAt) where.startsAt = {};
-    if (dateFrom) where.startsAt.gte = new Date(`${dateFrom}T00:00:00Z`);
-    if (dateTo) where.startsAt.lte = new Date(`${dateTo}T23:59:59Z`);
-  }
-
-  const events = await prisma.bniEvent.findMany({
-    where,
-    include: {
-      chapter: {
-        include: {
-          region: true,
-        },
-      },
-      curriculum: { select: { agendaJson: true, name: true } },
-    },
-    orderBy: status === "past" 
-      ? [{ startsAt: 'desc' }, { id: 'desc' }]
-      : [{ startsAt: 'asc' }, { id: 'asc' }],
-    take: 80
-  }).catch(() => []);
-
-  const totalUpcoming = await prisma.bniEvent.count({
-    where: { endsAt: { gte: now } }
-  }).catch(() => 0);
-
-  const totalPast = await prisma.bniEvent.count({
-    where: { endsAt: { lt: now } }
-  }).catch(() => 0);
-
-  // Group by distinct chapterId where event exists
-  const distinctChapters = await prisma.bniEvent.groupBy({
-    by: ['chapterId'],
-  }).catch(() => []);
-  const chaptersWithEvents = distinctChapters.length;
+  const { events, totalUpcoming, totalPast, chaptersWithEvents } = data;
 
   const featuredEvents = events.length > 0 ? [events[0]] : [];
   const eventCards = events.length > 1 ? events.slice(1, 13) : [];

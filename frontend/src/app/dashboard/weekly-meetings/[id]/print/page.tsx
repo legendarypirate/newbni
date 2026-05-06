@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { getPlatformSession } from "@/lib/platform-session";
-import { accountCanManageWeeklyMeeting } from "@/lib/busy-rbac";
 import { formatClockUtc, formatMnDate } from "@/lib/format-date";
 import { rosterFeeCollectedMnt } from "@/lib/roster-export";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 import PrintTrigger from "./PrintTrigger";
 
 export const dynamic = "force-dynamic";
@@ -14,26 +13,11 @@ type Props = { params: Promise<{ id: string }> };
 export default async function WeeklyMeetingPrintPage({ params }: Props) {
   const user = await getPlatformSession();
   if (!user) return null;
-  const userAccountId = BigInt(user.id);
 
   const { id } = await params;
-  let meetingId: bigint;
-  try {
-    meetingId = BigInt(id);
-  } catch {
-    notFound();
-  }
-
-  const meeting = await prisma.busyWeeklyMeeting
-    .findUnique({
-      where: { id: meetingId },
-      include: { group: true, registrations: { orderBy: [{ participantType: "asc" }, { displayName: "asc" }] } },
-    })
-    .catch(() => null);
-
-  if (!meeting) notFound();
-  const allowed = await accountCanManageWeeklyMeeting(userAccountId, meeting.group.organizerAccountId);
-  if (!allowed) notFound();
+  const res = await serverAuthedFetch(`/meetings/weekly/${id}`).then(r => r.json()).catch(() => ({ ok: false }));
+  if (!res.ok) notFound();
+  const meeting = res.meeting;
 
   const members = meeting.registrations.filter((r) => r.participantType === "member");
   const guests = meeting.registrations.filter((r) => r.participantType === "guest");

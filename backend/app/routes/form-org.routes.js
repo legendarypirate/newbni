@@ -10,6 +10,9 @@ module.exports = (app) => {
   router.patch("/forms/:formId", requirePlatformUser, ctrl.patch);
   router.delete("/forms/:formId", requirePlatformUser, ctrl.delete);
   router.post("/forms/:formId/questions", requirePlatformUser, ctrl.addQuestion);
+  router.get("/forms/:formId/responses", requirePlatformUser, ctrl.listResponses);
+  router.patch("/responses/:responseId/status", requirePlatformUser, ctrl.patchResponseStatus);
+  router.post("/responses/:responseId/convert-to-participant", requirePlatformUser, ctrl.convertToParticipant);
 
   app.use("/api", router);
 };

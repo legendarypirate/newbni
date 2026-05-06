@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 import { formatMnDate } from "@/lib/format-date";
 
 export const dynamic = "force-dynamic";
@@ -9,11 +9,10 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function NewsArticlePage({ params }: Props) {
   const { id } = await params;
-  const num = Number(id);
-  if (!Number.isFinite(num)) {
-    notFound();
-  }
-  const article = await prisma.newsArticle.findUnique({ where: { id: num } }).catch(() => null);
+  
+  const res = await serverAuthedFetch(`/news/${id}`).then(r => r.json()).catch(() => ({ ok: false }));
+  const article = res.ok ? res.data : null;
+
   if (!article || article.status !== "published") {
     notFound();
   }

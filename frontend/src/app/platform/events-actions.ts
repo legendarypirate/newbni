@@ -2,9 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { Prisma } from "@prisma/client";
 import { getPlatformSession } from "@/lib/platform-session";
-import { prisma } from "@/lib/prisma";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 import { parseEventDatetimeWireUb } from "@/lib/event-datetime-ub";
 import { syncEventRegistrationFormFromLegacyJson } from "@/lib/trip-registration-form/sync-event-registration-form-from-json";
@@ -16,15 +14,15 @@ function eventListPathFromFormData(formData: FormData): typeof ADMIN_EVENTS_PATH
   return String(formData.get("return_context") ?? "").trim() === "admin" ? ADMIN_EVENTS_PATH : PLATFORM_EVENTS_PATH;
 }
 
-function parseMoney(raw: string): Prisma.Decimal | null {
+function parseMoney(raw: string): string | null {
   const t = raw.trim();
   if (t === "" || !Number.isFinite(Number(t))) {
     return null;
   }
-  return new Prisma.Decimal(t);
+  return t;
 }
 
-function parseRegistrationJson(raw: string): Prisma.InputJsonValue | null {
+function parseRegistrationJson(raw: string): any | null {
   let v: unknown = raw.trim();
   if (v === "") return null;
   for (let depth = 0; depth < 3 && typeof v === "string"; depth++) {
@@ -35,7 +33,7 @@ function parseRegistrationJson(raw: string): Prisma.InputJsonValue | null {
     }
   }
   if (Array.isArray(v) && v.length > 0) {
-    return v as Prisma.InputJsonValue;
+    return v;
   }
   return null;
 }
@@ -79,11 +77,11 @@ export async function saveEventAction(formData: FormData): Promise<void> {
     );
   }
   const eventIdRaw = String(formData.get("event_id") ?? "0").trim();
-  let eventId = BigInt(0);
+  let eventId = 0;
   try {
-    eventId = BigInt(eventIdRaw === "" ? "0" : eventIdRaw);
+    eventId = parseInt(eventIdRaw === "" ? "0" : eventIdRaw);
   } catch {
-    eventId = BigInt(0);
+    eventId = 0;
   }
 
   const chapterIdRaw = String(formData.get("chapter_id") ?? "").trim();
@@ -131,34 +129,15 @@ export async function saveEventAction(formData: FormData): Promise<void> {
 
   const agendaSections = parseSections(String(formData.get("event_sections_json") ?? ""));
 
-  let existingRegistrationJson: unknown | undefined;
-  let existingEnvelope: Record<string, unknown> = {};
-  if (eventId > BigInt(0) && listPath !== ADMIN_EVENTS_PATH) {
-    const exists = await prisma.bniEvent.findUnique({
-      where: { id: eventId },
-      select: { id: true, curriculumOverrideJson: true, registrationFormJson: true },
-    });
-    if (!exists) {
-      redirect(`${listPath}?error=notfound`);
-    }
-    existingRegistrationJson = exists.registrationFormJson ?? undefined;
-    existingEnvelope = parseExistingEnvelopeObject(exists.curriculumOverrideJson);
-  }
-
-  const envelope: Record<string, unknown> =
-    eventId > BigInt(0) ? { ...existingEnvelope } : {};
+  const envelope: Record<string, unknown> = {};
   envelope.sections = agendaSections;
   envelope.speakers = speakersOut;
   envelope.faq = faqOut;
   if (introBody !== "") {
     envelope.intro_body = introBody;
-  } else {
-    delete envelope.intro_body;
   }
   if (audienceText !== "") {
     envelope.audience_text = audienceText;
-  } else {
-    delete envelope.audience_text;
   }
 
   const heroImageUrl = String(formData.get("hero_image_url") ?? "").trim();
@@ -169,24 +148,9 @@ export async function saveEventAction(formData: FormData): Promise<void> {
   const eventManagerPhone = String(formData.get("event_manager_phone") ?? "").trim();
   const eventHelpEmail = String(formData.get("event_help_email") ?? "").trim();
   const eventHelpChatUrl = String(formData.get("event_help_chat_url") ?? "").trim();
-  if (eventManagerPhone !== "") {
-    envelope.event_manager_phone = eventManagerPhone;
-  } else {
-    delete envelope.event_manager_phone;
-  }
-  if (eventHelpEmail !== "") {
-    envelope.event_help_email = eventHelpEmail;
-  } else {
-    delete envelope.event_help_email;
-  }
-  if (eventHelpChatUrl !== "") {
-    envelope.event_help_chat_url = eventHelpChatUrl;
-  } else {
-    delete envelope.event_help_chat_url;
-  }
-
-  const curriculumOverrideJson: Prisma.InputJsonValue | typeof Prisma.DbNull =
-    Object.keys(envelope).length > 0 ? (envelope as Prisma.InputJsonValue) : Prisma.DbNull;
+  if (eventManagerPhone !== "") envelope.event_manager_phone = eventManagerPhone;
+  if (eventHelpEmail !== "") envelope.event_help_email = eventHelpEmail;
+  if (eventHelpChatUrl !== "") envelope.event_help_chat_url = eventHelpChatUrl;
 
   const regParsedRaw = parseRegistrationJson(String(formData.get("event_registration_form_json") ?? ""));
   const priceMnt = parseMoney(String(formData.get("price_mnt") ?? ""));
@@ -196,97 +160,55 @@ export async function saveEventAction(formData: FormData): Promise<void> {
     redirect(`${listPath}?error=missing`);
   }
 
-  const rowBase = {
+  const payload = {
+    eventId,
     chapterId,
-    scheduleId: scheduleId > 0 ? scheduleId : null,
-    curriculumId: curriculumId > 0 ? curriculumId : null,
     eventType,
     title,
-    startsAt,
-    endsAt,
+    startsAt: startsAt.toISOString(),
+    endsAt: endsAt.toISOString(),
     location,
     isOnline,
-    curriculumOverrideJson,
-    priceMnt,
-    advanceOrderMnt,
+    scheduleId,
+    curriculumId,
+    curriculumOverrideJson: Object.keys(envelope).length > 0 ? envelope : null,
+    registrationFormJson: regParsedRaw,
+    priceMnt: priceMnt?.toString() ?? null,
+    advanceOrderMnt: advanceOrderMnt?.toString() ?? null,
   };
 
-  const registrationFormJson: Prisma.InputJsonValue | typeof Prisma.DbNull =
-    regParsedRaw === null ? Prisma.DbNull : regParsedRaw;
+  const endpoint = listPath === ADMIN_EVENTS_PATH ? "/admin/events" : "/events";
+  const finalEndpoint = eventId > 0 ? `${endpoint}/${eventId}` : endpoint;
+  const method = eventId > 0 ? "PATCH" : "POST";
 
-  let savedEventId = eventId;
-  if (listPath === ADMIN_EVENTS_PATH) {
-    try {
-      const adminPayload = {
-        eventId: Number(eventId),
-        chapterId,
-        eventType,
-        title,
-        startsAt: startsAt.toISOString(),
-        endsAt: endsAt.toISOString(),
-        location,
-        isOnline,
-        scheduleId,
-        curriculumId,
-        curriculumOverrideJson: Object.keys(envelope).length > 0 ? envelope : null,
-        registrationFormJson: regParsedRaw,
-        priceMnt: priceMnt?.toString() ?? null,
-        advanceOrderMnt: advanceOrderMnt?.toString() ?? null,
-      };
-      const res = await serverAuthedFetch(eventId > BigInt(0) ? `/admin/events/${eventId.toString()}` : "/admin/events", {
-        method: eventId > BigInt(0) ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(adminPayload),
-      });
-      const out = (await res.json().catch(() => ({}))) as { ok?: boolean; id?: string; errorKey?: string };
-      if (!res.ok || !out.ok) {
-        if (out.errorKey === "notfound") redirect(`${listPath}?error=notfound`);
-        redirect(`${listPath}?error=missing`);
-      }
-      savedEventId = BigInt(String(out.id ?? "0"));
-      revalidatePath("/platform/events");
-      revalidatePath(ADMIN_EVENTS_PATH);
-      revalidatePath("/events");
-      revalidatePath(`/events/${savedEventId.toString()}`);
-      redirect(listPath);
-    } catch {
+  try {
+    const res = await serverAuthedFetch(finalEndpoint, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const out = (await res.json().catch(() => ({}))) as { ok?: boolean; id?: string; errorKey?: string };
+    if (!res.ok || !out.ok) {
+      if (out.errorKey === "notfound") redirect(`${listPath}?error=notfound`);
       redirect(`${listPath}?error=missing`);
     }
-  }
 
-  if (eventId > BigInt(0)) {
-    const updateData: typeof rowBase & { registrationFormJson?: Prisma.InputJsonValue | typeof Prisma.DbNull } = {
-      ...rowBase,
-    };
-    if (regParsedRaw !== null) {
-      updateData.registrationFormJson = registrationFormJson;
+    const savedId = out.id ?? String(eventId);
+    
+    // For now, keep sync logic in frontend until backend handles it
+    if (listPath !== ADMIN_EVENTS_PATH) {
+       await syncEventRegistrationFormFromLegacyJson(BigInt(savedId), regParsedRaw);
     }
-    await prisma.bniEvent.update({
-      where: { id: eventId },
-      data: updateData,
-    });
-    savedEventId = eventId;
-  } else {
-    const created = await prisma.bniEvent.create({
-      data: { ...rowBase, registrationFormJson },
-      select: { id: true },
-    });
-    savedEventId = created.id;
-  }
 
-  let regForSync: unknown = regParsedRaw as unknown;
-  if (eventId > BigInt(0) && regParsedRaw === null) {
-    regForSync = existingRegistrationJson ?? null;
-  } else if (regParsedRaw === null) {
-    regForSync = null;
+    revalidatePath("/platform/events");
+    revalidatePath(ADMIN_EVENTS_PATH);
+    revalidatePath("/events");
+    revalidatePath(`/events/${savedId}`);
+    redirect(listPath);
+  } catch (e) {
+    if (e instanceof Error && e.message === "NEXT_REDIRECT") throw e;
+    redirect(`${listPath}?error=missing`);
   }
-  await syncEventRegistrationFormFromLegacyJson(savedEventId, regForSync);
-
-  revalidatePath("/platform/events");
-  revalidatePath(ADMIN_EVENTS_PATH);
-  revalidatePath("/events");
-  revalidatePath(`/events/${savedEventId.toString()}`);
-  redirect(listPath);
 }
 
 export async function deleteEventAction(formData: FormData): Promise<void> {
@@ -300,35 +222,23 @@ export async function deleteEventAction(formData: FormData): Promise<void> {
     );
   }
   const raw = String(formData.get("event_id") ?? "0").trim();
-  let eventId = BigInt(0);
+  const eventId = raw === "" ? "0" : raw;
+
+  if (eventId === "0") {
+    redirect(listPath);
+  }
+
+  const endpoint = listPath === ADMIN_EVENTS_PATH ? `/admin/events/${eventId}` : `/events/${eventId}`;
+
   try {
-    eventId = BigInt(raw === "" ? "0" : raw);
+    await serverAuthedFetch(endpoint, { method: "DELETE" });
   } catch {
     redirect(listPath);
   }
 
-  if (eventId < BigInt(1)) {
-    redirect(listPath);
-  }
-
-  if (listPath === ADMIN_EVENTS_PATH) {
-    try {
-      await serverAuthedFetch(`/admin/events/${eventId.toString()}`, { method: "DELETE" });
-    } catch {
-      redirect(listPath);
-    }
-    revalidatePath("/platform/events");
-    revalidatePath(ADMIN_EVENTS_PATH);
-    revalidatePath("/events");
-    revalidatePath(`/events/${eventId.toString()}`);
-    redirect(listPath);
-  }
-
-  await prisma.bniEvent.delete({ where: { id: eventId } }).catch(() => null);
-
   revalidatePath("/platform/events");
   revalidatePath(ADMIN_EVENTS_PATH);
   revalidatePath("/events");
-  revalidatePath(`/events/${eventId.toString()}`);
+  revalidatePath(`/events/${eventId}`);
   redirect(listPath);
 }

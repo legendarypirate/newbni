@@ -9,6 +9,7 @@ module.exports = (app) => {
   router.get("/google/callback", auth.googleCallback);
   router.post("/login", auth.passwordLogin);
   router.post("/admin/login", auth.adminPasswordLogin);
+  router.post("/register", auth.passwordRegister);
   router.get("/me", authMiddleware, auth.me);
 
   app.use("/api/auth", router);

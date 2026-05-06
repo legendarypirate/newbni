@@ -280,6 +280,83 @@ async function getPublishedFormBundleBySlug(publicSlug) {
   return form;
 }
 
+async function listTripFormResponsesForOrganizer(formId, accountId) {
+  await assertFormEditableByAccount(formId, accountId);
+  return db.TripFormResponse.findAll({
+    where: { formId },
+    order: [["submittedAt", "DESC"]],
+    include: [
+      {
+        model: db.TripFormResponseAnswer,
+        as: "answers",
+        include: [{ model: db.TripFormQuestion, as: "question", attributes: ["label", "type"] }],
+      },
+      { model: db.TripParticipant, as: "participant", attributes: ["id"] },
+    ],
+  });
+}
+
+async function convertResponseToParticipant(responseId, accountId) {
+  const response = await db.TripFormResponse.findByPk(responseId, {
+    include: [
+      {
+        model: db.TripFormResponseAnswer,
+        as: "answers",
+        include: [{ model: db.TripFormQuestion, as: "question" }],
+      },
+      { model: db.TripParticipant, as: "participant" },
+    ],
+  });
+  if (!response) throw httpError(404, "NOT_FOUND");
+  if (response.participant) throw httpError(400, "ALREADY_CONVERTED");
+
+  await assertFormEditableByAccount(response.formId, accountId);
+
+  // Extract common fields
+  let name = "";
+  let phone = "";
+  let email = "";
+
+  for (const a of response.answers) {
+    const label = (a.question?.label || "").toLowerCase();
+    const type = a.question?.type;
+    const val = (a.value || "").trim();
+
+    if (!name && (label.includes("нэр") || label.includes("name"))) name = val;
+    if (!phone && (type === "PHONE" || label.includes("утас") || label.includes("phone"))) phone = val;
+    if (!email && (type === "EMAIL" || label.includes("имэйл") || label.includes("email"))) email = val;
+  }
+
+  await db.sequelize.transaction(async (t) => {
+    await db.TripParticipant.create(
+      {
+        id: newCuidLikeId(),
+        tripId: response.tripId,
+        responseId: response.id,
+        name: name || "Unknown",
+        phone: phone || null,
+        email: email || null,
+        status: "confirmed",
+        role: "attendee",
+      },
+      { transaction: t },
+    );
+  });
+}
+
+async function patchTripFormResponseStatus(responseId, accountId, data) {
+  const response = await db.TripFormResponse.findByPk(responseId);
+  if (!response) throw httpError(404, "NOT_FOUND");
+  await assertFormEditableByAccount(response.formId, accountId);
+
+  const patch = {};
+  if (data.status) patch.status = data.status;
+  if (data.paymentStatus) patch.paymentStatus = data.paymentStatus;
+  if (data.internalNote !== undefined) patch.internalNote = data.internalNote;
+
+  await response.update(patch);
+}
+
 module.exports = {
   listTripFormsForOrganizer,
   getTripFormForOrganizer,
@@ -288,4 +365,7 @@ module.exports = {
   createTripRegistrationFormWithDefaults,
   addTripFormQuestion,
   getPublishedFormBundleBySlug,
+  listTripFormResponsesForOrganizer,
+  patchTripFormResponseStatus,
+  convertResponseToParticipant,
 };

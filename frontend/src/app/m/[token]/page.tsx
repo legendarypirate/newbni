@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { formatClockUtc, formatMnDate } from "@/lib/format-date";
 import PublicWeeklyRegisterForm from "@/components/weekly-meeting/PublicWeeklyRegisterForm";
+import { internalApiUrl } from "@/lib/backend-api";
 
 export const dynamic = "force-dynamic";
 
@@ -12,14 +12,9 @@ export default async function PublicWeeklyMeetingRegisterPage({ params }: Props)
   const t = token.trim();
   if (!t) notFound();
 
-  const meeting = await prisma.busyWeeklyMeeting
-    .findUnique({
-      where: { publicToken: t },
-      include: { group: true },
-    })
-    .catch(() => null);
-
-  if (!meeting) notFound();
+  const res = await fetch(internalApiUrl(`/api/meetings/weekly/public/${t}`), { cache: "no-store" }).then(r => r.json()).catch(() => ({ ok: false }));
+  if (!res.ok) notFound();
+  const meeting = res.data;
 
   const registrationOpen =
     meeting.enableMemberRegistration ||

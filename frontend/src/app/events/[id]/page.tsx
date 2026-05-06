@@ -15,8 +15,7 @@ import {
   speakerPortraitUrl,
 } from "@/lib/bni-event-detail";
 import { formatMnDate } from "@/lib/format-date";
-import { prisma } from "@/lib/prisma";
-import { bniEventPublicDetailSelect } from "@/lib/prisma-event-select";
+import { internalApiUrl } from "@/lib/backend-api";
 import { marketingSiteOrigin } from "@/lib/marketing-site-origin";
 import { getFooterPublicConfig } from "@/lib/footer-public-config";
 import { helpEmailParts, helpPhoneTelParts, normalizeHelpChatHref } from "@/lib/public-help-contact";
@@ -28,31 +27,9 @@ const EVENT_MINI_IMG = "/assets/img/meeting-hero.png";
 
 type Props = { params: Promise<{ id: string }> };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-  let nid: bigint;
-  try {
-    nid = BigInt(id);
-  } catch {
-    return { title: "Арга хэмжээ" };
-  }
-  const ev = await prisma.bniEvent
-    .findUnique({
-      where: { id: nid },
-      select: { title: true, curriculumOverrideJson: true, chapter: { select: { name: true } } },
-    })
-    .catch(() => null);
-  if (!ev) {
-    return { title: "Арга хэмжээ олдсонгүй" };
-  }
-  const env = parseBniEventDetailEnvelope(ev.curriculumOverrideJson ?? undefined);
-  const title = ev.title?.trim() || ev.chapter?.name?.trim() || "Хурал / эвент";
-  const desc = resolvedEventDescription(env).slice(0, 160);
-  return { title, description: desc };
-}
-
-function ubTime(d: Date): string {
-  return d.toLocaleTimeString("mn-MN", {
+function ubTime(d: string | Date): string {
+  const date = typeof d === "string" ? new Date(d) : d;
+  return date.toLocaleTimeString("mn-MN", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -60,38 +37,28 @@ function ubTime(d: Date): string {
   });
 }
 
-function ubWeekday(d: Date): string {
-  return d.toLocaleDateString("mn-MN", { weekday: "long", timeZone: "Asia/Ulaanbaatar" });
+function ubWeekday(d: string | Date): string {
+  const date = typeof d === "string" ? new Date(d) : d;
+  return date.toLocaleDateString("mn-MN", { weekday: "long", timeZone: "Asia/Ulaanbaatar" });
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const res = await fetch(internalApiUrl(`/api/events/${id}`), { cache: "no-store" }).then(r => r.json()).catch(() => ({ ok: false }));
+  if (!res.ok) return { title: "Арга хэмжээ олдсонгүй" };
+  const { event: ev } = res.data;
+  const env = parseBniEventDetailEnvelope(ev.curriculumOverrideJson ?? undefined);
+  const title = ev.title?.trim() || ev.chapter?.name?.trim() || "Хурал / эвент";
+  const desc = resolvedEventDescription(env).slice(0, 160);
+  return { title, description: desc };
 }
 
 export default async function EventDetailPage({ params }: Props) {
   const { id } = await params;
-  let nid: bigint;
-  try {
-    nid = BigInt(id);
-  } catch {
-    notFound();
-  }
-
-  const ev = await prisma.bniEvent
-    .findUnique({
-      where: { id: nid },
-      select: bniEventPublicDetailSelect,
-    })
-    .catch(() => null);
-
-  if (!ev) {
-    notFound();
-  }
-
-  const registeredTotal = await prisma.tripFormResponse
-    .count({ where: { eventId: nid } })
-    .catch(() => 0);
-
-  const publishedForm = await prisma.tripRegistrationForm.findFirst({
-    where: { eventId: nid, isPublished: true },
-    select: { publicSlug: true },
-  });
+  const res = await fetch(internalApiUrl(`/api/events/${id}`), { cache: "no-store" }).then(r => r.json()).catch(() => ({ ok: false }));
+  if (!res.ok) notFound();
+  
+  const { event: ev, registeredTotal, publishedForm, similar } = res.data;
 
   const envelope = parseBniEventDetailEnvelope(ev.curriculumOverrideJson ?? undefined);
   const description = resolvedEventDescription(envelope);
@@ -106,13 +73,13 @@ export default async function EventDetailPage({ params }: Props) {
   const timeLabel = `${ubTime(ev.startsAt)} - ${ubTime(ev.endsAt)}`;
   const locRaw = ev.location?.trim() ?? "";
 
-  const speakers = envelope.speakers.map((s) => ({
+  const speakers = envelope.speakers.map((s: any) => ({
     name: s.name,
     role: s.role,
     imageUrl: speakerPortraitUrl(s.name, s.photo_url),
   }));
 
-  const faq = envelope.faq.map((f) => ({ question: f.question, answer: f.answer }));
+  const faq = envelope.faq.map((f: any) => ({ question: f.question, answer: f.answer }));
 
   const heroFromEnvelope = resolvedEventHeroImageUrl(envelope);
   const heroSrc = heroFromEnvelope !== "" ? heroFromEnvelope : EVENT_DEFAULT_HERO;
@@ -120,7 +87,7 @@ export default async function EventDetailPage({ params }: Props) {
     registeredTotal > 0 ? Math.min(100, Math.max(18, 20 + Math.min(80, registeredTotal * 6))) : 14;
 
   const origin = marketingSiteOrigin();
-  const sharePath = `/events/${nid.toString()}`;
+  const sharePath = `/events/${ev.id.toString()}`;
   const registerTargetPath = publishedForm?.publicSlug
     ? `/register/${encodeURIComponent(publishedForm.publicSlug)}`
     : sharePath;
@@ -146,28 +113,6 @@ export default async function EventDetailPage({ params }: Props) {
   const eventHelpEmail = helpEmailParts(envelope.event_help_email, footerCfg.contact.email);
   const eventHelpChatHref = normalizeHelpChatHref(envelope.event_help_chat_url);
   const eventHelpChatExternal = eventHelpChatHref != null && /^https?:\/\//i.test(eventHelpChatHref);
-
-  const similar =
-    ev.chapterId != null
-      ? await prisma.bniEvent
-          .findMany({
-            where: {
-              chapterId: ev.chapterId,
-              id: { not: ev.id },
-              endsAt: { gte: new Date() },
-            },
-            orderBy: [{ startsAt: "asc" }, { id: "asc" }],
-            take: 8,
-            select: {
-              id: true,
-              title: true,
-              startsAt: true,
-              priceMnt: true,
-              chapter: { select: { name: true } },
-            },
-          })
-          .catch(() => [])
-      : [];
 
   return (
     <div className="hural-event-page">

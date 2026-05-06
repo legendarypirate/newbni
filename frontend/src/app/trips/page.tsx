@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { MarketingListingHero } from "@/components/marketing/MarketingListingHero";
 import { TripsFilterBudgetInputs } from "@/components/trips/TripsFilterBudgetInputs";
-import { dbBusinessTrip, prisma } from "@/lib/prisma";
 import { formatMnDate } from "@/lib/format-date";
 import { getMarketingListingHeroSlides } from "@/lib/marketing-listing-hero";
 import { mediaUrl } from "@/lib/media-url";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -28,75 +28,18 @@ export default async function TripsPage({ searchParams }: { searchParams: Search
   const tripType = validTypes.includes(searchParams.trip_type?.trim() || "") ? searchParams.trip_type!.trim() : "all";
   const budgetMax = Math.max(0, parseInt(searchParams.budget_max || "0", 10));
 
-  const where: any = {};
-  
-  if (country) {
-    where.destination = { contains: country, mode: 'insensitive' };
-  }
-  if (focus) {
-    where.OR = [
-      { focus: { contains: focus, mode: 'insensitive' } },
-      { description: { contains: focus, mode: 'insensitive' } }
-    ];
-  }
-  if (dateFrom || dateTo) {
-    where.startDate = {};
-    if (dateFrom) where.startDate.gte = new Date(dateFrom);
-    if (dateTo) where.startDate.lte = new Date(dateTo);
-  }
+  const urlParams = new URLSearchParams();
+  if (country) urlParams.set("country", country);
+  if (focus) urlParams.set("focus", focus);
+  if (dateFrom) urlParams.set("date_from", dateFrom);
+  if (dateTo) urlParams.set("date_to", dateTo);
+  urlParams.set("trip_type", tripType);
+  if (budgetMax > 0) urlParams.set("budget_max", budgetMax.toString());
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const res = await serverAuthedFetch(`/platform/trips?${urlParams.toString()}`).then(r => r.json()).catch(() => ({ ok: false }));
+  const data = res.ok ? res.data : { trips: [], totalTrips: 0, nearTrips: 0, registeredMembers: 0 };
 
-  if (tripType === 'near') {
-    const next90Days = new Date(today);
-    next90Days.setDate(next90Days.getDate() + 90);
-    where.startDate = { gte: today, lte: next90Days };
-  } else if (tripType === 'vip') {
-    where.statusLabel = { contains: 'VIP', mode: 'insensitive' };
-  } else if (tripType === 'factory') {
-    where.OR = [
-      { focus: { contains: 'үйлдвэр', mode: 'insensitive' } },
-      { description: { contains: 'үйлдвэр', mode: 'insensitive' } }
-    ];
-  } else if (tripType === 'expo') {
-    where.OR = [
-      { focus: { contains: 'үзэсгэлэн', mode: 'insensitive' } },
-      { description: { contains: 'үзэсгэлэн', mode: 'insensitive' } }
-    ];
-  } else if (tripType === 'trip') {
-    where.OR = [
-      { focus: { contains: 'business trip', mode: 'insensitive' } },
-      { focus: { contains: 'аялал', mode: 'insensitive' } },
-      { description: { contains: 'business trip', mode: 'insensitive' } }
-    ];
-  }
-
-  if (budgetMax > 0) {
-    where.priceMnt = { lte: budgetMax };
-  }
-
-  const tripDb = dbBusinessTrip();
-  const trips = await tripDb.findMany({
-    where,
-    orderBy: [
-      { isFeatured: 'desc' },
-      { startDate: 'asc' },
-      { id: 'asc' }
-    ]
-  }).catch(() => []);
-
-  const totalTrips = await tripDb.count().catch(() => 0);
-  
-  const next90 = new Date(today);
-  next90.setDate(next90.getDate() + 90);
-  const nearTrips = await tripDb.count({
-    where: { startDate: { gte: today, lte: next90 } }
-  }).catch(() => 0);
-
-  const registeredMembers = await prisma.paymentOrder.count({
-    where: { targetType: 'trip', status: { in: ['paid', 'success'] } }
-  }).catch(() => 0);
+  const { trips, totalTrips, nearTrips, registeredMembers } = data;
 
   const featuredTrips = [];
   const tripCards = [];

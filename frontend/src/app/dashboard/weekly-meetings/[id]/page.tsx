@@ -2,9 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DashboardBreadcrumb } from "@/components/dashboard/DashboardBreadcrumb";
 import { DashboardPage } from "@/components/dashboard/DashboardPage";
-import { prisma } from "@/lib/prisma";
-import { getPlatformSession } from "@/lib/platform-session";
-import { accountCanManageWeeklyMeeting } from "@/lib/busy-rbac";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 import { formatClockUtc, formatMnDate } from "@/lib/format-date";
 import StaffRegistrationTable from "@/components/weekly-meeting/StaffRegistrationTable";
 
@@ -13,29 +11,12 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ id: string }> };
 
 export default async function WeeklyMeetingDetailPage({ params }: Props) {
-  const user = await getPlatformSession();
-  if (!user) return null;
-  const userAccountId = BigInt(user.id);
-
   const { id } = await params;
-  let meetingId: bigint;
-  try {
-    meetingId = BigInt(id);
-  } catch {
-    notFound();
-  }
-
-  const meeting = await prisma.busyWeeklyMeeting
-    .findUnique({
-      where: { id: meetingId },
-      include: { group: true, registrations: { orderBy: { createdAt: "asc" } } },
-    })
-    .catch(() => null);
+  
+  const res = await serverAuthedFetch(`/meetings/weekly/${id}`).then(r => r.json()).catch(() => ({ ok: false }));
+  const meeting = res.ok ? res.meeting : null;
 
   if (!meeting) notFound();
-
-  const allowed = await accountCanManageWeeklyMeeting(userAccountId, meeting.group.organizerAccountId);
-  if (!allowed) notFound();
 
   const feeLabel =
     meeting.feeMnt !== null && meeting.feeMnt !== undefined
@@ -58,8 +39,9 @@ export default async function WeeklyMeetingDetailPage({ params }: Props) {
   }));
 
   const regUrl = `/m/${meeting.publicToken}`;
-  const qrSrc = `/api/meetings/weekly/${meeting.id.toString()}/qr`;
-  const csvHref = `/api/meetings/weekly/${meeting.id.toString()}/roster`;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  const qrSrc = `${apiUrl}/api/meetings/weekly/${meeting.id.toString()}/qr`;
+  const csvHref = `${apiUrl}/api/meetings/weekly/${meeting.id.toString()}/roster`;
 
   return (
     <DashboardPage>

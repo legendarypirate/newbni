@@ -83,7 +83,8 @@ exports.passwordLogin = async (req, res) => {
     await ensureOrganizerRoleForEligibleAccount(account.id);
 
     const token = signPlatformToken(account);
-    return res.json({ ok: true, token, role: account.role });
+    const displayName = account.profile?.displayName || account.email;
+    return res.json({ ok: true, token, role: account.role, displayName });
   } catch (err) {
     console.error("Password login failed:", err);
     return res.status(500).json({ ok: false, errorKey: "invalid" });
@@ -257,7 +258,13 @@ exports.me = async (req, res) => {
     const id = jwtUser.id;
     const account = await db.PlatformAccount.findByPk(id, {
       attributes: ["id", "email", "role", "status"],
-      include: [{ model: db.PlatformProfile, as: "profile", attributes: ["displayName", "photoUrl"] }],
+      include: [
+        {
+          model: db.PlatformProfile,
+          as: "profile",
+          attributes: ["displayName", "photoUrl", "companyName", "businessPhone", "businessEmail"],
+        },
+      ],
     });
     if (!account || account.status !== "active") {
       return res.status(403).json({ ok: false, message: "inactive_or_missing" });
@@ -274,6 +281,9 @@ exports.me = async (req, res) => {
         displayName,
         role: account?.role ?? jwtUser.role,
         photoUrl: account?.profile?.photoUrl ?? null,
+        companyName: account?.profile?.companyName ?? null,
+        businessPhone: account?.profile?.businessPhone ?? null,
+        businessEmail: account?.profile?.businessEmail ?? null,
         busyRoleSlugs: authz.roleSlugs,
         busyPermissionKeys: authz.permissionKeys,
       },
@@ -281,5 +291,44 @@ exports.me = async (req, res) => {
   } catch (err) {
     console.error("auth.me enrich failed:", err);
     res.json({ ok: true, user: req.user });
+  }
+};
+exports.passwordRegister = async (req, res) => {
+  const { email, password, displayName } = req.body || {};
+
+  if (!email || !password || !displayName) {
+    return res.status(400).json({ ok: false, errorKey: "invalid" });
+  }
+
+  try {
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const existing = await db.PlatformAccount.findOne({ where: { email: normalizedEmail } });
+
+    if (existing) {
+      if (existing.status !== "active") return res.status(400).json({ ok: false, errorKey: "account_inactive" });
+      return res.status(400).json({ ok: false, errorKey: "email_taken" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const account = await db.PlatformAccount.create({
+      email: normalizedEmail,
+      passwordHash,
+      role: "visitor",
+      status: "active",
+    });
+
+    await db.PlatformProfile.create({
+      accountId: account.id,
+      displayName: String(displayName).trim(),
+    });
+
+    await account.update({ lastLoginAt: new Date() });
+    await ensureOrganizerRoleForEligibleAccount(account.id);
+
+    const token = signPlatformToken(account);
+    return res.json({ ok: true, token, role: account.role, displayName: String(displayName).trim() });
+  } catch (err) {
+    console.error("Password register failed:", err);
+    return res.status(500).json({ ok: false, errorKey: "server_error" });
   }
 };

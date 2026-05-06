@@ -4,57 +4,118 @@ const { Op } = require("sequelize");
 const db = require("../models");
 
 /** Mirrors busybni admin dashboard aggregates — same PostgreSQL tables as Prisma */
+function growthHint(current, previous, sublabel) {
+  if (previous <= 0) {
+    if (current <= 0) return { pctLabel: "0%", tone: "neutral", sublabel };
+    return { pctLabel: "Шинэ", tone: "up", sublabel };
+  }
+  const raw = Math.round(((current - previous) / previous) * 100);
+  if (raw === 0) return { pctLabel: "0%", tone: "neutral", sublabel };
+  return {
+    pctLabel: `${Math.abs(raw)}%`,
+    tone: raw > 0 ? "up" : "down",
+    sublabel,
+  };
+}
+
 exports.dashboardStats = async (_req, res) => {
   try {
+    const now = new Date();
+    const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const d60 = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const d30Ahead = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
     const [
+      totalEvents,
+      eventsLast30,
+      eventsPrev30,
+      upcomingNext30d,
+      meetingRegsTotal,
+      tripResponsesTotal,
+      meetingRegsLast30,
+      meetingRegsPrev30,
+      tripRegsLast30,
+      tripRegsPrev30,
+      attendancePresent,
+      attendanceTotal,
+      paidOrdersSum,
+      tripPaidSum,
+      revenueLast30,
+      revenuePrev30,
+      pendingTripReviews,
+      pendingMemberships,
+      pendingPayments,
       memberCount,
       newsPublished,
       newsDraft,
       chapterCount,
-      eventUpcoming,
-      recentMembers,
-      recentNews,
     ] = await Promise.all([
+      db.BniEvent.count(),
+      db.BniEvent.count({ where: { createdAt: { [Op.gte]: d30 } } }),
+      db.BniEvent.count({ where: { createdAt: { [Op.gte]: d60, [Op.lt]: d30 } } }),
+      db.BniEvent.count({
+        where: { startsAt: { [Op.gte]: now, [Op.lte]: d30Ahead }, endsAt: { [Op.gte]: now } },
+      }),
+      db.BusyMeetingRegistration.count(),
+      db.TripFormResponse.count(),
+      db.BusyMeetingRegistration.count({ where: { createdAt: { [Op.gte]: d30 } } }),
+      db.BusyMeetingRegistration.count({ where: { createdAt: { [Op.gte]: d60, [Op.lt]: d30 } } }),
+      db.TripFormResponse.count({ where: { submittedAt: { [Op.gte]: d30 } } }),
+      db.TripFormResponse.count({ where: { submittedAt: { [Op.gte]: d60, [Op.lt]: d30 } } }),
+      db.BusyMeetingRegistration.count({
+        where: { attendanceStatus: { [Op.in]: ["present", "late", "substitute_present"] } },
+      }),
+      db.BusyMeetingRegistration.count(),
+      db.PaymentOrder.sum("amount_mnt", { where: { status: { [Op.in]: ["paid", "success"] } } }),
+      db.TripPayment.sum("amount", { where: { status: "PAID" } }),
+      db.PaymentOrder.sum("amount_mnt", {
+        where: { status: { [Op.in]: ["paid", "success"] }, createdAt: { [Op.gte]: d30 } },
+      }),
+      db.PaymentOrder.sum("amount_mnt", {
+        where: { status: { [Op.in]: ["paid", "success"] }, createdAt: { [Op.gte]: d60, [Op.lt]: d30 } },
+      }),
+      db.TripFormResponse.count({ where: { status: "under_review" } }),
+      db.ChapterMembership.count({ where: { status: "pending" } }),
+      db.PaymentOrder.count({ where: { status: "pending" } }),
       db.LegacyMember.count({ where: { status: "active" } }),
       db.NewsArticle.count({ where: { status: "published" } }),
       db.NewsArticle.count({ where: { status: "draft" } }),
       db.Chapter.count(),
-      db.BniEvent.count({ where: { endsAt: { [Op.gte]: new Date() } } }),
-      db.LegacyMember.findAll({
-        where: { status: "active" },
-        order: [["id", "DESC"]],
-        limit: 5,
-        attributes: ["id", "name", "company", "industry", "photo"],
-        raw: true,
-      }),
-      db.NewsArticle.findAll({
-        order: [["createdAt", "DESC"]],
-        limit: 5,
-        attributes: ["id", "title", "status", "createdAt"],
-        raw: true,
-      }),
     ]);
+
+    const tripRevLast = (await db.TripPayment.sum("amount", { where: { status: "PAID", createdAt: { [Op.gte]: d30 } } })) || 0;
+    const tripRevPrev = (await db.TripPayment.sum("amount", { where: { status: "PAID", createdAt: { [Op.gte]: d60, [Op.lt]: d30 } } })) || 0;
+
+    const totalRegistrations = (meetingRegsTotal || 0) + (tripResponsesTotal || 0);
+    const regsLast30 = (meetingRegsLast30 || 0) + (tripRegsLast30 || 0);
+    const regsPrev30 = (meetingRegsPrev30 || 0) + (tripRegsPrev30 || 0);
+
+    const revenueTotalMnt = (Number(paidOrdersSum) || 0) + (Number(tripPaidSum) || 0);
+    const revenueLast30Total = (Number(revenueLast30) || 0) + Number(tripRevLast);
+    const revenuePrev30Total = (Number(revenuePrev30) || 0) + Number(tripRevPrev);
 
     res.json({
       ok: true,
       data: {
+        totalEvents,
+        eventGrowth: growthHint(eventsLast30, eventsPrev30, "сүүлийн 30 хоногт"),
+        upcomingNext30d,
+        totalRegistrations,
+        registrationGrowth: growthHint(regsLast30, regsPrev30, "нийт өсөлт"),
+        attendancePresent,
+        attendanceTotal,
+        attendancePct: attendanceTotal > 0 ? Math.round((attendancePresent / attendanceTotal) * 100) : null,
+        revenueTotalMnt,
+        revenueGrowth: growthHint(revenueLast30Total, revenuePrev30Total, "сүүлийн 30 хоногт"),
+        pendingApprovals: (pendingTripReviews || 0) + (pendingMemberships || 0) + (pendingPayments || 0),
         memberCount,
         newsPublished,
         newsDraft,
         chapterCount,
-        eventUpcoming,
-        recentMembers,
-        recentNews: recentNews.map((n) => ({
-          ...n,
-          createdAt: n.createdAt instanceof Date ? n.createdAt.toISOString() : String(n.createdAt),
-        })),
       },
     });
   } catch (err) {
-    res.status(500).json({
-      ok: false,
-      message: err instanceof Error ? err.message : String(err),
-    });
+    res.status(500).json({ ok: false, message: err.message });
   }
 };
 

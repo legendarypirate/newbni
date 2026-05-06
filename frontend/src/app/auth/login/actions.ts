@@ -1,9 +1,6 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
-import { ensureOrganizerRoleForEligibleAccount } from "@/lib/busy-rbac";
 import { defaultPostLoginPath } from "@/lib/platform-session";
 import { setPlatformSessionCookies } from "@/lib/platform-session-cookies";
 
@@ -33,46 +30,22 @@ export async function loginAction(_prev: LoginFormState, formData: FormData): Pr
     return { errorKey: "invalid", email: emailRaw };
   }
 
-  let account;
   try {
-    account = await prisma.platformAccount.findUnique({
-      where: { email },
-      include: { profile: { select: { displayName: true } } },
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
     });
-  } catch {
+    const json = await res.json();
+
+    if (!res.ok) {
+      return { errorKey: json.errorKey || "invalid", email: emailRaw };
+    }
+
+    await setPlatformSessionCookies(json.token, json.displayName);
+    redirect(defaultPostLoginPath(next, json.role));
+  } catch (e: any) {
+    if (e.message === "NEXT_REDIRECT") throw e;
     return { errorKey: "invalid", email: emailRaw };
   }
-
-  if (!account || account.status !== "active") {
-    return { errorKey: "invalid", email: emailRaw };
-  }
-
-  const hash = account.passwordHash;
-  if (!hash || hash === "") {
-    return { errorKey: "use_google", email: emailRaw };
-  }
-
-  const ok = await bcrypt.compare(password, hash);
-  if (!ok) {
-    return { errorKey: "invalid", email: emailRaw };
-  }
-
-  try {
-    await prisma.platformAccount.update({
-      where: { id: account.id },
-      data: { lastLoginAt: new Date() },
-    });
-  } catch {
-    /* non-fatal */
-  }
-
-  const display =
-    account.profile?.displayName && account.profile.displayName.trim() !== ""
-      ? account.profile.displayName.trim()
-      : account.email;
-
-  await setPlatformSessionCookies(account.id, display);
-  await ensureOrganizerRoleForEligibleAccount(account.id);
-
-  redirect(defaultPostLoginPath(next, account.role));
 }

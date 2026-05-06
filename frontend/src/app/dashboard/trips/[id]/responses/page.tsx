@@ -4,9 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { DashboardBreadcrumb } from "@/components/dashboard/DashboardBreadcrumb";
 import { DashboardPage } from "@/components/dashboard/DashboardPage";
 import TripResponsesClient from "@/components/trip-registration/TripResponsesClient";
-import { assertFormEditableByAccount } from "@/lib/trip-registration-form/organizer";
 import { requirePlatformUser } from "@/lib/platform-session";
-import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -15,37 +13,32 @@ type Props = {
   searchParams: Promise<{ formId?: string }>;
 };
 
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const tripId = Number.parseInt(id, 10);
-  if (!Number.isFinite(tripId)) return { title: "Хариултууд" };
-  const trip = await prisma.businessTrip.findUnique({ where: { id: tripId }, select: { destination: true } }).catch(() => null);
+  const res = await serverAuthedFetch(`/trips/${id}`).then(r => r.json()).catch(() => ({ ok: false }));
+  const trip = res.ok ? res.trip : null;
   return { title: trip ? `${trip.destination} — хариултууд` : "Хариултууд" };
 }
 
 export default async function TripResponsesPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const tripId = Number.parseInt(id, 10);
-  if (!Number.isFinite(tripId)) notFound();
+  const tripId = id;
 
   const sp = await searchParams;
   const formId = typeof sp.formId === "string" && sp.formId.length > 0 ? sp.formId : null;
 
   const nextPath = `/dashboard/trips/${tripId}/responses${formId ? `?formId=${encodeURIComponent(formId)}` : ""}`;
   const user = await requirePlatformUser(nextPath);
-  const userAccountId = BigInt(user.id);
 
-  const trip = await prisma.businessTrip.findUnique({ where: { id: tripId } }).catch(() => null);
-  if (!trip) notFound();
+  const tripRes = await serverAuthedFetch(`/trips/${tripId}`).then(r => r.json()).catch(() => ({ ok: false }));
+  if (!tripRes.ok) notFound();
+  const trip = tripRes.trip;
 
   if (!formId) {
-    const first = await prisma.tripRegistrationForm
-      .findFirst({
-        where: { tripId },
-        orderBy: { updatedAt: "desc" },
-        select: { id: true },
-      })
-      .catch(() => null);
+    const formsRes = await serverAuthedFetch(`/trips/${tripId}/forms`).then(r => r.json()).catch(() => ({ ok: false }));
+    const first = formsRes.ok && formsRes.forms?.length > 0 ? formsRes.forms[0] : null;
     if (first) {
       redirect(`/dashboard/trips/${tripId}/responses?formId=${encodeURIComponent(first.id)}`);
     }
@@ -59,9 +52,10 @@ export default async function TripResponsesPage({ params, searchParams }: Props)
     );
   }
 
-  try {
-    await assertFormEditableByAccount(formId, userAccountId);
-  } catch {
+  // Permission check is handled by the backend API call in TripResponsesClient
+  // But we can do a quick check here if needed via /api/forms/:id
+  const formRes = await serverAuthedFetch(`/forms/${formId}`).then(r => r.json()).catch(() => ({ ok: false }));
+  if (!formRes.ok) {
     redirect("/dashboard/trips");
   }
 
@@ -77,7 +71,7 @@ export default async function TripResponsesPage({ params, searchParams }: Props)
 
       <h1 className="mb-4 text-base font-semibold tracking-tight text-foreground">Хариултууд</h1>
 
-      <TripResponsesClient tripId={tripId} formId={formId} />
+      <TripResponsesClient tripId={Number(tripId)} formId={formId} />
     </DashboardPage>
   );
 }

@@ -1,9 +1,6 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
-import { ensureOrganizerRoleForEligibleAccount } from "@/lib/busy-rbac";
 import { defaultPostLoginPath } from "@/lib/platform-session";
 import { setPlatformSessionCookies } from "@/lib/platform-session-cookies";
 
@@ -72,68 +69,22 @@ export async function registerAction(_prev: RegisterFormState, formData: FormDat
     return { ...baseState, errorKey: "password_weak" };
   }
 
-  let existing;
   try {
-    existing = await prisma.platformAccount.findUnique({
-      where: { email },
-      select: { id: true, status: true, passwordHash: true, googleSub: true },
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, displayName }),
     });
-  } catch {
+    const json = await res.json();
+
+    if (!res.ok) {
+      return { ...baseState, errorKey: json.errorKey || "server_error" };
+    }
+
+    await setPlatformSessionCookies(json.token, json.displayName);
+    redirect(defaultPostLoginPath(next, json.role));
+  } catch (e: any) {
+    if (e.message === "NEXT_REDIRECT") throw e;
     return { ...baseState, errorKey: "server_error" };
   }
-
-  if (existing) {
-    if (existing.status !== "active") {
-      return { ...baseState, errorKey: "account_inactive" };
-    }
-    const hasPassword = Boolean(existing.passwordHash && existing.passwordHash !== "");
-    if (!hasPassword && existing.googleSub) {
-      return { ...baseState, errorKey: "use_google" };
-    }
-    return { ...baseState, errorKey: "email_taken" };
-  }
-
-  let passwordHash: string;
-  try {
-    passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-  } catch {
-    return { ...baseState, errorKey: "server_error" };
-  }
-
-  let accountId: bigint;
-  try {
-    const created = await prisma.platformAccount.create({
-      data: {
-        email,
-        passwordHash,
-        profile: {
-          create: {
-            displayName,
-          },
-        },
-      },
-      select: { id: true },
-    });
-    accountId = created.id;
-  } catch (e: unknown) {
-    const code = typeof e === "object" && e && "code" in e ? String((e as { code?: string }).code) : "";
-    if (code === "P2002") {
-      return { ...baseState, errorKey: "email_taken" };
-    }
-    return { ...baseState, errorKey: "server_error" };
-  }
-
-  try {
-    await prisma.platformAccount.update({
-      where: { id: accountId },
-      data: { lastLoginAt: new Date() },
-    });
-  } catch {
-    /* non-fatal */
-  }
-
-  await setPlatformSessionCookies(accountId, displayName);
-  await ensureOrganizerRoleForEligibleAccount(accountId);
-
-  redirect(defaultPostLoginPath(next));
 }

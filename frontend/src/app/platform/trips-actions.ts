@@ -1,11 +1,10 @@
 "use server";
 
-import { connection } from "next/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPlatformSession } from "@/lib/platform-session";
 import { executeSaveTrip } from "@/lib/platform-trip-save-core";
-import { dbBusinessTrip } from "@/lib/prisma";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 export async function saveTripAction(formData: FormData): Promise<void> {
   await connection();
@@ -15,6 +14,8 @@ export async function saveTripAction(formData: FormData): Promise<void> {
   }
 
   const accountId = BigInt(session.id);
+  // executeSaveTrip still uses prisma. We should migrate this logic to the backend.
+  // For now, I'll keep it but it's a target for next step.
   const result = await executeSaveTrip(accountId, formData);
   if (result.kind === "redirect") {
     redirect(result.to);
@@ -32,13 +33,16 @@ export async function deleteTripAction(formData: FormData): Promise<void> {
     redirect("/auth/login?next=/platform/trips");
   }
 
-  const tripId = Math.max(0, Number(String(formData.get("trip_id") ?? "0")));
-  if (tripId < 1) {
+  const tripId = String(formData.get("trip_id") ?? "0");
+  if (tripId === "0") {
     redirect("/platform/trips");
   }
 
-  const trips = dbBusinessTrip();
-  await trips.delete({ where: { id: tripId } }).catch(() => null);
+  try {
+    await serverAuthedFetch(`/platform/trips/${tripId}`, { method: "DELETE" });
+  } catch {
+    redirect("/platform/trips");
+  }
 
   revalidatePath("/platform/trips");
   revalidatePath("/trips");
@@ -52,27 +56,29 @@ export async function toggleTripFeaturedAction(formData: FormData): Promise<void
     redirect("/auth/login?next=/platform/trips");
   }
 
-  const tripId = Math.max(0, Number(String(formData.get("trip_id") ?? "0")));
-  const makeFeatured = Number(String(formData.get("is_featured") ?? "0")) === 1;
-  if (tripId < 1) {
+  const tripId = String(formData.get("trip_id") ?? "0");
+  const makeFeatured = String(formData.get("is_featured") ?? "0") === "1";
+  if (tripId === "0") {
     redirect("/platform/trips");
   }
 
-  const trips = dbBusinessTrip();
-  if (makeFeatured) {
-    const featuredCount = await trips.count({
-      where: { isFeatured: 1, NOT: { id: tripId } },
+  try {
+    const res = await serverAuthedFetch(`/platform/trips/${tripId}/toggle-featured`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isFeatured: makeFeatured }),
     });
-    const row = await trips.findUnique({ where: { id: tripId } });
-    if (row && row.isFeatured !== 1 && featuredCount >= 3) {
-      redirect("/platform/trips?error=featured_limit");
+    if (!res.ok) {
+       const out = await res.json().catch(() => ({}));
+       if (out.errorKey === "featured_limit") {
+         redirect("/platform/trips?error=featured_limit");
+       }
+       redirect("/platform/trips");
     }
+  } catch (e) {
+    if (e instanceof Error && e.message === "NEXT_REDIRECT") throw e;
+    redirect("/platform/trips");
   }
-
-  await trips.update({
-    where: { id: tripId },
-    data: { isFeatured: makeFeatured ? 1 : 0 },
-  });
 
   revalidatePath("/platform/trips");
   revalidatePath("/trips");

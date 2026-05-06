@@ -1,12 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { Prisma } from "@prisma/client";
 import { mongoliaBankByCode } from "@/lib/mongolia-banks";
-import { prisma } from "@/lib/prisma";
 import { getPlatformSession } from "@/lib/platform-session";
 import { setPlatformSessionCookies } from "@/lib/platform-session-cookies";
 import { destroyCloudinaryBySecureUrl, writePlatformUploadImage } from "@/lib/platform-write-image";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 export type ProfileSaveState = {
   ok: boolean;
@@ -30,6 +29,8 @@ function asRecord(json: unknown): Record<string, unknown> {
   }
   return {};
 }
+
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, formData: FormData): Promise<ProfileSaveState> {
   const session = await getPlatformSession();
@@ -85,16 +86,22 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
     }
   }
 
-  const existing = await prisma.platformProfile.findUnique({
-    where: { accountId },
-  });
-
+  // We need current profile to know previous image URLs for destruction
+  const currentRes = await serverAuthedFetch(`/profiles/${accountId}`).then(r => r.json()).catch(() => ({ ok: false }));
+  const existing = currentRes.ok ? currentRes.data : null;
   const existingBiz = asRecord(existing?.businessJson);
   const previousPhotoUrl = existing?.photoUrl?.trim() ?? "";
   const previousMemberPhoto = String(existingBiz.member_photo_url ?? "").trim();
   const previousProfileCover = String(existingBiz.profile_cover_url ?? "").trim();
-  const mergedBusiness: Record<string, unknown> = {
-    ...existingBiz,
+
+  const payload: Record<string, any> = {
+    displayName,
+    companyName,
+    businessPhone,
+    businessEmail,
+    website,
+    addressLine,
+    bio,
     industry,
     company_size: companySize,
     founded_year: foundedYear,
@@ -130,7 +137,7 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
       if (previousMemberPhoto && previousMemberPhoto !== up.url) {
         await destroyCloudinaryBySecureUrl(previousMemberPhoto);
       }
-      mergedBusiness.member_photo_url = up.url;
+      payload.member_photo_url = up.url;
     } else if (up.error !== "empty") {
       msgs.push(up.error);
     }
@@ -143,13 +150,12 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
       if (previousProfileCover && previousProfileCover !== up.url) {
         await destroyCloudinaryBySecureUrl(previousProfileCover);
       }
-      mergedBusiness.profile_cover_url = up.url;
+      payload.profile_cover_url = up.url;
     } else if (up.error !== "empty") {
       msgs.push(up.error);
     }
   }
 
-  let photoUrl = existing?.photoUrl?.trim() ?? "";
   const logoFile = formData.get("photo_file");
   if (logoFile instanceof File && logoFile.size > 0) {
     const up = await writePlatformUploadImage(accountId, logoFile, 10 * 1024 * 1024);
@@ -157,43 +163,22 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
       if (previousPhotoUrl && previousPhotoUrl !== up.url) {
         await destroyCloudinaryBySecureUrl(previousPhotoUrl);
       }
-      photoUrl = up.url;
+      payload.photoUrl = up.url;
     } else if (up.error !== "empty") {
       msgs.push(up.error);
     }
   }
 
-  const businessJson = mergedBusiness as Prisma.InputJsonValue;
-
-  await prisma.platformProfile.upsert({
-    where: { accountId },
-    create: {
-      accountId,
-      displayName: displayName || session.email,
-      companyName: companyName || null,
-      businessPhone: businessPhone || null,
-      businessEmail: businessEmail || null,
-      website: website || null,
-      addressLine: addressLine || null,
-      bio: bio || null,
-      photoUrl: photoUrl || null,
-      businessJson,
-    },
-    update: {
-      displayName: displayName || session.email,
-      companyName: companyName || null,
-      businessPhone: businessPhone || null,
-      businessEmail: businessEmail || null,
-      website: website || null,
-      addressLine: addressLine || null,
-      bio: bio || null,
-      photoUrl: photoUrl || null,
-      businessJson,
-    },
+  const res = await serverAuthedFetch("/profiles/me", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
+  const json = await res.json();
+  if (!res.ok) {
+    return { ok: false, message: json.message || "Хадгалахад алдаа гарлаа." };
+  }
 
-  const navDisplay = displayName !== "" ? displayName : session.email;
-  await setPlatformSessionCookies(accountId, navDisplay);
+  await setPlatformSessionCookies(accountId.toString(), json.displayName);
 
   revalidatePath("/platform/profile");
 
@@ -208,12 +193,11 @@ export async function saveHeroSlidesAction(_prev: ProfileSaveState | null, formD
   }
   const accountId = BigInt(session.id);
 
-  const existing = await prisma.platformProfile.findUnique({
-    where: { accountId },
-  });
+  const currentRes = await serverAuthedFetch(`/profiles/${accountId}`).then(r => r.json()).catch(() => ({ ok: false }));
+  const existing = currentRes.ok ? currentRes.data : null;
   const biz = asRecord(existing?.businessJson);
   let slides: string[] = Array.isArray(biz.hero_slides)
-    ? biz.hero_slides.filter((u): u is string => typeof u === "string")
+    ? biz.hero_slides.filter((u: any): u is string => typeof u === "string")
     : [];
 
   const slidesBeforeMutation = [...slides];
@@ -238,19 +222,13 @@ export async function saveHeroSlidesAction(_prev: ProfileSaveState | null, formD
     }
   }
 
-  biz.hero_slides = slides;
-
-  await prisma.platformProfile.upsert({
-    where: { accountId },
-    create: {
-      accountId,
-      displayName: session.email,
-      businessJson: biz as Prisma.InputJsonValue,
-    },
-    update: {
-      businessJson: biz as Prisma.InputJsonValue,
-    },
+  const res = await serverAuthedFetch("/profiles/me/hero-slides", {
+    method: "POST",
+    body: JSON.stringify({ slides }),
   });
+  if (!res.ok) {
+    return { ok: false, message: "Хадгалахад алдаа гарлаа." };
+  }
 
   for (const u of slidesBeforeMutation) {
     if (!slides.includes(u)) {

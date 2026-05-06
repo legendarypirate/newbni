@@ -1,61 +1,30 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import {
   BusyMeetingAttendanceStatus,
   BusyMeetingPaymentStatus,
 } from "@prisma/client";
-import { PLATFORM_ACCOUNT_REF_COOKIE } from "@/lib/platform-session-cookies";
-import { prisma } from "@/lib/prisma";
-import { accountCanManageWeeklyMeeting, canAccountCreateWeeklyMeeting } from "@/lib/busy-rbac";
-import {
-  createWeeklyMeetingForAccount,
-  patchRegistrationStaff,
-  registerParticipantPublic,
-} from "@/lib/meetings/weekly-meeting-service";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 import type { CreateWeeklyMeetingInput, PublicRegisterMeetingInput } from "@/lib/meetings/weekly-meeting-types";
 
 export type { CreateWeeklyMeetingInput, PublicRegisterMeetingInput } from "@/lib/meetings/weekly-meeting-types";
-
-function parseAccountId(raw: string | undefined): bigint | null {
-  if (!raw) return null;
-  try {
-    return BigInt(raw);
-  } catch {
-    return null;
-  }
-}
-
-async function requireAccountIdFromCookie(): Promise<bigint> {
-  const jar = await cookies();
-  const id = parseAccountId(
-    jar.get("bni_platform_account_id")?.value ?? jar.get(PLATFORM_ACCOUNT_REF_COOKIE)?.value,
-  );
-  if (!id) throw new Error("UNAUTHORIZED");
-  const acc = await prisma.platformAccount.findUnique({ where: { id }, select: { id: true, status: true } });
-  if (!acc || acc.status !== "active") throw new Error("UNAUTHORIZED");
-  return id;
-}
 
 export async function createWeeklyMeetingAction(
   input: CreateWeeklyMeetingInput,
 ): Promise<{ ok: true; meetingId: string; publicToken: string } | { ok: false; error: string }> {
   try {
-    const accountId = await requireAccountIdFromCookie();
+    const res = await serverAuthedFetch("/meetings/weekly", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    const json = await res.json();
+    if (!res.ok) return { ok: false, error: json.error || "FAILED" };
 
-    const acc = await prisma.platformAccount.findUnique({ where: { id: accountId }, select: { role: true } });
-    if (!acc || !canAccountCreateWeeklyMeeting(acc.role)) {
-      return { ok: false, error: "FORBIDDEN" };
-    }
-
-    const created = await createWeeklyMeetingForAccount(accountId, input);
     revalidatePath("/dashboard/weekly-meetings");
-    return { ok: true, meetingId: created.meetingId.toString(), publicToken: created.publicToken };
+    return { ok: true, meetingId: json.meetingId, publicToken: json.publicToken };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "UNKNOWN";
-    if (msg === "UNAUTHORIZED") return { ok: false, error: "UNAUTHORIZED" };
-    return { ok: false, error: msg };
+    return { ok: false, error: "CONNECTION_ERROR" };
   }
 }
 
@@ -66,41 +35,22 @@ export async function updateRegistrationStaffFieldsAction(input: {
   attendanceStatus?: BusyMeetingAttendanceStatus;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    const accountId = await requireAccountIdFromCookie();
-    const regId = BigInt(input.registrationId);
-    let meetingId: bigint | undefined;
-    if (input.weeklyMeetingId?.trim()) {
-      try {
-        meetingId = BigInt(input.weeklyMeetingId.trim());
-      } catch {
-        return { ok: false, error: "BAD_MEETING_ID" };
-      }
-    }
-    await patchRegistrationStaff(
-      accountId,
-      regId,
-      {
+    const res = await serverAuthedFetch(`/meetings/weekly/registrations/${input.registrationId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
         paymentStatus: input.paymentStatus,
         attendanceStatus: input.attendanceStatus,
-      },
-      meetingId !== undefined ? { weeklyMeetingId: meetingId } : undefined,
-    );
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok) return { ok: false, error: json.error || "FAILED" };
 
-    if (meetingId !== undefined) {
-      revalidatePath(`/dashboard/weekly-meetings/${meetingId.toString()}`);
-    } else {
-      const reg = await prisma.busyMeetingRegistration.findUnique({
-        where: { id: regId },
-        select: { weeklyMeetingId: true },
-      });
-      if (reg) revalidatePath(`/dashboard/weekly-meetings/${reg.weeklyMeetingId.toString()}`);
+    if (input.weeklyMeetingId) {
+      revalidatePath(`/dashboard/weekly-meetings/${input.weeklyMeetingId}`);
     }
     return { ok: true };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "UNKNOWN";
-    if (msg === "NOT_FOUND") return { ok: false, error: "NOT_FOUND" };
-    if (msg === "FORBIDDEN") return { ok: false, error: "FORBIDDEN" };
-    return { ok: false, error: "UNKNOWN" };
+    return { ok: false, error: "CONNECTION_ERROR" };
   }
 }
 
@@ -108,18 +58,18 @@ export async function publicRegisterForWeeklyMeetingAction(
   input: PublicRegisterMeetingInput,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    await registerParticipantPublic(input);
-    const token = input.token.trim();
-    revalidatePath(`/m/${token}`);
-    const meeting = await prisma.busyWeeklyMeeting.findUnique({
-      where: { publicToken: token },
-      select: { id: true },
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/meetings/weekly/register-public`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
     });
-    if (meeting) revalidatePath(`/dashboard/weekly-meetings/${meeting.id.toString()}`);
+    const json = await res.json();
+    if (!res.ok) return { ok: false, error: json.error || "FAILED" };
+
+    revalidatePath(`/m/${input.token}`);
     return { ok: true };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "UNKNOWN";
-    return { ok: false, error: msg };
+    return { ok: false, error: "CONNECTION_ERROR" };
   }
 }
 
@@ -129,32 +79,9 @@ export async function logRosterExportAction(input: {
   rowCount: number;
 }): Promise<void> {
   try {
-    const accountId = await requireAccountIdFromCookie();
-    const meetingId = BigInt(input.meetingId);
-    const meeting = await prisma.busyWeeklyMeeting.findUnique({
-      where: { id: meetingId },
-      include: { group: true },
-    });
-    if (!meeting) return;
-    const allowed = await accountCanManageWeeklyMeeting(accountId, meeting.group.organizerAccountId);
-    if (!allowed) return;
-
-    await prisma.busyMeetingRosterExport.create({
-      data: {
-        weeklyMeetingId: meeting.id,
-        format: input.format,
-        rowCount: input.rowCount,
-        createdByAccountId: accountId,
-      },
-    });
-    await prisma.busyAuditLog.create({
-      data: {
-        actorAccountId: accountId,
-        action: "weekly_meeting.roster_export",
-        subjectType: "busy_weekly_meeting",
-        subjectId: meeting.id.toString(),
-        metadata: { format: input.format, rowCount: input.rowCount },
-      },
+    await serverAuthedFetch("/meetings/weekly/log-roster-export", {
+      method: "POST",
+      body: JSON.stringify(input),
     });
   } catch {
     /* noop */

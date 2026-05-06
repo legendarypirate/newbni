@@ -97,3 +97,50 @@ exports.addQuestion = async (req, res) => {
     res.status(statusFromError(e)).json({ error: msg });
   }
 };
+exports.listResponses = async (req, res) => {
+  const { formId } = req.params;
+  try {
+    const list = await forms.listTripFormResponsesForOrganizer(formId, req.platformUser.id);
+    res.json({
+      responses: list.map((r) => ({
+        id: r.id,
+        submittedAt: r.submittedAt.toISOString(),
+        status: r.status,
+        paymentStatus: r.paymentStatus,
+        internalNote: r.internalNote,
+        orderSummary: r.orderSummary,
+        hasParticipant: !!r.participant,
+        answers: r.answers.map((a) => ({
+          questionLabel: a.question?.label || "Unknown",
+          questionType: a.question?.type || "SHORT_TEXT",
+          value: a.value,
+          fileUrl: a.fileUrl,
+        })),
+      })),
+    });
+  } catch (e) {
+    res.status(statusFromError(e)).json({ error: "failed" });
+  }
+};
+
+exports.patchResponseStatus = async (req, res) => {
+  const { responseId } = req.params;
+  const body = req.body || {};
+  try {
+    await forms.patchTripFormResponseStatus(responseId, req.platformUser.id, body);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(statusFromError(e)).json({ error: "failed" });
+  }
+};
+
+exports.convertToParticipant = async (req, res) => {
+  const { responseId } = req.params;
+  try {
+    await forms.convertResponseToParticipant(responseId, req.platformUser.id);
+    res.json({ ok: true });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "unknown";
+    res.status(statusFromError(e)).json({ error: msg });
+  }
+};

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
 import { mediaUrl } from "@/lib/media-url";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -17,70 +17,21 @@ export default async function MembersPage({ searchParams }: { searchParams: Sear
   const locationFilter = searchParams.location?.trim() || "";
   const verifiedFilter = ["1", "0", "all"].includes(searchParams.verified || "1") ? searchParams.verified : "1";
 
-  const where: any = { status: "active" };
+  const urlParams = new URLSearchParams();
+  if (query) urlParams.set("q", query);
+  if (industryFilter) urlParams.set("industry", industryFilter);
+  if (locationFilter) urlParams.set("location", locationFilter);
+  if (verifiedFilter) urlParams.set("verified", verifiedFilter);
 
-  if (query) {
-    where.OR = [
-      { name: { contains: query, mode: "insensitive" } },
-      { company: { contains: query, mode: "insensitive" } },
-      { industry: { contains: query, mode: "insensitive" } },
-      { bio: { contains: query, mode: "insensitive" } }
-    ];
-  }
-  
-  if (industryFilter) {
-    where.industry = industryFilter;
-  }
-  
-  if (locationFilter) {
-    where.OR = [
-      ...(where.OR || []),
-      { position: locationFilter },
-      { company: { contains: locationFilter, mode: "insensitive" } },
-      { bio: { contains: locationFilter, mode: "insensitive" } }
-    ];
-  }
-  
-  if (verifiedFilter === "1") {
-    where.featured = 1;
-  } else if (verifiedFilter === "0") {
-    where.featured = 0;
-  }
+  const res = await serverAuthedFetch(`/members?${urlParams.toString()}`).then(r => r.json()).catch(() => ({ ok: false }));
+  const data = res.ok ? res.data : { members: [], totalActive: 0, featuredMembers: [], recentMembers: [], allActiveMembers: [] };
 
-  const members = await prisma.legacyMember.findMany({
-    where,
-    orderBy: [
-      { featured: 'desc' },
-      { updatedAt: 'desc' },
-      { name: 'asc' }
-    ]
-  }).catch(() => []);
-
-  const totalActive = await prisma.legacyMember.count({
-    where: { status: "active" }
-  }).catch(() => 0);
-
-  const featuredMembers = await prisma.legacyMember.findMany({
-    where: { status: "active", featured: 1 },
-    orderBy: [ { updatedAt: 'desc' }, { name: 'asc' } ],
-    take: 4
-  }).catch(() => []);
-
-  const recentMembers = await prisma.legacyMember.findMany({
-    where: { status: "active" },
-    orderBy: { updatedAt: 'desc' },
-    take: 3
-  }).catch(() => []);
-
-  const allActiveMembers = await prisma.legacyMember.findMany({
-    where: { status: "active" },
-    select: { industry: true, position: true, bio: true }
-  }).catch(() => []);
+  const { members, totalActive, featuredMembers, recentMembers, allActiveMembers } = data;
 
   const industriesSet = new Set<string>();
   const locationsSet = new Set<string>();
 
-  for (const m of allActiveMembers) {
+  for (const m of (allActiveMembers || [])) {
     if (m.industry && m.industry.trim()) {
       industriesSet.add(m.industry.trim());
     }
