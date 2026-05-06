@@ -69,6 +69,7 @@ function resolveDatabaseUrl(root: string): string | undefined {
 
 const projectRoot = resolveProjectRoot();
 const databaseUrl = resolveDatabaseUrl(projectRoot);
+const prismaDisabled = !databaseUrl;
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -77,6 +78,9 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient(): PrismaClient {
+  if (prismaDisabled) {
+    return createNoopPrismaClient();
+  }
   const options: ConstructorParameters<typeof PrismaClient>[0] = {
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
   };
@@ -84,6 +88,47 @@ function createPrismaClient(): PrismaClient {
     options.datasources = { db: { url: databaseUrl } };
   }
   return new PrismaClient(options);
+}
+
+type AnyFn = (...args: unknown[]) => unknown;
+
+function createNoopDelegate(): Record<string, AnyFn> {
+  return new Proxy(
+    {},
+    {
+      get(_t, key: string | symbol) {
+        if (key === "then") return undefined;
+        const name = String(key);
+        if (name === "count") return async () => 0;
+        if (name.startsWith("find")) return async () => (name === "findUnique" || name === "findFirst" ? null : []);
+        if (name === "createMany" || name === "updateMany" || name === "deleteMany") return async () => ({ count: 0 });
+        if (name === "$transaction") {
+          return async (arg: unknown) => {
+            if (typeof arg === "function") return (arg as AnyFn)(createNoopDelegate());
+            return Array.isArray(arg) ? [] : null;
+          };
+        }
+        if (name === "$disconnect" || name === "$connect") return async () => {};
+        return async () => null;
+      },
+    },
+  ) as Record<string, AnyFn>;
+}
+
+function createNoopPrismaClient(): PrismaClient {
+  const delegate = createNoopDelegate();
+  return new Proxy(
+    {},
+    {
+      get(_target, prop: string | symbol) {
+        const name = String(prop);
+        if (name === "$disconnect" || name === "$connect") return async () => {};
+        if (name === "$transaction") return delegate.$transaction;
+        if (name === "then") return undefined;
+        return createNoopDelegate();
+      },
+    },
+  ) as PrismaClient;
 }
 
 /** After `prisma generate`, dev HMR / first boot can keep a PrismaClient without `busyWeeklyMeeting`. */
@@ -164,6 +209,11 @@ function replaceGlobalPrismaClient(): PrismaClient {
  * is replaced after `prisma generate` without requiring a manual process restart.
  */
 function resolvePrismaClient(): PrismaClient {
+  if (prismaDisabled) {
+    const g = globalForPrisma.prisma;
+    if (g) return g;
+    return replaceGlobalPrismaClient();
+  }
   const g = globalForPrisma.prisma;
   if (g && (hasBusyWeeklyMeetingDelegate(g) || irrecoverableMissingBusyWeeklyMeeting)) {
     if (hasBusinessTripExtrasJsonDelegate(g) || irrecoverableMissingBusinessTripExtras) {

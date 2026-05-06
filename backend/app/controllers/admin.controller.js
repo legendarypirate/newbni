@@ -102,3 +102,32 @@ exports.newsList = async (req, res) => {
     });
   }
 };
+
+/** Mirrors admin bni-memberships list previously loaded via Prisma. */
+exports.membershipsList = async (_req, res) => {
+  try {
+    const rows = await db.ChapterMembership.findAll({
+      order: [["id", "DESC"]],
+      limit: 200,
+      attributes: ["id", "status"],
+      include: [
+        { model: db.PlatformAccount, as: "account", attributes: ["email"] },
+        { model: db.Chapter, as: "chapter", attributes: ["name"] },
+      ],
+    });
+    res.json({
+      ok: true,
+      rows: rows.map((r) => ({
+        id: String(r.id),
+        status: String(r.status ?? ""),
+        account: { email: r.account?.email ?? "" },
+        chapter: { name: r.chapter?.name ?? "" },
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
+};
