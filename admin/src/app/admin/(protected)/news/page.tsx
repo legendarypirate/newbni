@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { serverAuthedFetch } from "@admin/lib/server-authed-fetch";
 
 export const metadata = { title: "Мэдээ | Админ" };
 
@@ -7,17 +7,17 @@ type Props = { searchParams: Promise<{ status?: string }> };
 export default async function AdminNewsPage({ searchParams }: Props) {
   const sp = await searchParams;
   const status = sp.status === "draft" ? "draft" : undefined;
-
-  const rows = await prisma.newsArticle.findMany({
-    where: status ? { status } : undefined,
-    orderBy: { createdAt: "desc" },
-    take: 200,
-    select: { id: true, title: true, slug: true, status: true, createdAt: true },
-  });
+  const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+  const res = await serverAuthedFetch(`/admin/news${qs}`).catch(() => null);
+  const data = (res ? await res.json().catch(() => ({})) : {}) as {
+    rows?: Array<{ id: number; title: string; slug: string; status: string; createdAt: string }>;
+  };
+  const rows = Array.isArray(data.rows) ? data.rows : [];
 
   return (
     <div>
       <h1 className="h4 fw-bold mb-3">Мэдээ</h1>
+      {!res || !res.ok ? <div className="alert alert-danger">Backend API unavailable.</div> : null}
       <p className="text-muted small mb-3">
         <code>news</code> — жагсаалт. Summernote редакторыг дараа нь оруулна.
         {status === "draft" ? (
@@ -42,7 +42,7 @@ export default async function AdminNewsPage({ searchParams }: Props) {
                 <td>{r.title}</td>
                 <td className="small text-break">{r.slug}</td>
                 <td>{r.status}</td>
-                <td className="small">{r.createdAt.toISOString().slice(0, 10)}</td>
+                <td className="small">{String(r.createdAt).slice(0, 10)}</td>
               </tr>
             ))}
           </tbody>

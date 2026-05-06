@@ -75,3 +75,30 @@ exports.membersList = async (_req, res) => {
     });
   }
 };
+
+/** Mirrors admin news list previously loaded via Prisma. */
+exports.newsList = async (req, res) => {
+  try {
+    const status = String(req.query?.status || "").trim();
+    const where = status === "draft" ? { status: "draft" } : undefined;
+    const rows = await db.NewsArticle.findAll({
+      where,
+      order: [["createdAt", "DESC"]],
+      limit: 200,
+      attributes: ["id", "title", "slug", "status", "createdAt"],
+      raw: true,
+    });
+    res.json({
+      ok: true,
+      rows: rows.map((r) => ({
+        ...r,
+        createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
+};
