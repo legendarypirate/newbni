@@ -1,18 +1,25 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { serverAuthedFetch } from "@admin/lib/server-authed-fetch";
 
 export const metadata = { title: "Хурлууд | Админ" };
 
 export default async function AdminBniEventsPage() {
-  const rows = await prisma.bniEvent.findMany({
-    orderBy: { startsAt: "desc" },
-    take: 200,
-    include: { chapter: { select: { name: true } } },
-  });
+  const res = await serverAuthedFetch("/events").catch(() => null);
+  const data = (res ? await res.json().catch(() => ({})) : {}) as {
+    events?: Array<{
+      id: string;
+      eventType: string;
+      chapterName?: string | null;
+      startsAt: string;
+      endsAt: string;
+    }>;
+  };
+  const rows = Array.isArray(data.events) ? data.events : [];
 
   return (
     <div>
       <h1 className="h4 fw-bold mb-3">Хурлууд</h1>
+      {!res || !res.ok ? <div className="alert alert-danger">Backend API unavailable.</div> : null}
       <p className="text-muted small mb-3">
         <code>bni_events</code> — жагсаалт. Календар / засварын UI дараа нь.
       </p>
@@ -34,10 +41,10 @@ export default async function AdminBniEventsPage() {
             {rows.map((r) => (
               <tr key={String(r.id)}>
                 <td>{String(r.id)}</td>
-                <td>{r.chapter?.name ?? "—"}</td>
+                <td>{r.chapterName ?? "—"}</td>
                 <td className="small">{r.eventType}</td>
-                <td className="small">{r.startsAt.toISOString().slice(0, 16)}</td>
-                <td className="small">{r.endsAt.toISOString().slice(0, 16)}</td>
+                <td className="small">{String(r.startsAt).slice(0, 16)}</td>
+                <td className="small">{String(r.endsAt).slice(0, 16)}</td>
                 <td className="text-end text-nowrap">
                   <Link
                     href={`/admin/events/${String(r.id)}/registration-responses`}

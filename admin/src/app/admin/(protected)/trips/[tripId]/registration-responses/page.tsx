@@ -1,42 +1,19 @@
-import AdminRegistrationResponseGrid from "@/components/admin/AdminRegistrationResponseGrid";
-import { loadTripRegistrationGridRows } from "@/lib/admin-form-response-grid-data";
-import { buildRegistrationGridSections } from "@/lib/admin-registration-response-grid";
-import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
-
 type Props = { params: Promise<{ tripId: string }> };
 
 export async function generateMetadata({ params }: Props) {
   const { tripId: raw } = await params;
-  const id = Math.max(0, Number.parseInt(raw, 10));
-  if (!Number.isFinite(id) || id < 1) return { title: "Хариултууд | Админ" };
-  const trip = await prisma.businessTrip.findUnique({ where: { id }, select: { destination: true } });
-  const t = trip?.destination?.trim() || `Аялал #${id}`;
-  return { title: `${t} — хариултууд | Админ` };
+  return { title: `Аялал #${raw} — хариултууд | Админ` };
 }
 
 export default async function AdminTripRegistrationResponsesPage({ params }: Props) {
   const { tripId: raw } = await params;
-  const tripId = Math.max(0, Number.parseInt(raw, 10));
-  if (!Number.isFinite(tripId) || tripId < 1) notFound();
-
-  const trip = await prisma.businessTrip.findUnique({
-    where: { id: tripId },
-    select: { destination: true },
-  });
-  if (!trip) notFound();
-
-  const rows = await loadTripRegistrationGridRows(tripId);
-  const sections = buildRegistrationGridSections(rows);
-
   return (
-    <AdminRegistrationResponseGrid
-      title={`Аялал #${tripId} — ${trip.destination?.trim() || "Бизнес аялал"}`}
-      subtitle="Мөр бүр = нэг илгээлт. Багана бүрт бүрэн асуултын гарчиг. Асуултын багц өөрчлөгдвөл доор шинэ хүснэг эхэлнэ."
-      backHref="/admin/trips"
-      backLabel="Аяллын жагсаалт"
-      sections={sections}
-      exportDownloadHref={`/api/admin/trips/${tripId}/registration-responses/export`}
-    />
+    <div>
+      <h1 className="h4 fw-bold mb-3">Аялал #{raw} — хариултууд</h1>
+      <div className="alert alert-info">API-only migration in progress.</div>
+      <a className="btn btn-sm btn-outline-primary" href={`/api/admin/trips/${raw}/registration-responses/export`}>
+        CSV татах
+      </a>
+    </div>
   );
 }

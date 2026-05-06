@@ -1,45 +1,19 @@
-import AdminRegistrationResponseGrid from "@/components/admin/AdminRegistrationResponseGrid";
-import { loadEventRegistrationGridRows } from "@/lib/admin-form-response-grid-data";
-import { buildRegistrationGridSections } from "@/lib/admin-registration-response-grid";
-import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
-
 type Props = { params: Promise<{ eventId: string }> };
 
 export async function generateMetadata({ params }: Props) {
   const { eventId: raw } = await params;
-  if (!/^\d+$/.test(raw.trim())) return { title: "Хариултууд | Админ" };
-  const ev = await prisma.bniEvent.findUnique({
-    where: { id: BigInt(raw.trim()) },
-    select: { title: true },
-  });
-  const t = ev?.title?.trim() || `Эвент #${raw}`;
-  return { title: `${t} — хариултууд | Админ` };
+  return { title: `Эвент #${raw} — хариултууд | Админ` };
 }
 
 export default async function AdminEventRegistrationResponsesPage({ params }: Props) {
   const { eventId: raw } = await params;
-  const trimmed = raw.trim();
-  if (!/^\d+$/.test(trimmed)) notFound();
-  const eventId = BigInt(trimmed);
-
-  const ev = await prisma.bniEvent.findUnique({
-    where: { id: eventId },
-    select: { title: true },
-  });
-  if (!ev) notFound();
-
-  const rows = await loadEventRegistrationGridRows(eventId);
-  const sections = buildRegistrationGridSections(rows);
-
   return (
-    <AdminRegistrationResponseGrid
-      title={`Эвент #${trimmed} — ${ev.title?.trim() || "Хурал"}`}
-      subtitle="Мөр бүр = нэг илгээлт. Багана бүрт бүрэн асуултын гарчиг. Асуулт өөрчлөгдвөл доор шинэ хүснэг."
-      backHref="/admin/meetings"
-      backLabel="Хурал / эвент руу"
-      sections={sections}
-      exportDownloadHref={`/api/admin/events/${trimmed}/registration-responses/export`}
-    />
+    <div>
+      <h1 className="h4 fw-bold mb-3">Эвент #{raw} — хариултууд</h1>
+      <div className="alert alert-info">API-only migration in progress.</div>
+      <a className="btn btn-sm btn-outline-primary" href={`/api/admin/events/${raw}/registration-responses/export`}>
+        CSV татах
+      </a>
+    </div>
   );
 }

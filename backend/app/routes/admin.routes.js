@@ -16,6 +16,7 @@ module.exports = (app) => {
   router.get("/members", authMiddleware, requirePlatformAdminJwt, admin.membersList);
   router.get("/news", authMiddleware, requirePlatformAdminJwt, admin.newsList);
   router.get("/bni-memberships", authMiddleware, requirePlatformAdminJwt, admin.membershipsList);
+  router.get("/payment-orders", authMiddleware, requirePlatformAdminJwt, admin.paymentOrdersList);
 
   router.get("/platform-accounts", authMiddleware, requirePlatformAdminJwt, platformAccounts.listPlatformAccounts);
   router.post("/platform-accounts", authMiddleware, requirePlatformAdminJwt, platformAccounts.createPlatformStaffUser);

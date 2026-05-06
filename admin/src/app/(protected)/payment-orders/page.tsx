@@ -1,38 +1,34 @@
-import { prisma } from "@/lib/prisma";
+import { serverAuthedFetch } from "@admin/lib/server-authed-fetch";
 
 export const metadata = { title: "QPay төлбөрүүд | Админ" };
 
 export default async function AdminPaymentOrdersPage() {
-  let rows: {
-    id: bigint;
+  const res = await serverAuthedFetch("/admin/payment-orders").catch(() => null);
+  const data = (res ? await res.json().catch(() => ({})) : {}) as {
+    rows?: Array<{
+      id: string;
+      orderRef: string;
+      targetType: string;
+      targetId: string;
+      amountMnt: number;
+      status: string;
+      createdAt: string;
+    }>;
+  };
+  const rows: {
+    id: string;
     orderRef: string;
     targetType: string;
-    targetId: bigint;
+    targetId: string;
     amountMnt: number;
     status: string;
-    createdAt: Date;
-  }[] = [];
-  try {
-    rows = await prisma.paymentOrder.findMany({
-      orderBy: { id: "desc" },
-      take: 200,
-      select: {
-        id: true,
-        orderRef: true,
-        targetType: true,
-        targetId: true,
-        amountMnt: true,
-        status: true,
-        createdAt: true,
-      },
-    });
-  } catch {
-    /* */
-  }
+    createdAt: string;
+  }[] = Array.isArray(data.rows) ? data.rows : [];
 
   return (
     <div>
       <h1 className="h4 fw-bold mb-3">QPay төлбөрүүд</h1>
+      {!res || !res.ok ? <div className="alert alert-danger">Backend API unavailable.</div> : null}
       <div className="table-responsive">
         <table className="table table-hover">
           <thead>
@@ -55,7 +51,7 @@ export default async function AdminPaymentOrdersPage() {
                 </td>
                 <td>{r.amountMnt.toLocaleString()}</td>
                 <td>{r.status}</td>
-                <td className="small">{r.createdAt.toISOString().slice(0, 19)}</td>
+                <td className="small">{String(r.createdAt).slice(0, 19)}</td>
               </tr>
             ))}
           </tbody>

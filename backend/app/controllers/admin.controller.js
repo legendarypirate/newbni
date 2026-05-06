@@ -131,3 +131,25 @@ exports.membershipsList = async (_req, res) => {
     });
   }
 };
+
+exports.paymentOrdersList = async (_req, res) => {
+  try {
+    const rows = await db.PaymentOrder.findAll({
+      order: [["id", "DESC"]],
+      limit: 200,
+      attributes: ["id", "orderRef", "targetType", "targetId", "amountMnt", "status", "createdAt"],
+      raw: true,
+    });
+    res.json({
+      ok: true,
+      rows: rows.map((r) => ({
+        ...r,
+        id: String(r.id),
+        targetId: String(r.targetId),
+        createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, message: err instanceof Error ? err.message : String(err) });
+  }
+};
