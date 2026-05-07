@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Suspense } from "react";
 import BackendApiFetchPatch from "@/components/BackendApiFetchPatch";
+import RuntimePublicConfig from "@/components/RuntimePublicConfig";
 import TokenHandler from "./TokenHandler";
 import "./globals.css";
 
@@ -25,6 +26,7 @@ export default function RootLayout({
         <link rel="stylesheet" href="/assets/css/busy-ui-unified.css" />
       </head>
       <body>
+        <RuntimePublicConfig />
         <BackendApiFetchPatch />
         <Suspense><TokenHandler /></Suspense>
         {children}

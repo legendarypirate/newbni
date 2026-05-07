@@ -3,6 +3,7 @@ import Script from "next/script";
 import "./globals.css";
 import { Suspense } from "react";
 import BackendApiFetchPatch from "@/components/BackendApiFetchPatch";
+import RuntimePublicConfig from "@/components/RuntimePublicConfig";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { marketingSiteOrigin } from "@/lib/marketing-site-origin";
@@ -55,6 +56,7 @@ export default function RootLayout({
         <link rel="stylesheet" href="/assets/css/busy-ui-unified.css" />
       </head>
       <body className="page-home">
+        <RuntimePublicConfig />
         <BackendApiFetchPatch />
         <Suspense><TokenHandler /></Suspense>
         <header className="site-header sticky-top border-bottom bg-white" style={{ zIndex: 1030 }}>

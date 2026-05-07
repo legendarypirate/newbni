@@ -15,8 +15,20 @@
  * All output ends with `/api` (suitable for `${base}/platform/...`).
  */
 
+declare global {
+  interface Window {
+    __BUSY_PUBLIC_CONFIG__?: { publicApiUrl?: string };
+  }
+}
+
 function trimSlash(s: string): string {
   return s.replace(/\/+$/, "");
+}
+
+/** Read API URL from runtime-injected config (set by `RuntimePublicConfig`). */
+function readRuntimeApiUrl(): string {
+  if (typeof window === "undefined") return "";
+  return String(window.__BUSY_PUBLIC_CONFIG__?.publicApiUrl || "").trim();
 }
 
 function withApiSuffix(base: string): string {
@@ -65,17 +77,23 @@ export function apiBase(): string {
     return "http://127.0.0.1:3001/api";
   }
 
+  // 1. Runtime-injected value (most authoritative — survives stale bundles).
+  const runtime = withApiSuffix(readRuntimeApiUrl());
+  if (runtime && !isLocalHostUrl(runtime)) return runtime;
+
+  // 2. Hard-coded host map for known busy.mn deployments.
   const host = window.location.hostname;
   const mapped = mapBrowserHostToApiBase(host);
   if (mapped) return mapped;
 
-  const pub = process.env.NEXT_PUBLIC_API_URL || "";
-  // If the build baked in a localhost URL but we're running on a non-local host,
-  // ignore it; otherwise honor it.
-  if (pub && !(isLocalHostUrl(pub) && host !== "localhost" && host !== "127.0.0.1")) {
-    return withApiSuffix(pub);
+  // 3. Build-time baked env (only honoured if it makes sense for this host).
+  const baked = withApiSuffix(process.env.NEXT_PUBLIC_API_URL || "");
+  if (baked && !(isLocalHostUrl(baked) && host !== "localhost" && host !== "127.0.0.1")) {
+    return baked;
   }
 
+  // 4. Runtime localhost (dev fallback).
+  if (runtime) return runtime;
   return "http://localhost:3001/api";
 }
 
@@ -91,15 +109,23 @@ export function publicApiBase(): string {
     return "http://localhost:3001/api";
   }
 
+  // 1. Runtime-injected value wins (matches whatever the running server has).
+  const runtime = withApiSuffix(readRuntimeApiUrl());
+  if (runtime && !isLocalHostUrl(runtime)) return runtime;
+
+  // 2. Known busy.mn host map.
   const host = window.location.hostname;
   const mapped = mapBrowserHostToApiBase(host);
   if (mapped) return mapped;
 
-  const pub = process.env.NEXT_PUBLIC_API_URL || "";
-  if (pub && !(isLocalHostUrl(pub) && host !== "localhost" && host !== "127.0.0.1")) {
-    return withApiSuffix(pub);
+  // 3. Build-time baked env.
+  const baked = withApiSuffix(process.env.NEXT_PUBLIC_API_URL || "");
+  if (baked && !(isLocalHostUrl(baked) && host !== "localhost" && host !== "127.0.0.1")) {
+    return baked;
   }
 
+  // 4. Runtime localhost (dev) → final fallback.
+  if (runtime) return runtime;
   return "http://localhost:3001/api";
 }
 
