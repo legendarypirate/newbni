@@ -1,21 +1,125 @@
-import Image from "next/image";
+"use client";
+
 import Link from "next/link";
-import type { GrowthHint, PlatformDashboardStats } from "@/lib/platform-dashboard-stats";
-import { formatPlatformInteger, formatPlatformRevenue } from "@/lib/platform-dashboard-stats";
+import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api-client";
+
+type GrowthHint = { pctLabel: string; tone: "up" | "down" | "neutral"; sublabel: string };
+
+type Metrics = {
+  totalEvents: number;
+  eventGrowth: GrowthHint;
+  upcomingNext30d: number;
+  totalRegistrations: number;
+  registrationGrowth: GrowthHint;
+  attendancePresent: number;
+  attendanceTotal: number;
+  attendancePct: number | null;
+  revenueTotalMnt: number;
+  revenueGrowth: GrowthHint;
+  pendingApprovals: number;
+};
+
+type EventTableRow = {
+  kind: "event" | "trip";
+  id: string;
+  title: string;
+  eventType: string;
+  startsAt: string;
+  endsAt: string;
+  location: string;
+  isOnline: boolean;
+  registeredCount: number;
+  capacity: number | null;
+  statusLabel: string | null;
+  coverUrl: string | null;
+};
+
+type RecentAttendee = {
+  id: string;
+  fullName: string;
+  company: string;
+  status: string;
+  paymentStatus: string;
+  createdAt: string;
+};
+
+type DashboardPayload = {
+  scope: "user" | "admin";
+  metrics: Metrics;
+  events: EventTableRow[];
+  funnel: { interested: number; registered: number; paid: number; attended: number };
+  statusBreakdown: {
+    confirmed: number;
+    pending: number;
+    attended: number;
+    cancelled: number;
+    total: number;
+  };
+  recentAttendees: RecentAttendee[];
+  topEvents: { title: string; count: number }[];
+  tickets: { label: string; priceMnt: number; free: boolean; active: boolean }[];
+  schedule: { time: string; title: string }[];
+  sparkline: number[];
+  revenueLast30: number;
+};
+
+const EMPTY_METRICS: Metrics = {
+  totalEvents: 0,
+  eventGrowth: { pctLabel: "0%", tone: "neutral", sublabel: "" },
+  upcomingNext30d: 0,
+  totalRegistrations: 0,
+  registrationGrowth: { pctLabel: "0%", tone: "neutral", sublabel: "" },
+  attendancePresent: 0,
+  attendanceTotal: 0,
+  attendancePct: null,
+  revenueTotalMnt: 0,
+  revenueGrowth: { pctLabel: "0%", tone: "neutral", sublabel: "" },
+  pendingApprovals: 0,
+};
+
+function formatInteger(n: number): string {
+  return Math.round(n).toLocaleString("mn-MN");
+}
+
+function formatMoney(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return "0₮";
+  return `${Math.round(n).toLocaleString("mn-MN")}₮`;
+}
+
+function formatPct(numerator: number, denominator: number): string {
+  if (denominator <= 0) return "0%";
+  return `${Math.round((numerator / denominator) * 100)}%`;
+}
+
+function formatEventDate(iso: string): { date: string; time: string } {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return { date: "—", time: "" };
+  const date = d.toLocaleDateString("mn-MN", { year: "numeric", month: "2-digit", day: "2-digit" });
+  const time = d.toLocaleTimeString("mn-MN", { hour: "2-digit", minute: "2-digit" });
+  return { date, time };
+}
+
+function eventTypeBadge(kind: EventTableRow["kind"], type: string) {
+  if (kind === "trip") {
+    return { label: "Аялал", bg: "#f0fdf4", color: "#15803d" };
+  }
+  if (type === "weekly_meeting") return { label: "BNI", bg: "#eff6ff", color: "#2563eb" };
+  if (type === "visitor_day") return { label: "MEGA Visitor", bg: "#f5f3ff", color: "#7c3aed" };
+  if (type === "training") return { label: "Сургалт", bg: "#fffbeb", color: "#b45309" };
+  if (type === "social") return { label: "Social", bg: "#fef2f2", color: "#dc2626" };
+  return { label: "Event", bg: "#f1f5f9", color: "#475569" };
+}
 
 function GrowthMeta({ hint }: { hint: GrowthHint }) {
-  const toneClass =
-    hint.tone === "up" || (hint.tone === "neutral" && hint.pctLabel === "Шинэ")
-      ? "up"
-      : hint.tone === "down"
-        ? "down"
-        : "";
-  const showCaret = hint.tone === "up" || hint.tone === "down";
+  const tone = hint.tone;
+  const toneClass = tone === "up" || (tone === "neutral" && hint.pctLabel === "Шинэ") ? "up" : tone === "down" ? "down" : "";
+  const showCaret = tone === "up" || tone === "down";
   return (
     <div className={`pl-org-metric-meta${toneClass ? ` ${toneClass}` : ""}`.trim()}>
       {showCaret ? (
         <>
-          <i className={`fa-solid fa-caret-${hint.tone === "up" ? "up" : "down"}`} /> {hint.pctLabel}{" "}
+          <i className={`fa-solid fa-caret-${tone === "up" ? "up" : "down"}`} /> {hint.pctLabel}{" "}
         </>
       ) : (
         <>{hint.pctLabel ? `${hint.pctLabel} ` : null}</>
@@ -25,8 +129,123 @@ function GrowthMeta({ hint }: { hint: GrowthHint }) {
   );
 }
 
-/** Mirrors legacy `platform-home.php` dashboard (`?panel=dashboard`) — top metrics from DB; table/widgets demo. */
-export default function DashboardPanel({ stats }: { stats: PlatformDashboardStats }) {
+function DonutChart({ confirmed, pending, attended, cancelled }: { confirmed: number; pending: number; attended: number; cancelled: number }) {
+  const total = confirmed + pending + attended + cancelled;
+  if (total <= 0) {
+    return (
+      <div style={{ position: "relative", width: 130, height: 130, margin: "0 auto" }}>
+        <svg viewBox="0 0 36 36" style={{ width: "100%", height: "100%" }}>
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f1f5f9" strokeWidth="3" />
+        </svg>
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center" }}>
+          <div className="fw-bold" style={{ fontSize: "1.1rem" }}>0</div>
+          <div className="smaller text-muted">Нийт</div>
+        </div>
+      </div>
+    );
+  }
+  const segments = [
+    { value: confirmed, color: "#10b981" },
+    { value: pending, color: "#f59e0b" },
+    { value: attended, color: "#3b82f6" },
+    { value: cancelled, color: "#ef4444" },
+  ];
+  let offset = 0;
+  return (
+    <div style={{ position: "relative", width: 130, height: 130, margin: "0 auto" }}>
+      <svg viewBox="0 0 36 36" style={{ width: "100%", height: "100%", transform: "rotate(-90deg)" }}>
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f1f5f9" strokeWidth="3" />
+        {segments.map((seg, i) => {
+          const pct = (seg.value / total) * 100;
+          const dash = `${pct} ${100 - pct}`;
+          const node = (
+            <circle
+              key={i}
+              cx="18"
+              cy="18"
+              r="15.9"
+              fill="none"
+              stroke={seg.color}
+              strokeWidth="3"
+              strokeDasharray={dash}
+              strokeDashoffset={-offset}
+            />
+          );
+          offset += pct;
+          return node;
+        })}
+      </svg>
+      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center" }}>
+        <div className="fw-bold" style={{ fontSize: "1.1rem" }}>{formatInteger(total)}</div>
+        <div className="smaller text-muted">Нийт</div>
+      </div>
+    </div>
+  );
+}
+
+function Sparkline({ values }: { values: number[] }) {
+  const w = 280;
+  const h = 80;
+  const max = Math.max(1, ...values);
+  const step = w / Math.max(1, values.length - 1);
+  const points = values
+    .map((v, i) => `${Math.round(i * step)},${Math.round(h - (v / max) * (h - 10) - 5)}`)
+    .join(" ");
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h}>
+      <polyline fill="none" stroke="#2563eb" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" points={points} />
+    </svg>
+  );
+}
+
+export default function DashboardPanel() {
+  const [data, setData] = useState<DashboardPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch("/platform/dashboard");
+        if (!res.ok) {
+          if (!cancelled) {
+            setError("Хяналтын самбарын мэдээлэл татаж чадсангүй.");
+            setLoading(false);
+          }
+          return;
+        }
+        const json = (await res.json()) as { ok?: boolean; data?: DashboardPayload };
+        if (!cancelled) {
+          if (json.ok && json.data) setData(json.data);
+          else setError("Хяналтын самбарын мэдээлэл татаж чадсангүй.");
+          setLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setError("Сүлжээний алдаа.");
+          setLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const metrics = data?.metrics ?? EMPTY_METRICS;
+  const events = data?.events ?? [];
+  const funnel = data?.funnel ?? { interested: 0, registered: 0, paid: 0, attended: 0 };
+  const statusBreakdown = data?.statusBreakdown ?? { confirmed: 0, pending: 0, attended: 0, cancelled: 0, total: 0 };
+  const recentAttendees = data?.recentAttendees ?? [];
+  const topEvents = data?.topEvents ?? [];
+  const tickets = data?.tickets ?? [];
+  const schedule = data?.schedule ?? [];
+  const sparkline = data?.sparkline ?? [0, 0, 0, 0, 0, 0, 0];
+  const revenueLast30 = data?.revenueLast30 ?? 0;
+
+  const lastWeekRegs = useMemo(() => sparkline.reduce((sum, n) => sum + n, 0), [sparkline]);
+
   return (
     <div className="pl-main-grid">
       <div className="pl-main-content">
@@ -34,40 +253,44 @@ export default function DashboardPanel({ stats }: { stats: PlatformDashboardStat
         <p className="pl-main-desc mb-4">
           Арга хэмжээ үүсгэх, оролцогч бүртгэх, хуваарь удирдах, тайлан авах цогц удирдлагын систем.
         </p>
+
+        {error ? <div className="alert alert-warning small py-2 mb-3">{error}</div> : null}
+
         <div className="pl-org-metric-grid">
           <div className="pl-org-metric-card">
             <div className="pl-org-metric-label">
               <i className="fa-regular fa-calendar-check" /> Нийт арга хэмжээ
             </div>
-            <div className="pl-org-metric-val">{formatPlatformInteger(stats.totalEvents)}</div>
-            <GrowthMeta hint={stats.eventGrowth} />
+            <div className="pl-org-metric-val">{formatInteger(metrics.totalEvents)}</div>
+            <GrowthMeta hint={metrics.eventGrowth} />
           </div>
           <div className="pl-org-metric-card">
             <div className="pl-org-metric-label">
               <i className="fa-regular fa-clock" /> Удахгүй болох
             </div>
-            <div className="pl-org-metric-val">{formatPlatformInteger(stats.upcomingNext30d)}</div>
+            <div className="pl-org-metric-val">{formatInteger(metrics.upcomingNext30d)}</div>
             <div className="pl-org-metric-meta text-muted">Дараагийн 30 хоногт</div>
           </div>
           <div className="pl-org-metric-card">
             <div className="pl-org-metric-label">
               <i className="fa-regular fa-user" /> Нийт бүртгэл
             </div>
-            <div className="pl-org-metric-val">{formatPlatformInteger(stats.totalRegistrations)}</div>
-            <GrowthMeta hint={stats.registrationGrowth} />
+            <div className="pl-org-metric-val">{formatInteger(metrics.totalRegistrations)}</div>
+            <GrowthMeta hint={metrics.registrationGrowth} />
           </div>
           <div className="pl-org-metric-card">
             <div className="pl-org-metric-label">
-              <i className="fa-regular fa-circle-check" /> Ирц бүртгэсэн
+              <i className="fa-regular fa-circle-check" /> Баталгаажсан
             </div>
-            <div className="pl-org-metric-val">{formatPlatformInteger(stats.attendancePresent)}</div>
+            <div className="pl-org-metric-val">{formatInteger(metrics.attendancePresent)}</div>
             <div className="pl-org-metric-meta" style={{ color: "#10b981" }}>
-              {stats.attendancePct != null ? (
+              {metrics.attendancePct != null ? (
                 <>
-                  <b>{stats.attendancePct}%</b> <span className="text-muted fw-normal">ирцийн хувь (7 хоногийн хурал)</span>
+                  <b>{metrics.attendancePct}%</b>{" "}
+                  <span className="text-muted fw-normal">баталгаажсан хувь</span>
                 </>
               ) : (
-                <span className="text-muted fw-normal">Ирцийн өгөгдөл байхгүй</span>
+                <span className="text-muted fw-normal">Өгөгдөл байхгүй</span>
               )}
             </div>
           </div>
@@ -76,18 +299,19 @@ export default function DashboardPanel({ stats }: { stats: PlatformDashboardStat
               <i className="fa-solid fa-coins" /> Нийт орлого
             </div>
             <div className="pl-org-metric-val" style={{ fontSize: "1rem" }}>
-              {formatPlatformRevenue(stats.revenueTotalMnt)}
+              {formatMoney(metrics.revenueTotalMnt)}
             </div>
-            <GrowthMeta hint={stats.revenueGrowth} />
+            <GrowthMeta hint={metrics.revenueGrowth} />
           </div>
           <div className="pl-org-metric-card">
             <div className="pl-org-metric-label">
               <i className="fa-regular fa-hourglass-half" /> Хүлээгдэж буй
             </div>
-            <div className="pl-org-metric-val">{formatPlatformInteger(stats.pendingApprovals)}</div>
-            <div className="pl-org-metric-meta text-warning">Төлбөр, зөвшөөрөл, гишүүн элсэлт</div>
+            <div className="pl-org-metric-val">{formatInteger(metrics.pendingApprovals)}</div>
+            <div className="pl-org-metric-meta text-warning">Хариулт, төлбөр шалгах</div>
           </div>
         </div>
+
         <div className="pl-btn-row">
           <Link href="/platform/events" className="btn-pl btn-pl-primary text-decoration-none">
             <i className="fa-solid fa-plus" /> Шинэ арга хэмжээ үүсгэх
@@ -98,42 +322,14 @@ export default function DashboardPanel({ stats }: { stats: PlatformDashboardStat
           <Link href="/platform/events" className="btn-pl text-decoration-none">
             <i className="fa-solid fa-m" style={{ color: "#7c3aed" }} /> MEGA Visitor үүсгэх
           </Link>
-          <Link href="/platform/events" className="btn-pl text-decoration-none">
-            <i className="fa-solid fa-store" /> Экспо үүсгэх
-          </Link>
           <Link href="/platform/trips" className="btn-pl text-decoration-none">
             <i className="fa-solid fa-plane-up" /> Аялал нэмэх
           </Link>
         </div>
+
         <div className="pl-table-card">
           <div className="pl-table-header">
             <div className="pl-table-title">Арга хэмжээний удирдлага</div>
-            <div className="pl-filter-row">
-              <select className="pl-filter-select">
-                <option>Төрөл: Бүх</option>
-              </select>
-              <select className="pl-filter-select">
-                <option>Огноо: Бүх</option>
-              </select>
-              <select className="pl-filter-select">
-                <option>Статус: Бүх</option>
-              </select>
-              <div className="pl-search-wrap">
-                <i className="fa-solid fa-magnifying-glass pl-search-icon" />
-                <input type="text" className="pl-search-input" placeholder="Хайх..." />
-              </div>
-              <button type="button" className="pl-filter-btn" title="Шүүлтүүр">
-                <i className="fa-solid fa-sliders" />
-              </button>
-              <div className="pl-view-toggle">
-                <button className="active" type="button">
-                  <i className="fa-solid fa-list" />
-                </button>
-                <button type="button">
-                  <i className="fa-solid fa-table-cells-large" />
-                </button>
-              </div>
-            </div>
           </div>
           <table className="pl-table">
             <thead>
@@ -148,196 +344,88 @@ export default function DashboardPanel({ stats }: { stats: PlatformDashboardStat
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>
-                  <div className="pl-event-item">
-                    <Image
-                      src="https://images.unsplash.com/photo-1511578314322-379afb476865?w=80&auto=format&fit=crop"
-                      alt=""
-                      width={56}
-                      height={56}
-                      className="pl-event-img"
-                      unoptimized
-                    />
-                    <div>
-                      <div className="fw-bold">BNI 7 хоногийн бизнес хурал</div>
-                      <div className="smaller text-muted">#EVT-2025-058</div>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <span className="pl-badge" style={{ background: "#eff6ff", color: "#2563eb" }}>
-                    BNI
-                  </span>
-                </td>
-                <td>
-                  <div className="fw-bold">2025.05.23 (Ба)</div>
-                  <div className="smaller text-muted">07:00–09:00</div>
-                </td>
-                <td>
-                  <div className="fw-bold">Shangri-La Hotel</div>
-                  <div className="smaller text-muted">Улаанбаатар</div>
-                </td>
-                <td>
-                  <div className="smaller fw-bold mb-1">128 / 150</div>
-                  <div className="progress" style={{ height: 4, borderRadius: 2 }}>
-                    <div className="progress-bar bg-primary" style={{ width: "85%" }} />
-                  </div>
-                </td>
-                <td>
-                  <span className="pl-badge" style={{ background: "#ecfdf5", color: "#10b981" }}>
-                    Идэвхтэй
-                  </span>
-                </td>
-                <td>
-                  <div className="d-flex justify-content-end gap-2">
-                    <button type="button" className="pl-act-btn">
-                      <i className="fa-solid fa-pen" />
-                    </button>
-                    <button type="button" className="pl-act-btn">
-                      <i className="fa-solid fa-user-plus" />
-                    </button>
-                    <button type="button" className="pl-act-btn">
-                      <i className="fa-solid fa-ellipsis-vertical" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <div className="pl-event-item">
-                    <Image
-                      src="https://images.unsplash.com/photo-1540575861501-7ce05b47ab71?w=80&auto=format&fit=crop"
-                      alt=""
-                      width={56}
-                      height={56}
-                      className="pl-event-img"
-                      unoptimized
-                    />
-                    <div>
-                      <div className="fw-bold">MEGA Visitor хурал</div>
-                      <div className="smaller text-muted">#EVT-2025-057</div>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <span className="pl-badge" style={{ background: "#f5f3ff", color: "#7c3aed" }}>
-                    MEGA Visitor
-                  </span>
-                </td>
-                <td>
-                  <div className="fw-bold">2025.05.29 (Пү)</div>
-                  <div className="smaller text-muted">14:00–17:00</div>
-                </td>
-                <td>
-                  <div className="fw-bold">Corporate Hotel</div>
-                  <div className="smaller text-muted">Улаанбаатар</div>
-                </td>
-                <td>
-                  <div className="smaller fw-bold mb-1">96 / 120</div>
-                  <div className="progress" style={{ height: 4, borderRadius: 2 }}>
-                    <div className="progress-bar bg-primary" style={{ width: "80%" }} />
-                  </div>
-                </td>
-                <td>
-                  <span className="pl-badge" style={{ background: "#ecfdf5", color: "#10b981" }}>
-                    Идэвхтэй
-                  </span>
-                </td>
-                <td>
-                  <div className="d-flex justify-content-end gap-2">
-                    <button type="button" className="pl-act-btn">
-                      <i className="fa-solid fa-pen" />
-                    </button>
-                    <button type="button" className="pl-act-btn">
-                      <i className="fa-solid fa-user-plus" />
-                    </button>
-                    <button type="button" className="pl-act-btn">
-                      <i className="fa-solid fa-ellipsis-vertical" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <div className="pl-event-item">
-                    <Image
-                      src="https://images.unsplash.com/photo-1561489422-45027f1cbc13?w=80&auto=format&fit=crop"
-                      alt=""
-                      width={56}
-                      height={56}
-                      className="pl-event-img"
-                      unoptimized
-                    />
-                    <div>
-                      <div className="fw-bold">Mongolia Mining Expo Meetup</div>
-                      <div className="smaller text-muted">#EVT-2025-056</div>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <span className="pl-badge" style={{ background: "#fff7ed", color: "#ea580c" }}>
-                    Экспо
-                  </span>
-                </td>
-                <td>
-                  <div className="fw-bold">2025.06.12 (Пү)</div>
-                  <div className="smaller text-muted">10:00–16:00</div>
-                </td>
-                <td>
-                  <div className="fw-bold">Blue Sky Tower</div>
-                  <div className="smaller text-muted">Улаанбаатар</div>
-                </td>
-                <td>
-                  <div className="smaller fw-bold mb-1">210 / 250</div>
-                  <div className="progress" style={{ height: 4, borderRadius: 2 }}>
-                    <div className="progress-bar bg-warning" style={{ width: "84%" }} />
-                  </div>
-                </td>
-                <td>
-                  <span className="pl-badge" style={{ background: "#fff7ed", color: "#f59e0b" }}>
-                    Хүлээгдэж буй
-                  </span>
-                </td>
-                <td>
-                  <div className="d-flex justify-content-end gap-2">
-                    <button type="button" className="pl-act-btn">
-                      <i className="fa-solid fa-pen" />
-                    </button>
-                    <button type="button" className="pl-act-btn">
-                      <i className="fa-solid fa-user-plus" />
-                    </button>
-                    <button type="button" className="pl-act-btn">
-                      <i className="fa-solid fa-ellipsis-vertical" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="text-center text-muted py-4">
+                    Уншиж байна…
+                  </td>
+                </tr>
+              ) : events.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center text-muted py-4">
+                    Арга хэмжээ бүртгэгдээгүй байна.
+                  </td>
+                </tr>
+              ) : (
+                events.map((e) => {
+                  const badge = eventTypeBadge(e.kind, e.eventType);
+                  const start = formatEventDate(e.startsAt);
+                  const end = formatEventDate(e.endsAt);
+                  const editHref =
+                    e.kind === "trip"
+                      ? `/platform/trips?edit_trip=${e.id}`
+                      : `/platform/events?edit_event=${e.id}`;
+                  return (
+                    <tr key={`${e.kind}-${e.id}`}>
+                      <td>
+                        <div className="pl-event-item">
+                          {e.coverUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={e.coverUrl} alt="" width={56} height={56} className="pl-event-img" />
+                          ) : (
+                            <div
+                              className="pl-event-img d-flex align-items-center justify-content-center bg-light text-muted"
+                              style={{ width: 56, height: 56, borderRadius: 8 }}
+                            >
+                              <i className={`fa-solid ${e.kind === "trip" ? "fa-plane-up" : "fa-calendar"}`} />
+                            </div>
+                          )}
+                          <div>
+                            <div className="fw-bold">{e.title}</div>
+                            <div className="smaller text-muted">#{e.kind === "trip" ? "TRIP" : "EVT"}-{e.id}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="pl-badge" style={{ background: badge.bg, color: badge.color }}>
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="fw-bold">{start.date}</div>
+                        <div className="smaller text-muted">
+                          {start.time}{end.time ? `–${end.time}` : ""}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="fw-bold">{e.location || (e.isOnline ? "Онлайн" : "—")}</div>
+                      </td>
+                      <td>
+                        <div className="smaller fw-bold mb-1">{formatInteger(e.registeredCount)}</div>
+                      </td>
+                      <td>
+                        <span className="pl-badge" style={{ background: "#ecfdf5", color: "#10b981" }}>
+                          {e.statusLabel?.trim() || "Идэвхтэй"}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="d-flex justify-content-end gap-2">
+                          <Link href={editHref} className="pl-act-btn" aria-label="Засах">
+                            <i className="fa-solid fa-pen" />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
           <div className="p-3 border-top d-flex justify-content-between align-items-center">
-            <div className="smaller text-muted">Нийт 5 арга хэмжээ</div>
-            <div className="d-flex gap-2 align-items-center">
-              <div className="d-flex border rounded overflow-hidden">
-                <button type="button" className="btn btn-sm btn-light">
-                  <i className="fa-solid fa-chevron-left" />
-                </button>
-                <button type="button" className="btn btn-sm btn-primary px-3">
-                  1
-                </button>
-                <button type="button" className="btn btn-sm btn-light">
-                  2
-                </button>
-                <button type="button" className="btn btn-sm btn-light">
-                  <i className="fa-solid fa-chevron-right" />
-                </button>
-              </div>
-              <select className="form-select form-select-sm" style={{ width: 110 }}>
-                <option>10 / хуудас</option>
-              </select>
-            </div>
+            <div className="smaller text-muted">Нийт {formatInteger(events.length)} арга хэмжээ</div>
           </div>
         </div>
+
         <div className="pl-analytics-grid">
           <div className="pl-analytics-card">
             <div className="pl-widget-head">
@@ -353,19 +441,25 @@ export default function DashboardPanel({ stats }: { stats: PlatformDashboardStat
               <div className="pl-funnel-legend">
                 <div className="pl-funnel-legend-item">
                   <span>Нийт сонирхсон</span>
-                  <b>3,245</b>
+                  <b>{formatInteger(funnel.interested)}</b>
                 </div>
                 <div className="pl-funnel-legend-item">
                   <span>Бүртгүүлсэн</span>
-                  <b>2,458 (75.7%)</b>
+                  <b>
+                    {formatInteger(funnel.registered)} ({formatPct(funnel.registered, Math.max(funnel.interested, funnel.registered))})
+                  </b>
                 </div>
                 <div className="pl-funnel-legend-item">
                   <span>Төлбөр төлсөн</span>
-                  <b>1,942 (59.8%)</b>
+                  <b>
+                    {formatInteger(funnel.paid)} ({formatPct(funnel.paid, Math.max(funnel.registered, 1))})
+                  </b>
                 </div>
                 <div className="pl-funnel-legend-item">
-                  <span>Ирц бүртгэсэн</span>
-                  <b>1,783 (54.9%)</b>
+                  <span>Баталгаажсан</span>
+                  <b>
+                    {formatInteger(funnel.attended)} ({formatPct(funnel.attended, Math.max(funnel.registered, 1))})
+                  </b>
                 </div>
               </div>
             </div>
@@ -375,93 +469,48 @@ export default function DashboardPanel({ stats }: { stats: PlatformDashboardStat
               <span>Оролцогчийн статус</span>
             </div>
             <div className="pl-donut-wrap">
-              <div style={{ position: "relative", width: 130, height: 130, margin: "0 auto" }}>
-                <svg viewBox="0 0 36 36" style={{ width: "100%", height: "100%", transform: "rotate(-90deg)" }}>
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f1f5f9" strokeWidth="3" />
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="15.9"
-                    fill="none"
-                    stroke="#10b981"
-                    strokeWidth="3"
-                    strokeDasharray="50 50"
-                    strokeDashoffset="0"
-                  />
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="15.9"
-                    fill="none"
-                    stroke="#f59e0b"
-                    strokeWidth="3"
-                    strokeDasharray="25 75"
-                    strokeDashoffset="-50"
-                  />
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="15.9"
-                    fill="none"
-                    stroke="#3b82f6"
-                    strokeWidth="3"
-                    strokeDasharray="22 78"
-                    strokeDashoffset="-75"
-                  />
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="15.9"
-                    fill="none"
-                    stroke="#ef4444"
-                    strokeWidth="3"
-                    strokeDasharray="3 97"
-                    strokeDashoffset="-97"
-                  />
-                </svg>
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    textAlign: "center",
-                  }}
-                >
-                  <div className="fw-bold" style={{ fontSize: "1.1rem" }}>
-                    2,458
-                  </div>
-                  <div className="smaller text-muted">Нийт</div>
-                </div>
-              </div>
+              <DonutChart
+                confirmed={statusBreakdown.confirmed}
+                pending={statusBreakdown.pending}
+                attended={statusBreakdown.attended}
+                cancelled={statusBreakdown.cancelled}
+              />
               <div className="pl-donut-legend">
                 <div className="pl-donut-legend-item">
                   <span>
                     <span className="pl-donut-dot" style={{ background: "#10b981" }} />
                     Баталгаажсан
                   </span>
-                  <span>1,246 (50.7%)</span>
+                  <span>
+                    {formatInteger(statusBreakdown.confirmed)} ({formatPct(statusBreakdown.confirmed, Math.max(statusBreakdown.total, 1))})
+                  </span>
                 </div>
                 <div className="pl-donut-legend-item">
                   <span>
                     <span className="pl-donut-dot" style={{ background: "#f59e0b" }} />
                     Хүлээгдэж буй
                   </span>
-                  <span>612 (24.9%)</span>
+                  <span>
+                    {formatInteger(statusBreakdown.pending)} ({formatPct(statusBreakdown.pending, Math.max(statusBreakdown.total, 1))})
+                  </span>
                 </div>
                 <div className="pl-donut-legend-item">
                   <span>
                     <span className="pl-donut-dot" style={{ background: "#3b82f6" }} />
-                    Ирц бүртгэсэн
+                    Ирсэн
                   </span>
-                  <span>528 (21.5%)</span>
+                  <span>
+                    {formatInteger(statusBreakdown.attended)} ({formatPct(statusBreakdown.attended, Math.max(statusBreakdown.total, 1))})
+                  </span>
                 </div>
                 <div className="pl-donut-legend-item">
                   <span>
                     <span className="pl-donut-dot" style={{ background: "#ef4444" }} />
                     Цуцлагдсан
                   </span>
-                  <span>72 (2.9%)</span>
+                  <span>
+                    {formatInteger(statusBreakdown.cancelled)} ({formatPct(statusBreakdown.cancelled, Math.max(statusBreakdown.total, 1))})
+                  </span>
                 </div>
               </div>
             </div>
@@ -471,82 +520,63 @@ export default function DashboardPanel({ stats }: { stats: PlatformDashboardStat
               <div>
                 <div className="pl-widget-head">
                   <span>Сүүлийн оролцогчид</span>
-                  <Link href="#" className="smaller text-primary text-decoration-none">
+                  <Link href="/platform/trips" className="smaller text-primary text-decoration-none">
                     Бүгдийг харах
                   </Link>
                 </div>
                 <div className="pl-attendee-list">
-                  <div className="pl-attendee-item">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="https://i.pravatar.cc/32?u=10" className="rounded-circle" width={32} height={32} alt="" />
-                    <div className="flex-grow-1">
-                      <div className="fw-bold smaller">Энхбаяр С.</div>
-                      <div className="smaller text-muted">Monpolyment Group</div>
-                    </div>
-                    <span className="pl-badge" style={{ background: "#ecfdf5", color: "#10b981", fontSize: "0.65rem" }}>
-                      Баталгаажсан
-                    </span>
-                  </div>
-                  <div className="pl-attendee-item">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="https://i.pravatar.cc/32?u=11" className="rounded-circle" width={32} height={32} alt="" />
-                    <div className="flex-grow-1">
-                      <div className="fw-bold smaller">Болормаа Д.</div>
-                      <div className="smaller text-muted">Golomt Bank</div>
-                    </div>
-                    <span className="pl-badge" style={{ background: "#fff7ed", color: "#f97316", fontSize: "0.65rem" }}>
-                      Хүлээгдэж буй
-                    </span>
-                  </div>
-                  <div className="pl-attendee-item">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="https://i.pravatar.cc/32?u=12" className="rounded-circle" width={32} height={32} alt="" />
-                    <div className="flex-grow-1">
-                      <div className="fw-bold smaller">Отгонбаяр Н.</div>
-                      <div className="smaller text-muted">3 хоногийн өмнө</div>
-                    </div>
-                    <span className="pl-badge" style={{ background: "#fef2f2", color: "#ef4444", fontSize: "0.65rem" }}>
-                      Цуцлагдсан
-                    </span>
-                  </div>
+                  {recentAttendees.length === 0 ? (
+                    <div className="text-center text-muted small py-3">Оролцогч бүртгэгдээгүй.</div>
+                  ) : (
+                    recentAttendees.map((a) => (
+                      <div className="pl-attendee-item" key={a.id}>
+                        <div
+                          className="rounded-circle d-flex align-items-center justify-content-center bg-light text-muted"
+                          style={{ width: 32, height: 32, fontSize: "0.7rem" }}
+                          aria-hidden="true"
+                        >
+                          {(a.fullName || "?").trim().charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-grow-1">
+                          <div className="fw-bold smaller">{a.fullName}</div>
+                          <div className="smaller text-muted">{a.company || "—"}</div>
+                        </div>
+                        <span
+                          className="pl-badge"
+                          style={{
+                            background:
+                              a.status === "CONFIRMED" ? "#ecfdf5" : a.status === "CANCELLED" ? "#fef2f2" : "#fff7ed",
+                            color:
+                              a.status === "CONFIRMED" ? "#10b981" : a.status === "CANCELLED" ? "#ef4444" : "#f97316",
+                            fontSize: "0.65rem",
+                          }}
+                        >
+                          {a.status === "CONFIRMED"
+                            ? "Баталгаажсан"
+                            : a.status === "CANCELLED"
+                              ? "Цуцлагдсан"
+                              : "Хүлээгдэж буй"}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
               <div>
                 <div className="pl-widget-head">
-                  <span>Хуваарь бүтээгч</span>
-                  <Link href="#" className="smaller text-primary text-decoration-none">
-                    + Нэмэх
-                  </Link>
+                  <span>Хуваарь</span>
                 </div>
                 <div className="pl-schedule-list">
-                  <div className="pl-schedule-item">
-                    <div className="pl-schedule-time">09:00–09:30</div>
-                    <div className="pl-schedule-title">Бүртгэл & Кофе</div>
-                    <div className="pl-schedule-btn">
-                      <i className="fa-solid fa-pen-to-square" />
-                    </div>
-                  </div>
-                  <div className="pl-schedule-item">
-                    <div className="pl-schedule-time">09:30–10:15</div>
-                    <div className="pl-schedule-title">Нээлтийн үг</div>
-                    <div className="pl-schedule-btn">
-                      <i className="fa-solid fa-pen-to-square" />
-                    </div>
-                  </div>
-                  <div className="pl-schedule-item">
-                    <div className="pl-schedule-time">10:15–11:00</div>
-                    <div className="pl-schedule-title">Илтгэл: Бизнес давуу тал</div>
-                    <div className="pl-schedule-btn">
-                      <i className="fa-solid fa-pen-to-square" />
-                    </div>
-                  </div>
-                  <div className="pl-schedule-item">
-                    <div className="pl-schedule-time">11:00–12:00</div>
-                    <div className="pl-schedule-title">Панел хэлэлцүүлэг</div>
-                    <div className="pl-schedule-btn">
-                      <i className="fa-solid fa-pen-to-square" />
-                    </div>
-                  </div>
+                  {schedule.length === 0 ? (
+                    <div className="text-center text-muted small py-3">Хуваарь бүртгэгдээгүй.</div>
+                  ) : (
+                    schedule.map((s, i) => (
+                      <div className="pl-schedule-item" key={i}>
+                        <div className="pl-schedule-time">{s.time}</div>
+                        <div className="pl-schedule-title">{s.title}</div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -559,148 +589,107 @@ export default function DashboardPanel({ stats }: { stats: PlatformDashboardStat
             <span>Түргэн үйлдлүүд</span>
           </div>
           <div className="pl-quick-action-list">
-            <div className="pl-quick-action">
+            <Link href="/platform/trips" className="pl-quick-action text-decoration-none text-reset">
               <div className="pl-icon-box">
-                <i className="fa-regular fa-envelope" />
+                <i className="fa-solid fa-plane-up" />
               </div>
               <div>
-                <div className="fw-bold smaller">Сануулга илгээх</div>
-                <div className="smaller text-muted">И-мэйл, SMS-ээр илгээх</div>
+                <div className="fw-bold smaller">Аяллын удирдлага</div>
+                <div className="smaller text-muted">Шинэ аялал, засах, устгах</div>
               </div>
-            </div>
-            <div className="pl-quick-action">
+            </Link>
+            <Link href="/platform/events" className="pl-quick-action text-decoration-none text-reset">
               <div className="pl-icon-box">
-                <i className="fa-solid fa-file-export" />
+                <i className="fa-regular fa-calendar-plus" />
               </div>
               <div>
-                <div className="fw-bold smaller">Жагсаалт экспортлох</div>
-                <div className="smaller text-muted">Excel, CSV файл татах</div>
+                <div className="fw-bold smaller">Эвент үүсгэх</div>
+                <div className="smaller text-muted">BNI хурал, сургалт, эвент</div>
               </div>
-            </div>
-            <div className="pl-quick-action">
+            </Link>
+            <Link href="/platform/profile" className="pl-quick-action text-decoration-none text-reset">
               <div className="pl-icon-box">
-                <i className="fa-solid fa-qrcode" />
+                <i className="fa-regular fa-user" />
               </div>
               <div>
-                <div className="fw-bold smaller">QR ирц бүртгэл</div>
-                <div className="smaller text-muted">QR код уншуулж бүртгэх</div>
+                <div className="fw-bold smaller">Бизнес профайл</div>
+                <div className="smaller text-muted">Компанийн мэдээлэл шинэчлэх</div>
               </div>
-            </div>
-            <div className="pl-quick-action">
+            </Link>
+            <Link href="/platform/media" className="pl-quick-action text-decoration-none text-reset">
               <div className="pl-icon-box">
-                <i className="fa-solid fa-print" />
+                <i className="fa-regular fa-images" />
               </div>
               <div>
-                <div className="fw-bold smaller">Бэйж хэвлэх</div>
-                <div className="smaller text-muted">Оролцогчийн бэйж хэвлэх</div>
+                <div className="fw-bold smaller">Медиа сан</div>
+                <div className="smaller text-muted">Hero зураг, слайдер</div>
               </div>
-            </div>
-            <div className="pl-quick-action">
-              <div className="pl-icon-box">
-                <i className="fa-solid fa-share-nodes" />
-              </div>
-              <div>
-                <div className="fw-bold smaller">Нийтлэх / Хуваалцах</div>
-                <div className="smaller text-muted">Сошиал медиад нийтлэх</div>
-              </div>
-            </div>
+            </Link>
           </div>
         </div>
         <div className="pl-widget">
           <div className="pl-widget-head">
             <span>Шуурхай тойм</span>
-            <select className="smaller border-0 bg-transparent fw-bold text-muted">
-              <option>7 хоног</option>
-              <option>30 хоног</option>
-            </select>
           </div>
-          <svg viewBox="0 0 280 80" width="100%" height="80">
-            <polyline
-              fill="none"
-              stroke="#2563eb"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              points="0,70 35,50 70,60 105,30 140,45 175,20 210,35 245,15 280,25"
-            />
-            <g fill="#2563eb">
-              <circle cx="105" cy="30" r="3" />
-              <circle cx="175" cy="20" r="3" />
-              <circle cx="245" cy="15" r="3" />
-            </g>
-          </svg>
+          <Sparkline values={sparkline} />
           <div className="d-flex justify-content-between mt-2">
             <div>
-              <div className="smaller text-muted fw-bold">Шинэ бүртгэл</div>
-              <div className="fw-bold">
-                432{" "}
-                <span className="smaller" style={{ color: "#10b981" }}>
-                  <i className="fa-solid fa-caret-up" /> 18%
-                </span>
-              </div>
+              <div className="smaller text-muted fw-bold">Шинэ бүртгэл (7хн)</div>
+              <div className="fw-bold">{formatInteger(lastWeekRegs)}</div>
             </div>
             <div className="text-end">
-              <div className="smaller text-muted fw-bold">Ирцийн хувь</div>
-              <div className="fw-bold">
-                71%{" "}
-                <span className="smaller" style={{ color: "#10b981" }}>
-                  <i className="fa-solid fa-caret-up" /> 6%
-                </span>
-              </div>
+              <div className="smaller text-muted fw-bold">Орлого (30хн)</div>
+              <div className="fw-bold">{formatMoney(revenueLast30)}</div>
             </div>
           </div>
           <hr className="my-3 opacity-10" />
           <div className="smaller fw-bold text-muted mb-2">Топ арга хэмжээ</div>
           <div className="d-flex flex-column gap-2">
-            <div className="d-flex justify-content-between smaller fw-bold">
-              <span>1. BNI 7 хоногийн бизнес хурал</span>
-              <span>128</span>
-            </div>
-            <div className="d-flex justify-content-between smaller fw-bold">
-              <span>2. Mongolia Mining Expo...</span>
-              <span>108</span>
-            </div>
-            <div className="d-flex justify-content-between smaller fw-bold">
-              <span>3. MEGA Visitor хурал</span>
-              <span>96</span>
-            </div>
+            {topEvents.length === 0 ? (
+              <div className="text-muted smaller">Өгөгдөл байхгүй.</div>
+            ) : (
+              topEvents.map((t, i) => (
+                <div key={i} className="d-flex justify-content-between smaller fw-bold">
+                  <span>
+                    {i + 1}. {t.title}
+                  </span>
+                  <span>{formatInteger(t.count)}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
         <div className="pl-widget">
           <div className="pl-widget-head">
-            <span>Төлбөр & Тикет</span>
-            <Link href="#" className="smaller text-primary text-decoration-none">
-              + Нэмэх
-            </Link>
+            <span>Төлбөр &amp; Тикет</span>
           </div>
           <div className="pl-ticket-box">
-            <div className="pl-ticket-row">
-              <span>Ticket - Ерөнхий оролцогч</span>
-              <span className="text-success">
-                <i className="fa-solid fa-circle-check" /> Идэвхтэй
-              </span>
-            </div>
-            <div className="pl-ticket-row">
-              <span className="text-muted">Үнэ: 150,000₮</span>
-              <span className="smaller text-muted">Төлбөртэй</span>
-            </div>
-            <hr className="my-2 opacity-10" />
-            <div className="pl-ticket-row">
-              <span>Ticket - BNI гишүүн</span>
-              <span className="text-success">
-                <i className="fa-solid fa-circle-check" /> Идэвхтэй
-              </span>
-            </div>
-            <div className="pl-ticket-row">
-              <span className="text-muted">Үнэ: Үнэгүй</span>
-              <span className="smaller text-muted">Төлбөргүй</span>
-            </div>
+            {tickets.length === 0 ? (
+              <div className="text-muted smaller py-2">Тикет бүртгэгдээгүй.</div>
+            ) : (
+              tickets.map((tk, i) => (
+                <div key={i}>
+                  <div className="pl-ticket-row">
+                    <span>{tk.label}</span>
+                    <span className={tk.active ? "text-success" : "text-muted"}>
+                      <i className={`fa-solid ${tk.active ? "fa-circle-check" : "fa-circle"}`} />{" "}
+                      {tk.active ? "Идэвхтэй" : "Идэвхгүй"}
+                    </span>
+                  </div>
+                  <div className="pl-ticket-row">
+                    <span className="text-muted">Үнэ: {tk.free ? "Үнэгүй" : formatMoney(tk.priceMnt)}</span>
+                    <span className="smaller text-muted">{tk.free ? "Төлбөргүй" : "Төлбөртэй"}</span>
+                  </div>
+                  {i < tickets.length - 1 ? <hr className="my-2 opacity-10" /> : null}
+                </div>
+              ))
+            )}
           </div>
           <div className="d-flex justify-content-between mt-3 align-items-end">
             <div>
               <div className="smaller text-muted fw-bold">Нийт орлого</div>
               <div className="fw-bold" style={{ fontSize: "1.1rem" }}>
-                23,450,000₮
+                {formatMoney(metrics.revenueTotalMnt)}
               </div>
             </div>
             <div className="text-end">

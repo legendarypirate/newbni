@@ -1,8 +1,15 @@
-import Link from "next/link";
+"use client";
 
-/** PHP `?panel=news` — формын үндсэн блокууд (Summernote ба хадгалалт удахгүй). */
+import Link from "next/link";
+import { useState } from "react";
+import RichTextEditor from "@/components/ui/RichTextEditor";
+
+/** PHP `?panel=news` — формын үндсэн блокууд (хадгалах API удахгүй). */
 
 export default function NewsPlatformPanel() {
+  const [body, setBody] = useState<string>("");
+  const editorId = "platform_news_body";
+
   return (
     <>
       <div className="tps-greeting">Мэдээний удирдлага</div>
@@ -28,32 +35,39 @@ export default function NewsPlatformPanel() {
             <div className="nws-card-title">Шинэ мэдээ нийтлэх</div>
             <div className="row g-3">
               <div className="col-md-12">
-                <label className="nws-label">
+                <label className="nws-label" htmlFor="news_title">
                   Гарчиг <abbr title="Заавал">*</abbr>
                 </label>
-                <input type="text" name="news_title" className="nws-input" placeholder="Жагсаалтанд харагдах гарчиг" disabled />
+                <input id="news_title" type="text" name="news_title" className="nws-input" placeholder="Жагсаалтанд харагдах гарчиг" />
               </div>
               <div className="col-md-6">
-                <label className="nws-label">Slug (URL)</label>
+                <label className="nws-label" htmlFor="news_slug">Slug (URL)</label>
                 <div className="nws-input-group">
                   <i className="fa-solid fa-link nws-input-icon" />
-                  <input type="text" className="nws-input has-icon nws-slug-input" placeholder="slug-oruulna" disabled />
+                  <input id="news_slug" type="text" name="news_slug" className="nws-input has-icon nws-slug-input" placeholder="slug-oruulna" />
                 </div>
               </div>
               <div className="col-md-6">
-                <label className="nws-label">Эх сурвалж URL</label>
+                <label className="nws-label" htmlFor="news_source_url">Эх сурвалж URL</label>
                 <div className="nws-input-group">
                   <i className="fa-solid fa-globe nws-input-icon" />
-                  <input type="text" className="nws-input has-icon" placeholder="https://" disabled />
+                  <input id="news_source_url" type="text" name="news_source_url" className="nws-input has-icon" placeholder="https://" />
                 </div>
               </div>
               <div className="col-12">
-                <label className="nws-label">Товч тайлбар (excerpt)</label>
-                <textarea className="nws-input" rows={3} placeholder="Товч тойм..." disabled />
+                <label className="nws-label" htmlFor="news_excerpt">Товч тайлбар (excerpt)</label>
+                <textarea id="news_excerpt" name="news_excerpt" className="nws-input" rows={3} placeholder="Товч тойм..." />
               </div>
               <div className="col-12">
-                <label className="nws-label">Нийтлэлийн агуулга</label>
-                <textarea id="platform_news_body" className="form-control rounded-3" rows={10} placeholder="Агуулга (удахгийн Summernote)" disabled />
+                <label className="nws-label" htmlFor={editorId}>Нийтлэлийн агуулга</label>
+                <RichTextEditor
+                  id={editorId}
+                  name="news_body"
+                  value={body}
+                  onChange={setBody}
+                  minHeight={280}
+                  placeholder="Нийтлэлийн дэлгэрэнгүй агуулгыг энд бичнэ үү..."
+                />
               </div>
             </div>
           </div>

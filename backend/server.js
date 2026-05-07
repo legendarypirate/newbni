@@ -44,6 +44,7 @@ require("./app/routes/auth.routes")(app);
 require("./app/routes/platform/trips.routes")(app);
 require("./app/routes/platform/events.routes")(app);
 require("./app/routes/platform/uploads.routes")(app);
+require("./app/routes/platform/dashboard.routes")(app);
 require("./app/routes/health.routes")(app);
 require("./app/routes/region.routes")(app);
 require("./app/routes/admin.routes")(app);
