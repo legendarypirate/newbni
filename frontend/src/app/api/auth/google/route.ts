@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiOrigin } from "@/lib/client-api-base";
 
 function safeNextPath(raw: string | null): string {
   if (!raw) return "/platform";
@@ -9,8 +10,7 @@ function safeNextPath(raw: string | null): string {
 
 export async function GET(request: NextRequest) {
   const nextPath = safeNextPath(request.nextUrl.searchParams.get("next"));
-  const backendBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api").replace(/\/api$/, "");
-  const target = new URL("/api/auth/google", backendBase);
+  const target = new URL("/api/auth/google", apiOrigin());
   if (nextPath !== "/platform") {
     target.searchParams.set("next", nextPath);
   }

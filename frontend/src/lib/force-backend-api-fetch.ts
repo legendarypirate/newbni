@@ -1,32 +1,34 @@
+import { publicApiBase } from "@/lib/client-api-base";
+
 const marker = "__busy_force_backend_api_fetch__";
 
-function normalizeApiBase(raw: string | undefined): string {
-  const base = (raw || "http://localhost:3001/api").replace(/\/$/, "");
-  return base.endsWith("/api") ? base : `${base}/api`;
-}
-
+/**
+ * Monkey-patch `globalThis.fetch` so any call to `/api/...` is rewritten
+ * to the backend (`<publicApiBase>/...`). This runs in the browser only
+ * (called from a `"use client"` effect), so we always use the public base.
+ */
 export function patchFetchToBackendApi(): void {
   const g = globalThis as typeof globalThis & { [marker]?: boolean };
   if (g[marker]) return;
 
-  const apiBase = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL);
   const origFetch = globalThis.fetch.bind(globalThis);
 
   globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+    const base = publicApiBase();
     try {
       if (typeof input === "string") {
         if (input.startsWith("/api/")) {
-          return origFetch(`${apiBase}${input.slice(4)}`, init);
+          return origFetch(`${base}${input.slice(4)}`, init);
         }
       } else if (input instanceof Request) {
         const u = input.url;
         if (u.startsWith("/api/")) {
-          return origFetch(new Request(`${apiBase}${u.slice(4)}`, input), init);
+          return origFetch(new Request(`${base}${u.slice(4)}`, input), init);
         }
       } else if (input instanceof URL) {
         const s = input.toString();
         if (s.startsWith("/api/")) {
-          return origFetch(`${apiBase}${s.slice(4)}`, init);
+          return origFetch(`${base}${s.slice(4)}`, init);
         }
       }
     } catch {
@@ -37,4 +39,3 @@ export function patchFetchToBackendApi(): void {
 
   g[marker] = true;
 }
-

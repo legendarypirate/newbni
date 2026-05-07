@@ -1,11 +1,6 @@
 "use client";
 
-function normalizeApiUrl(raw: string | undefined): string {
-  const base = (raw || "http://localhost:3001/api").replace(/\/$/, "");
-  return base.endsWith("/api") ? base : `${base}/api`;
-}
-
-const API_URL = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL);
+import { publicApiBase } from "@/lib/client-api-base";
 
 export function getAuthToken(cookieHeader?: string) {
   if (typeof window === "undefined") {
@@ -39,13 +34,14 @@ export function removeAuthToken() {
 }
 
 export async function apiFetch(path: string, options: RequestInit = {}, cookieHeader?: string) {
+  const API_URL = publicApiBase();
   const token = getAuthToken(cookieHeader);
   const headers = new Headers(options.headers || {});
-  
+
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
-  
+
   if (options.body && !(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }

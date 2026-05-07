@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { setAuthToken } from "@/lib/api-client";
+import { publicApiBase as resolveApiBase } from "@/lib/client-api-base";
 
 const copy = {
   title: "Платформд нэвтрэх",
@@ -54,8 +55,7 @@ export default function LoginForm({
 
   const errMsg = errorKey === "use_google" ? copy.errGoogle : errorKey === "invalid" ? copy.errInvalid : null;
 
-  const rawApiBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api").replace(/\/$/, "");
-  const apiBase = rawApiBase.endsWith("/api") ? rawApiBase : `${rawApiBase}/api`;
+  const apiBase = resolveApiBase();
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

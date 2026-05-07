@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { publicApiBase as resolveApiBase } from "@/lib/client-api-base";
 
 /**
  * Speaker row: Cloudinary (or local) upload + optional manual URL.
@@ -10,8 +11,7 @@ export default function SpeakerPhotoUrlField({ defaultUrl }: { defaultUrl: strin
   const [url, setUrl] = useState(defaultUrl);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const rawApiBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api").replace(/\/$/, "");
-  const apiBase = rawApiBase.endsWith("/api") ? rawApiBase : `${rawApiBase}/api`;
+  const apiBase = resolveApiBase();
 
   const onFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];

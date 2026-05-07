@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import TripEditorForm from "@/components/platform/trips/TripEditorForm";
 import { deleteTripAction, toggleTripFeaturedAction } from "@/app/platform/trips-actions";
 import { apiFetch } from "@/lib/api-client";
+import { publicApiBase as resolveApiBase } from "@/lib/client-api-base";
 import {
   errorBanner,
   fmtMoney,
@@ -229,7 +230,7 @@ export default function TripsPanel({ searchParams: _searchParams }: Props) {
         key={editTripId > 0 ? `trip-editor-${editTripId}` : "trip-editor-new"}
         greetingName={greetingName}
         editTrip={editTrip}
-        formAction={(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api") + "/platform/trips/save"}
+        formAction={`${resolveApiBase()}/platform/trips/save`}
         tripsIndexHref="/platform/trips"
         tripsIndexLabel="Аялал"
         onSaved={() => setReloadTick((x) => x + 1)}

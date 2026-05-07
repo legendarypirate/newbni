@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { saveMarketingListingHeroSlidesAction } from "@/app/admin/(protected)/marketing-listing-heroes/actions";
 import { slidesToTextareaLines } from "@/lib/marketing-listing-hero-shared";
+import { publicApiBase as resolveApiBase } from "@/lib/client-api-base";
 
 type Props = {
   initialTrips: string[];
@@ -26,8 +27,7 @@ export default function MarketingListingHeroesForm({ initialTrips, initialEvents
   const [eventsBusy, setEventsBusy] = useState(false);
   const tripsInputRef = useRef<HTMLInputElement>(null);
   const eventsInputRef = useRef<HTMLInputElement>(null);
-  const rawApiBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api").replace(/\/$/, "");
-  const apiBase = rawApiBase.endsWith("/api") ? rawApiBase : `${rawApiBase}/api`;
+  const apiBase = resolveApiBase();
 
   const tripLines = useMemo(
     () =>

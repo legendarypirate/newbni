@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { defaultPostLoginPath } from "@/lib/platform-session";
 import { setPlatformSessionCookies } from "@/lib/platform-session-cookies";
+import { internalApiUrl } from "@/lib/backend-api";
 
 export type RegisterFormState = {
   errorKey:
@@ -70,7 +71,7 @@ export async function registerAction(_prev: RegisterFormState, formData: FormDat
   }
 
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`, {
+    const res = await fetch(internalApiUrl("/api/auth/register"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password, displayName }),

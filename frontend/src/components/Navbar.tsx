@@ -217,7 +217,7 @@ export default function Navbar() {
                 ) : (
                   <>
                     <a
-                      href={`${(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api").replace(/\/api$/, "")}/api/auth/google?next=/platform`}
+                      href="/api/auth/google?next=/platform"
                       className="btn btn-light px-3 fw-medium rounded-pill border"
                     >
                       Google

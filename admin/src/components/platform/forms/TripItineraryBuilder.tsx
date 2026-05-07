@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { publicApiBase as resolveApiBase } from "@/lib/client-api-base";
 
 export type TripItinerarySlot = {
   time: string;
@@ -80,8 +81,7 @@ export default function TripItineraryBuilder({ hiddenName, initialJson }: Props)
   const [activeDay, setActiveDay] = useState(() => normalizeDays(initialJson)[0]?.day ?? 1);
   const [bannerBusy, setBannerBusy] = useState<Record<number, boolean>>({});
   const [bannerMsg, setBannerMsg] = useState<Record<number, string | null>>({});
-  const rawApiBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api").replace(/\/$/, "");
-  const apiBase = rawApiBase.endsWith("/api") ? rawApiBase : `${rawApiBase}/api`;
+  const apiBase = resolveApiBase();
 
   const payload = useMemo(() => JSON.stringify({ days }), [days]);
 

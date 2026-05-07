@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { fetchBusyAuthzForAccount } from "@/lib/busy-rbac";
+import { apiBase } from "@/lib/client-api-base";
 
 export type ApiPlatformUser = {
   id: bigint;
@@ -14,20 +15,6 @@ export type ApiPlatformUserWithBusyAuthz = ApiPlatformUser & {
   busyRoleSlugs: string[];
   busyPermissionKeys: string[];
 };
-
-function normalizeApiBase(raw: string | undefined): string {
-  const base = (raw || "").replace(/\/$/, "");
-  if (!base) return "";
-  return base.endsWith("/api") ? base : `${base}/api`;
-}
-
-function resolveApiBase(): string {
-  const internal = normalizeApiBase(process.env.API_INTERNAL_URL);
-  if (internal) return internal;
-  const publicApi = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL);
-  if (publicApi) return publicApi;
-  return "http://localhost:3001/api";
-}
 
 function readTokenFromCookieHeader(cookieHeader: string | null): string | null {
   if (!cookieHeader) return null;
@@ -46,7 +33,7 @@ async function loadApiPlatformUser(req: NextRequest): Promise<ApiPlatformUser | 
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   try {
-    const res = await fetch(`${resolveApiBase()}/auth/me`, {
+    const res = await fetch(`${apiBase()}/auth/me`, {
       headers,
       cache: "no-store",
     });

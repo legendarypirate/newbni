@@ -1,27 +1,4 @@
-function normalizeApiUrl(raw: string | undefined): string {
-  const base = (raw || "").replace(/\/$/, "");
-  if (!base) return "";
-  return base.endsWith("/api") ? base : `${base}/api`;
-}
-
-function runtimeApiUrl(): string {
-  if (typeof window === "undefined") {
-    const internal = normalizeApiUrl(process.env.API_INTERNAL_URL);
-    if (internal) return internal;
-    const publicApi = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL);
-    if (publicApi) return publicApi;
-    return "http://localhost:3001/api";
-  }
-
-  const fromEnv = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL);
-  if (fromEnv) return fromEnv;
-
-  const host = window.location.hostname;
-  if (host === "test.busy.mn") return "https://testapi.busy.mn/api";
-  if (host === "busy.mn" || host === "www.busy.mn") return "https://api.busy.mn/api";
-
-  return "http://localhost:3001/api";
-}
+import { publicApiBase } from "@/lib/client-api-base";
 
 export function getAuthToken(cookieHeader?: string) {
   if (typeof window === "undefined") {
@@ -46,7 +23,6 @@ export function getAuthToken(cookieHeader?: string) {
 export function setAuthToken(token: string) {
   if (typeof window === "undefined") return;
   localStorage.setItem("bni_token", token);
-  // Also set cookie for server-side access
   document.cookie = `bni_token=${token}; path=/; max-age=2592000; SameSite=Lax`;
 }
 
@@ -57,14 +33,14 @@ export function removeAuthToken() {
 }
 
 export async function apiFetch(path: string, options: RequestInit = {}, cookieHeader?: string) {
-  const API_URL = runtimeApiUrl();
+  const API_URL = publicApiBase();
   const token = getAuthToken(cookieHeader);
   const headers = new Headers(options.headers || {});
-  
+
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
-  
+
   if (options.body && !(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { DashboardBreadcrumb } from "@/components/dashboard/DashboardBreadcrumb";
 import { DashboardPage } from "@/components/dashboard/DashboardPage";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
+import { publicApiUrl } from "@/lib/backend-api";
 import { formatClockUtc, formatMnDate } from "@/lib/format-date";
 import type { BusyMeetingAttendanceStatus, BusyMeetingPaymentStatus } from "@/lib/platform-db-types";
 import StaffRegistrationTable from "@/components/weekly-meeting/StaffRegistrationTable";
@@ -70,9 +71,8 @@ export default async function WeeklyMeetingDetailPage({ params }: Props) {
   }));
 
   const regUrl = `/m/${meeting.publicToken}`;
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-  const qrSrc = `${apiUrl}/api/meetings/weekly/${meeting.id.toString()}/qr`;
-  const csvHref = `${apiUrl}/api/meetings/weekly/${meeting.id.toString()}/roster`;
+  const qrSrc = publicApiUrl(`/api/meetings/weekly/${meeting.id.toString()}/qr`);
+  const csvHref = publicApiUrl(`/api/meetings/weekly/${meeting.id.toString()}/roster`);
 
   return (
     <DashboardPage>

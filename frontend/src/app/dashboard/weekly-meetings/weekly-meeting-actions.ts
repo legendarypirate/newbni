@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { BusyMeetingAttendanceStatus, BusyMeetingPaymentStatus } from "@/lib/platform-db-types";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
+import { internalApiUrl } from "@/lib/backend-api";
 import type { CreateWeeklyMeetingInput, PublicRegisterMeetingInput } from "@/lib/meetings/weekly-meeting-types";
 
 export type { CreateWeeklyMeetingInput, PublicRegisterMeetingInput } from "@/lib/meetings/weekly-meeting-types";
@@ -55,7 +56,7 @@ export async function publicRegisterForWeeklyMeetingAction(
   input: PublicRegisterMeetingInput,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/meetings/weekly/register-public`, {
+    const res = await fetch(internalApiUrl("/api/meetings/weekly/register-public"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
