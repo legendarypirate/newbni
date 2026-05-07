@@ -3,19 +3,22 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { getPlatformSession } from "@/lib/platform-session";
 import { executeSaveTrip } from "@/lib/platform-trip-save-core";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
+/**
+ * Trip mutations forward the caller's JWT (extracted from cookies inside
+ * `serverAuthedFetch`) to the backend. Authentication is enforced by the
+ * Node API; we never redirect to `/auth/login` from here — the
+ * `PlatformAuthGate` client component handles "logged out" UX.
+ *
+ * If the cookie is missing the request will return 401 and the panel can
+ * surface a banner instead of a hard redirect.
+ */
 export async function saveTripAction(formData: FormData): Promise<void> {
   await connection();
-  const session = await getPlatformSession();
-  if (!session) {
-    redirect("/auth/login?next=/platform/trips");
-  }
-
-  const accountId = BigInt(session.id);
-  const result = await executeSaveTrip(accountId, formData);
+  // accountId argument is unused by `executeSaveTrip`; pass BigInt(0) to keep the signature.
+  const result = await executeSaveTrip(BigInt(0), formData);
   if (result.kind === "redirect") {
     redirect(result.to);
   }
@@ -27,10 +30,6 @@ export async function saveTripAction(formData: FormData): Promise<void> {
 
 export async function deleteTripAction(formData: FormData): Promise<void> {
   await connection();
-  const session = await getPlatformSession();
-  if (!session) {
-    redirect("/auth/login?next=/platform/trips");
-  }
 
   const tripId = String(formData.get("trip_id") ?? "0");
   if (tripId === "0") {
@@ -50,10 +49,6 @@ export async function deleteTripAction(formData: FormData): Promise<void> {
 
 export async function toggleTripFeaturedAction(formData: FormData): Promise<void> {
   await connection();
-  const session = await getPlatformSession();
-  if (!session) {
-    redirect("/auth/login?next=/platform/trips");
-  }
 
   const tripId = String(formData.get("trip_id") ?? "0");
   const makeFeatured = String(formData.get("is_featured") ?? "0") === "1";
@@ -68,11 +63,11 @@ export async function toggleTripFeaturedAction(formData: FormData): Promise<void
       body: JSON.stringify({ isFeatured: makeFeatured }),
     });
     if (!res.ok) {
-       const out = await res.json().catch(() => ({}));
-       if (out.errorKey === "featured_limit") {
-         redirect("/platform/trips?error=featured_limit");
-       }
-       redirect("/platform/trips");
+      const out = await res.json().catch(() => ({}));
+      if (out.errorKey === "featured_limit") {
+        redirect("/platform/trips?error=featured_limit");
+      }
+      redirect("/platform/trips");
     }
   } catch (e) {
     if (e instanceof Error && e.message === "NEXT_REDIRECT") throw e;
