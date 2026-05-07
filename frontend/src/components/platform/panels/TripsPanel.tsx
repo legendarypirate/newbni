@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import TripEditorForm from "@/components/platform/trips/TripEditorForm";
-import { deleteTripAction, toggleTripFeaturedAction } from "@/app/platform/trips-actions";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { apiFetch } from "@/lib/api-client";
 import { publicApiBase as resolveApiBase } from "@/lib/client-api-base";
 import {
@@ -46,10 +46,67 @@ export default function TripsPanel({ searchParams: _searchParams }: Props) {
   const [editTrip, setEditTrip] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [reloadTick, setReloadTick] = useState(0);
+  const [pendingDelete, setPendingDelete] = useState<ManagedTripRow | null>(null);
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [flash, setFlash] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   const err = errorBanner(qp.get("error") ?? undefined);
   const editRaw = qp.get("edit_trip") ?? qp.get("edit") ?? "";
   const editTripId = Math.max(0, Number(editRaw));
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    const id = pendingDelete.id;
+    setBusyId(id);
+    try {
+      const res = await apiFetch(`/platform/trips/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        setFlash({ kind: "err", text: "Устгах үед алдаа гарлаа." });
+        return;
+      }
+      setManagedTrips((prev) => prev.filter((t) => t.id !== id));
+      setFlash({ kind: "ok", text: "Аяллыг устгалаа." });
+      setPendingDelete(null);
+    } catch {
+      setFlash({ kind: "err", text: "Сүлжээний алдаа." });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleToggleFeatured(row: ManagedTripRow) {
+    const id = row.id;
+    const next = row.isFeatured === 1 ? 0 : 1;
+    setBusyId(id);
+    try {
+      const res = await apiFetch(`/platform/trips/${id}/toggle-featured`, {
+        method: "POST",
+        body: JSON.stringify({ isFeatured: Boolean(next) }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { errorKey?: string };
+        setFlash({
+          kind: "err",
+          text: data.errorKey === "featured_limit"
+            ? "Онцлох аялал дээд тал нь 3 байж болно."
+            : "Шинэчлэх үед алдаа гарлаа.",
+        });
+        return;
+      }
+      setManagedTrips((prev) => prev.map((t) => (t.id === id ? { ...t, isFeatured: next } : t)));
+      setFlash({ kind: "ok", text: next === 1 ? "Онцлох аяллыг идэвхжүүлэв." : "Онцлохыг буулгав." });
+    } catch {
+      setFlash({ kind: "err", text: "Сүлжээний алдаа." });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  useEffect(() => {
+    if (!flash) return;
+    const t = setTimeout(() => setFlash(null), 3500);
+    return () => clearTimeout(t);
+  }, [flash]);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,6 +169,14 @@ export default function TripsPanel({ searchParams: _searchParams }: Props) {
   return (
     <div className="pl-panel-inner px-3 py-4">
       {err ? <div className="alert alert-warning py-2 small mb-3">{err}</div> : null}
+      {flash ? (
+        <div
+          className={`alert py-2 small mb-3 ${flash.kind === "ok" ? "alert-success" : "alert-danger"}`}
+          role="status"
+        >
+          {flash.text}
+        </div>
+      ) : null}
 
       {/* --- Managed trips (PHP order: card first) --- */}
       <div className="pm-card mb-4" id="managedTripsCard">
@@ -172,25 +237,26 @@ export default function TripsPanel({ searchParams: _searchParams }: Props) {
                     </td>
                     <td className="text-end">
                       <div className="d-inline-flex flex-wrap gap-2 justify-content-end">
-                        <form action={toggleTripFeaturedAction}>
-                          <input type="hidden" name="trip_id" value={mt.id} />
-                          <input type="hidden" name="is_featured" value={mt.isFeatured === 1 ? "0" : "1"} />
-                          <button
-                            type="submit"
-                            className={`btn btn-sm ${mt.isFeatured === 1 ? "btn-outline-secondary" : "btn-outline-warning"}`}
-                          >
-                            {mt.isFeatured === 1 ? "Онцлолоос буулгах" : "Make Онцлох аялал"}
-                          </button>
-                        </form>
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${mt.isFeatured === 1 ? "btn-outline-secondary" : "btn-outline-warning"}`}
+                          disabled={busyId === mt.id}
+                          onClick={() => handleToggleFeatured(mt)}
+                        >
+                          {mt.isFeatured === 1 ? "Онцлолоос буулгах" : "Онцлох болгох"}
+                        </button>
                         <Link href={`/platform/trips?edit_trip=${mt.id}`} className="btn btn-sm btn-outline-primary">
                           Засах
                         </Link>
-                        <form action={deleteTripAction} className="d-inline">
-                          <input type="hidden" name="trip_id" value={mt.id} />
-                          <button type="submit" className="btn btn-sm btn-outline-danger">
-                            <i className="fa-solid fa-trash" />
-                          </button>
-                        </form>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger"
+                          disabled={busyId === mt.id}
+                          onClick={() => setPendingDelete(mt)}
+                          aria-label={`Аяллыг устгах: ${mt.destination}`}
+                        >
+                          <i className="fa-solid fa-trash" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -240,6 +306,26 @@ export default function TripsPanel({ searchParams: _searchParams }: Props) {
         tripsIndexHref="/platform/trips"
         tripsIndexLabel="Аялал"
         onSaved={() => setReloadTick((x) => x + 1)}
+      />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        tone="danger"
+        title="Аяллыг устгах уу?"
+        message={
+          <>
+            <strong>{pendingDelete?.destination ?? ""}</strong> аяллыг бүрмөсөн устгана.
+            Энэ үйлдлийг буцаах боломжгүй.
+          </>
+        }
+        confirmLabel="Устгах"
+        cancelLabel="Болих"
+        busy={busyId === pendingDelete?.id}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          if (busyId !== null) return;
+          setPendingDelete(null);
+        }}
       />
     </div>
   );

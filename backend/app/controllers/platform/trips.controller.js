@@ -241,8 +241,14 @@ exports.deleteTrip = async (req, res) => {
   const id = Math.max(0, Number(req.params.id || "0"));
   if (id < 1) return res.status(400).json({ ok: false, errorKey: "invalid_trip_id" });
   try {
-    const deleted = await db.BusinessTrip.destroy({ where: { id } });
-    if (!deleted) return res.status(404).json({ ok: false, errorKey: "not_found" });
+    const trip = await db.BusinessTrip.findByPk(id);
+    if (!trip) return res.status(404).json({ ok: false, errorKey: "not_found" });
+    const userId = req.user?.id;
+    const isAdmin = req.user?.role === "admin" || req.user?.isAdmin === true;
+    if (!isAdmin && userId && trip.managerAccountId && String(trip.managerAccountId) !== String(userId)) {
+      return res.status(403).json({ ok: false, errorKey: "forbidden" });
+    }
+    await trip.destroy();
     return res.json({ ok: true });
   } catch (err) {
     console.error("Delete trip failed:", err);
@@ -258,6 +264,12 @@ exports.toggleFeatured = async (req, res) => {
   try {
     const trip = await db.BusinessTrip.findByPk(id);
     if (!trip) return res.status(404).json({ ok: false, errorKey: "notfound" });
+
+    const userId = req.user?.id;
+    const isAdmin = req.user?.role === "admin" || req.user?.isAdmin === true;
+    if (!isAdmin && userId && trip.managerAccountId && String(trip.managerAccountId) !== String(userId)) {
+      return res.status(403).json({ ok: false, errorKey: "forbidden" });
+    }
 
     if (isFeatured) {
       const featuredCount = await db.BusinessTrip.count({

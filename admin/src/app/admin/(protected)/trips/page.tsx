@@ -15,8 +15,13 @@ type TripRow = {
 async function loadTrips(): Promise<{ ok: boolean; rows: TripRow[] }> {
   try {
     const res = await serverAuthedFetch("/platform/trips");
-    const data = (await res.json().catch(() => ({}))) as { trips?: unknown };
-    const raw = Array.isArray(data.trips) ? data.trips : [];
+    const json = (await res.json().catch(() => ({}))) as {
+      trips?: unknown;
+      data?: { trips?: unknown };
+    };
+    // Backend returns `{ ok, data: { trips, ... } }`; tolerate the older flat shape too.
+    const tripsCandidate = json.data?.trips ?? json.trips;
+    const raw = Array.isArray(tripsCandidate) ? tripsCandidate : [];
     const rows: TripRow[] = raw
       .filter((x): x is Record<string, unknown> => !!x && typeof x === "object")
       .map((r) => ({
