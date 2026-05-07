@@ -63,6 +63,9 @@ exports.organizerDashboard = async (req, res) => {
 
     // ---------------------------------------------------------------- scopes
     const tripWhere = privileged ? {} : { managerAccountId: userId };
+    // `business_trips` is defined with `timestamps: false`, so it has no
+    // `created_at` column. Don't request it here or Postgres throws
+    // `column "createdAt" does not exist`.
     const userTrips = await db.BusinessTrip.findAll({
       where: tripWhere,
       attributes: [
@@ -74,7 +77,6 @@ exports.organizerDashboard = async (req, res) => {
         "statusLabel",
         "priceMnt",
         "isFeatured",
-        "createdAt",
       ],
       order: [["startDate", "DESC"]],
       limit: 200,
