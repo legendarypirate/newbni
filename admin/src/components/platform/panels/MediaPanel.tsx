@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import MediaHeroShell from "@/components/platform/panels/MediaHeroShell";
 import { mediaUrl } from "@/lib/media-url";
+import { fetchPlatformProfileByAccountId } from "@/lib/fetch-platform-profile";
 import { getPlatformSession } from "@/lib/platform-session";
-import { prisma } from "@/lib/prisma";
 
 function heroSlidesFromBiz(json: unknown): string[] {
   if (!json || typeof json !== "object" || Array.isArray(json)) {
@@ -20,12 +20,7 @@ export default async function MediaPanel() {
   if (!session) {
     redirect("/auth/login?next=/platform/media");
   }
-  const accountId = BigInt(session.id);
-
-  const profile = await prisma.platformProfile.findUnique({
-    where: { accountId },
-    select: { businessJson: true },
-  });
+  const profile = await fetchPlatformProfileByAccountId(session.id);
 
   const slides = heroSlidesFromBiz(profile?.businessJson ?? null);
   return <MediaHeroShell slides={slides} />;

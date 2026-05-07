@@ -1,4 +1,4 @@
-import type { BusinessTrip } from "@prisma/client";
+import type { BusinessTrip } from "@/lib/platform-db-types";
 
 export const DEFAULT_TRIP_COVER =
   "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=2073&auto=format&fit=crop";

@@ -8,9 +8,20 @@ import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 export const dynamic = "force-dynamic";
 
+type WeeklyMeetingListRow = {
+  id: bigint | number | string;
+  publicToken: string;
+  meetingDate: string | Date;
+  location: string | null;
+  group: { name: string };
+  _count: { registrations: number };
+};
+
 export default async function WeeklyMeetingsListPage() {
-  const res = await serverAuthedFetch("/meetings/weekly").then(r => r.json()).catch(() => ({ ok: false }));
-  const meetings = res.meetings || [];
+  const res = (await serverAuthedFetch("/meetings/weekly")
+    .then((r) => r.json())
+    .catch(() => ({ ok: false }))) as { ok?: boolean; meetings?: WeeklyMeetingListRow[] };
+  const meetings: WeeklyMeetingListRow[] = res.meetings ?? [];
 
   return (
     <DashboardPage maxWidthClass="max-w-5xl">

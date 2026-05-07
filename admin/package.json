@@ -3,13 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "prisma generate --schema ../frontend/prisma/schema.prisma && next dev -p 3002 --webpack",
-    "build": "prisma generate --schema ../frontend/prisma/schema.prisma && next build --webpack",
+    "dev": "next dev -p 3002 --webpack",
+    "build": "next build --webpack",
     "start": "next start -p 3002",
     "lint": "eslint"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.0",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-slot": "^1.2.4",
@@ -39,7 +38,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
-    "prisma": "^6.19.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

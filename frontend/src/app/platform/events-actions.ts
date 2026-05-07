@@ -5,8 +5,6 @@ import { redirect } from "next/navigation";
 import { getPlatformSession } from "@/lib/platform-session";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 import { parseEventDatetimeWireUb } from "@/lib/event-datetime-ub";
-import { syncEventRegistrationFormFromLegacyJson } from "@/lib/trip-registration-form/sync-event-registration-form-from-json";
-
 const ADMIN_EVENTS_PATH = "/admin/meetings";
 const PLATFORM_EVENTS_PATH = "/platform/events";
 
@@ -194,11 +192,6 @@ export async function saveEventAction(formData: FormData): Promise<void> {
     }
 
     const savedId = out.id ?? String(eventId);
-    
-    // For now, keep sync logic in frontend until backend handles it
-    if (listPath !== ADMIN_EVENTS_PATH) {
-       await syncEventRegistrationFormFromLegacyJson(BigInt(savedId), regParsedRaw);
-    }
 
     revalidatePath("/platform/events");
     revalidatePath(ADMIN_EVENTS_PATH);

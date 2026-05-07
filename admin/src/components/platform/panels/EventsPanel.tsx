@@ -10,8 +10,8 @@ import EventManageForm from "@/components/platform/panels/EventManageForm";
 import { deleteEventAction } from "@/app/platform/events-actions";
 import { parseBniEventDetailEnvelope } from "@/lib/bni-event-detail";
 import { formatEventDatetimeWireUb, formatEventDisplayUb } from "@/lib/event-datetime-ub";
-import { prisma } from "@/lib/prisma";
 import { getPlatformSession } from "@/lib/platform-session";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 import { registrationLegacyJsonForEventEditor } from "@/lib/trip-registration-form/event-registration-editor-load";
 
 /** `event` first so it appears at the top of the Төрөл dropdown. */
@@ -114,29 +114,129 @@ export default async function EventsPanel({ searchParams, venue = "platform" }: 
     editEventId = BigInt(0);
   }
 
-  const [chapters, schedules, curriculums, managedEvents] = await Promise.all([
-    prisma.chapter.findMany({
-      orderBy: [{ region: { name: "asc" } }, { name: "asc" }],
-      include: { region: { select: { name: true } } },
-    }),
-    prisma.chapterWeeklySchedule.findMany({
-      take: 500,
-      orderBy: { id: "desc" },
-      include: { chapter: true, curriculum: true },
-    }),
-    prisma.curriculum.findMany({
-      orderBy: { name: "asc" },
-      include: { chapter: true },
-    }),
-    prisma.bniEvent.findMany({
-      take: 100,
-      orderBy: { startsAt: "desc" },
-      include: { chapter: true, curriculum: true },
-    }),
-  ]);
+  type EventPanelRow = {
+    id: bigint;
+    title: string | null;
+    chapterId: number | null;
+    chapter: { name: string } | null;
+    curriculum: { name: string } | null;
+    eventType: string;
+    startsAt: Date;
+    endsAt: Date;
+    location: string | null;
+    isOnline: boolean;
+    scheduleId: number | null;
+    curriculumId: number | null;
+    priceMnt: unknown;
+    advanceOrderMnt: unknown;
+    curriculumOverrideJson?: unknown;
+    registrationFormJson?: unknown;
+  };
 
-  const existing =
-    editEventId > BigInt(0) ? await prisma.bniEvent.findUnique({ where: { id: editEventId } }) : null;
+  let chapters: { id: number; name: string; region: { name: string } }[] = [];
+  let schedules: { id: number; chapter: { name: string }; curriculum: { name: string } }[] = [];
+  let curriculums: { id: number; name: string; chapter: { name: string } | null }[] = [];
+  let managedEvents: EventPanelRow[] = [];
+  let existing: EventPanelRow | null = null;
+  let bootstrapError = false;
+
+  if (venue === "admin" || venue === "platform") {
+    try {
+      const bootstrapBase = venue === "admin" ? "/admin/events/bootstrap" : "/platform/events/bootstrap";
+      const bootstrapPath =
+        editEventId > BigInt(0)
+          ? `${bootstrapBase}?edit_event=${encodeURIComponent(editEventId.toString())}`
+          : bootstrapBase;
+      const res = await serverAuthedFetch(bootstrapPath);
+      const data = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      chapters?: Array<{ id: number; name: string; region?: { name?: string } }>;
+      schedules?: Array<{ id: number; chapter?: { name?: string }; curriculum?: { name?: string } }>;
+      curriculums?: Array<{ id: number; name: string; chapter?: { name?: string } | null }>;
+      managedEvents?: Array<{
+        id: string;
+        title: string | null;
+        chapterId: number | null;
+        chapter?: { name?: string } | null;
+        curriculum?: { name?: string } | null;
+        eventType: string;
+        startsAt: string;
+        endsAt: string;
+        location: string | null;
+        isOnline: boolean;
+        scheduleId: number | null;
+        curriculumId: number | null;
+        priceMnt: unknown;
+        advanceOrderMnt: unknown;
+      }>;
+      existing?: {
+        id: string;
+        title: string | null;
+        chapterId: number | null;
+        eventType: string;
+        startsAt: string;
+        endsAt: string;
+        location: string | null;
+        isOnline: boolean;
+        scheduleId: number | null;
+        curriculumId: number | null;
+        priceMnt: unknown;
+        advanceOrderMnt: unknown;
+        curriculumOverrideJson?: unknown;
+        registrationFormJson?: unknown;
+      } | null;
+    };
+      chapters = (data.chapters ?? []).map((ch) => ({ id: ch.id, name: ch.name, region: { name: ch.region?.name ?? "" } }));
+      schedules = (data.schedules ?? []).map((s) => ({
+        id: s.id,
+        chapter: { name: s.chapter?.name ?? "" },
+        curriculum: { name: s.curriculum?.name ?? "" },
+      }));
+      curriculums = (data.curriculums ?? []).map((c) => ({
+        id: c.id,
+        name: c.name,
+        chapter: c.chapter ? { name: c.chapter.name ?? "" } : null,
+      }));
+      managedEvents = (data.managedEvents ?? []).map((ev) => ({
+        id: BigInt(ev.id),
+        title: ev.title,
+        chapterId: ev.chapterId,
+        chapter: ev.chapter ? { name: ev.chapter.name ?? "" } : null,
+        curriculum: ev.curriculum ? { name: ev.curriculum.name ?? "" } : null,
+        eventType: ev.eventType,
+        startsAt: new Date(ev.startsAt),
+        endsAt: new Date(ev.endsAt),
+        location: ev.location,
+        isOnline: ev.isOnline,
+        scheduleId: ev.scheduleId,
+        curriculumId: ev.curriculumId,
+        priceMnt: ev.priceMnt,
+        advanceOrderMnt: ev.advanceOrderMnt,
+      }));
+      existing = data.existing
+        ? {
+            id: BigInt(data.existing.id),
+            title: data.existing.title,
+            chapterId: data.existing.chapterId,
+            chapter: null,
+            curriculum: null,
+            eventType: data.existing.eventType,
+            startsAt: new Date(data.existing.startsAt),
+            endsAt: new Date(data.existing.endsAt),
+            location: data.existing.location,
+            isOnline: data.existing.isOnline,
+            scheduleId: data.existing.scheduleId,
+            curriculumId: data.existing.curriculumId,
+            priceMnt: data.existing.priceMnt,
+            advanceOrderMnt: data.existing.advanceOrderMnt,
+            curriculumOverrideJson: data.existing.curriculumOverrideJson,
+            registrationFormJson: data.existing.registrationFormJson,
+          }
+        : null;
+    } catch {
+      bootstrapError = true;
+    }
+  }
 
   if (editEventId > BigInt(0) && !existing) {
     return (
@@ -151,7 +251,9 @@ export default async function EventsPanel({ searchParams, venue = "platform" }: 
 
   const registrationEditorInitialJson =
     existing != null
-      ? await registrationLegacyJsonForEventEditor(existing.id, existing.registrationFormJson)
+      ? venue === "admin"
+        ? (existing.registrationFormJson as unknown)
+        : await registrationLegacyJsonForEventEditor(existing.id, existing.registrationFormJson)
       : undefined;
 
   const defaultStarts = new Date();
@@ -193,6 +295,11 @@ export default async function EventsPanel({ searchParams, venue = "platform" }: 
 
   return (
     <div className="pl-panel-inner px-3 py-4">
+      {bootstrapError ? (
+        <div className="alert alert-danger py-2 small mb-3">
+          Админ API холболт алдаатай байна. API (backend) ажиллаж байгаа эсэхийг шалгаад дахин оролдоно уу.
+        </div>
+      ) : null}
       {err ? <div className="alert alert-warning py-2 small mb-3">{err}</div> : null}
 
       <div className="pm-card mb-4" id="managedEventsCard">

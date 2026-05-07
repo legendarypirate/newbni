@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import CompanyProfileForm from "@/components/platform/profile/CompanyProfileForm";
 import { MONGOLIA_BANKS_CATALOG } from "@/lib/mongolia-banks";
 import { computeProfileCompletionPct } from "@/lib/platform-profile-completion";
+import { fetchPlatformProfileByAccountId } from "@/lib/fetch-platform-profile";
 import { getPlatformSession } from "@/lib/platform-session";
-import { prisma } from "@/lib/prisma";
 
 function asRecord(json: unknown): Record<string, unknown> {
   if (json && typeof json === "object" && !Array.isArray(json)) {
@@ -17,11 +17,20 @@ export default async function ProfilePanel() {
   if (!session) {
     redirect("/auth/login?next=/platform/profile");
   }
-  const accountId = BigInt(session.id);
-
-  const profile = await prisma.platformProfile.findUnique({
-    where: { accountId },
-  });
+  const profileRow = await fetchPlatformProfileByAccountId(session.id);
+  const profile = profileRow
+    ? {
+        displayName: String(profileRow.displayName ?? ""),
+        companyName: profileRow.companyName == null ? null : String(profileRow.companyName),
+        businessPhone: profileRow.businessPhone == null ? null : String(profileRow.businessPhone),
+        businessEmail: profileRow.businessEmail == null ? null : String(profileRow.businessEmail),
+        website: profileRow.website == null ? null : String(profileRow.website),
+        addressLine: profileRow.addressLine == null ? null : String(profileRow.addressLine),
+        bio: profileRow.bio == null ? null : String(profileRow.bio),
+        businessJson: profileRow.businessJson,
+        photoUrl: profileRow.photoUrl == null ? null : String(profileRow.photoUrl),
+      }
+    : null;
 
   const biz = asRecord(profile?.businessJson);
 

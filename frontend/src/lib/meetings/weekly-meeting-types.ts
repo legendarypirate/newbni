@@ -1,4 +1,4 @@
-import type { BusyMeetingParticipantType } from "@prisma/client";
+import type { BusyMeetingParticipantType } from "@/lib/platform-db-types";
 
 export type CreateWeeklyMeetingInput = {
   groupName: string;

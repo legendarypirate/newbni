@@ -7,6 +7,7 @@ module.exports = (app) => {
   const admin = require("../controllers/admin.controller");
   const uploads = require("../controllers/admin/uploads.controller");
   const adminEvents = require("../controllers/admin/events-admin.controller");
+  const regExport = require("../controllers/admin-registration-export.controller");
   const platformAccounts = require("../controllers/admin/platform-accounts.controller");
   const authMiddleware = require("../middleware/auth.middleware");
   const requirePlatformAdminJwt = require("../middleware/admin-role.middleware");
@@ -38,6 +39,18 @@ module.exports = (app) => {
     platformAccounts.ensureBusyRbacSeedHttp,
   );
   router.get("/events/bootstrap", authMiddleware, requirePlatformAdminJwt, adminEvents.bootstrap);
+  router.get(
+    "/trips/:tripId/registration-responses/export",
+    authMiddleware,
+    requirePlatformAdminJwt,
+    regExport.tripCsv,
+  );
+  router.get(
+    "/events/:eventId/registration-responses/export",
+    authMiddleware,
+    requirePlatformAdminJwt,
+    regExport.eventCsv,
+  );
   router.post("/events", authMiddleware, requirePlatformAdminJwt, adminEvents.upsert);
   router.patch("/events/:id", authMiddleware, requirePlatformAdminJwt, adminEvents.upsert);
   router.delete("/events/:id", authMiddleware, requirePlatformAdminJwt, adminEvents.remove);

@@ -14,9 +14,22 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
+type PaymentOrderRow = {
+  id: bigint | number | string;
+  orderRef: string;
+  targetType: string;
+  targetId: bigint | number | string;
+  amountMnt: number;
+  qpayInvoiceId?: string | null;
+  status?: string;
+  createdAt?: string | Date;
+};
+
 export default async function DashboardPaymentsPage() {
-  const res = await serverAuthedFetch("/payments").then(r => r.json()).catch(() => ({ ok: false, data: [] }));
-  const orders = res.ok ? res.data : [];
+  const res = (await serverAuthedFetch("/payments")
+    .then((r) => r.json())
+    .catch(() => ({ ok: false, data: [] }))) as { ok?: boolean; data?: PaymentOrderRow[] };
+  const orders: PaymentOrderRow[] = res.ok && Array.isArray(res.data) ? res.data : [];
 
   return (
     <DashboardPage>

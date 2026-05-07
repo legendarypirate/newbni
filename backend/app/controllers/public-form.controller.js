@@ -189,6 +189,15 @@ exports.getPublished = async (req, res) => {
       coverImageUrl: form.trip.coverImageUrl,
     });
 
+  const event =
+    form.event &&
+    ({
+      id: form.event.id,
+      title: form.event.title,
+      startsAt: form.event.startsAt,
+      endsAt: form.event.endsAt,
+    });
+
   res.json({
     form: {
       title: form.title,
@@ -196,6 +205,7 @@ exports.getPublished = async (req, res) => {
       publicSlug: form.publicSlug,
       settings: form.settings,
       trip,
+      event,
       questions: (form.questions || []).map((q) => ({
         id: q.id,
         label: q.label,

@@ -1,4 +1,4 @@
-import type { TripFormQuestionType } from "@prisma/client";
+import type { TripFormQuestionType } from "@/lib/platform-db-types";
 
 /** Sub-reason for 400 validation (safe to expose to clients). */
 export type TripFormValidationCode =

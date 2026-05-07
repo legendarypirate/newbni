@@ -1,7 +1,4 @@
-import type { TripFormQuestionType } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
-import { newTripFormPublicSlug } from "@/lib/trip-registration-form/public-slug";
-import { upsertTripFormQuestionsFromLegacyRows } from "@/lib/trip-registration-form/sync-form-questions-upsert";
+import type { TripFormQuestionType } from "@/lib/platform-db-types";
 
 export type LegacyRegistrationRow = {
   name: string;
@@ -18,9 +15,6 @@ export function stableLegacyQuestionId(name: string, index: number): string {
   if (t.length > 0) return t;
   return `legacy_q_${index}`;
 }
-
-const DEFAULT_THANK_YOU_MN =
-  "Таны бүртгэл амжилттай илгээгдлээ. Зохион байгуулагч таны мэдээллийг шалгаж баталгаажуулна.";
 
 export function legacyStringToTripType(typeStr: string): TripFormQuestionType {
   switch (typeStr) {
@@ -96,92 +90,4 @@ export function parseLegacyRegistrationArray(registration: unknown): LegacyRegis
       placeholder: String(x.placeholder ?? ""),
       options: Array.isArray(x.options) ? x.options.map((o) => String(o)).filter(Boolean) : [],
     }));
-}
-
-/**
- * Keeps `trip_registration_forms` + `trip_form_questions` in sync with `registration_form_json`
- * so the homepage drawer (`/api/public/trips/:id/registration`) shows the same questions after trip save.
- */
-export async function syncTripRegistrationFormFromLegacyJson(tripId: number, registration: unknown): Promise<void> {
-  const parsed = parseLegacyRegistrationArray(registration);
-  const rows = parsed.filter((r) => r.label.trim());
-
-  if (rows.length === 0) {
-    const forms = await prisma.tripRegistrationForm.findMany({ where: { tripId }, select: { id: true } });
-    for (const f of forms) {
-      const qs = await prisma.tripFormQuestion.findMany({ where: { formId: f.id }, select: { id: true } });
-      for (const q of qs) {
-        const cnt = await prisma.tripFormResponseAnswer.count({ where: { questionId: q.id } });
-        if (cnt > 0) {
-          await prisma.tripFormQuestion.update({
-            where: { id: q.id },
-            data: { retiredFromForm: true, sortOrder: 999_000 },
-          });
-        } else {
-          await prisma.tripFormQuestionOption.deleteMany({ where: { questionId: q.id } });
-          await prisma.tripFormQuestion.delete({ where: { id: q.id } });
-        }
-      }
-      await prisma.tripRegistrationForm.update({
-        where: { id: f.id },
-        data: { isPublished: false },
-      });
-    }
-    return;
-  }
-
-  const trip = await prisma.businessTrip.findUnique({
-    where: { id: tripId },
-    select: { destination: true },
-  });
-  if (!trip) {
-    return;
-  }
-
-  await prisma.$transaction(
-    async (tx) => {
-    let form = await tx.tripRegistrationForm.findFirst({
-      where: { tripId },
-      orderBy: { createdAt: "asc" },
-    });
-
-    if (!form) {
-      let publicSlug = newTripFormPublicSlug();
-      for (let i = 0; i < 10; i++) {
-        const clash = await tx.tripRegistrationForm.findUnique({
-          where: { publicSlug },
-          select: { id: true },
-        });
-        if (!clash) break;
-        publicSlug = newTripFormPublicSlug();
-      }
-      form = await tx.tripRegistrationForm.create({
-        data: {
-          tripId,
-          title: trip.destination?.trim() || "Бүртгэлийн хураангуй",
-          description: null,
-          publicSlug,
-          isPublished: true,
-          settings: { thankYouMn: DEFAULT_THANK_YOU_MN },
-        },
-      });
-    } else {
-      await tx.tripRegistrationForm.update({
-        where: { id: form.id },
-        data: {
-          isPublished: true,
-          title: trip.destination?.trim() || undefined,
-        },
-      });
-    }
-
-    await tx.tripRegistrationForm.updateMany({
-      where: { tripId, NOT: { id: form.id } },
-      data: { isPublished: false },
-    });
-
-    await upsertTripFormQuestionsFromLegacyRows(tx, form.id, rows);
-    },
-    { maxWait: 15_000, timeout: 60_000 },
-  );
 }

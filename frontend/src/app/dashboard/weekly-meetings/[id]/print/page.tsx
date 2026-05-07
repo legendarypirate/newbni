@@ -4,9 +4,44 @@ import { getPlatformSession } from "@/lib/platform-session";
 import { formatClockUtc, formatMnDate } from "@/lib/format-date";
 import { rosterFeeCollectedMnt } from "@/lib/roster-export";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
+import type {
+  BusyMeetingAttendanceStatus,
+  BusyMeetingPaymentStatus,
+  BusyMeetingParticipantType,
+  BusyMeetingRegistration,
+  BusyWeeklyMeeting,
+} from "@/lib/platform-db-types";
 import PrintTrigger from "./PrintTrigger";
 
 export const dynamic = "force-dynamic";
+
+type RegistrationRow = {
+  id: bigint | number | string;
+  participantType: BusyMeetingParticipantType;
+  displayName: string;
+  companyName: string | null;
+  position: string | null;
+  businessCategory: string | null;
+  phone: string | null;
+  email: string | null;
+  invitedBy: string | null;
+  shortIntroduction: string | null;
+  paymentStatus: BusyMeetingPaymentStatus;
+  attendanceStatus: BusyMeetingAttendanceStatus;
+};
+
+type MeetingDetail = {
+  id: bigint | number | string;
+  publicToken: string;
+  feeMnt: unknown;
+  meetingDate: string | Date;
+  startTime: string | Date;
+  endTime: string | Date | null;
+  location: string | null;
+  enableShortIntroduction: boolean;
+  group: { name: string };
+  registrations: RegistrationRow[];
+};
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -15,14 +50,19 @@ export default async function WeeklyMeetingPrintPage({ params }: Props) {
   if (!user) return null;
 
   const { id } = await params;
-  const res = await serverAuthedFetch(`/meetings/weekly/${id}`).then(r => r.json()).catch(() => ({ ok: false }));
-  if (!res.ok) notFound();
+  const res = (await serverAuthedFetch(`/meetings/weekly/${id}`)
+    .then((r) => r.json())
+    .catch(() => ({ ok: false }))) as { ok?: boolean; meeting?: MeetingDetail };
+  if (!res.ok || !res.meeting) notFound();
   const meeting = res.meeting;
 
   const members = meeting.registrations.filter((r) => r.participantType === "member");
   const guests = meeting.registrations.filter((r) => r.participantType === "guest");
   const subs = meeting.registrations.filter((r) => r.participantType === "substitute");
-  const collected = rosterFeeCollectedMnt(meeting, meeting.registrations);
+  const collected = rosterFeeCollectedMnt(
+    meeting as unknown as BusyWeeklyMeeting,
+    meeting.registrations as unknown as BusyMeetingRegistration[],
+  );
 
   const mapRow = (r: (typeof meeting.registrations)[number]) => ({
     id: r.id.toString(),
@@ -51,8 +91,8 @@ export default async function WeeklyMeetingPrintPage({ params }: Props) {
             <div className="text-uppercase small text-muted">BUSY.mn — Roster</div>
             <h1 className="h4 fw-bold mb-1">{meeting.group.name}</h1>
             <div className="small">
-              {formatMnDate(meeting.meetingDate)} · {formatClockUtc(meeting.startTime)}
-              {meeting.endTime ? ` — ${formatClockUtc(meeting.endTime)}` : ""}
+              {formatMnDate(new Date(meeting.meetingDate))} · {formatClockUtc(new Date(meeting.startTime))}
+              {meeting.endTime ? ` — ${formatClockUtc(new Date(meeting.endTime))}` : ""}
             </div>
             <div className="small mt-1">{meeting.location ?? ""}</div>
           </div>

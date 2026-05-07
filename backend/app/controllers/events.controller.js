@@ -2,6 +2,7 @@
 
 const { Op } = require("sequelize");
 const db = require("../models");
+const { syncEventRegistrationFormFromLegacyJson } = require("../lib/trip-form-sync");
 
 exports.listPublic = async (req, res) => {
   try {
@@ -171,8 +172,12 @@ exports.upsert = async (req, res) => {
       savedId = created.id;
     }
 
-    // TODO: syncEventRegistrationFormFromLegacyJson logic in backend
-    
+    try {
+      await syncEventRegistrationFormFromLegacyJson(savedId, payload.registrationFormJson);
+    } catch (e) {
+      console.error("[events.upsert] syncEventRegistrationFormFromLegacyJson", e);
+    }
+
     return res.json({ ok: true, id: String(savedId) });
   } catch (err) {
     console.error("events upsert failed:", err);

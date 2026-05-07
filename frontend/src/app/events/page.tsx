@@ -24,6 +24,27 @@ type SearchParams = {
   date_to?: string;
 };
 
+type EventListRow = {
+  id: bigint | number | string;
+  title?: string | null;
+  chapter?: { name?: string | null } | null;
+  curriculumOverrideJson?: unknown;
+  curriculum?: { agendaJson?: unknown } | null;
+  startsAt: string | Date;
+  endsAt: string | Date;
+  location?: string | null;
+  isOnline?: boolean | number | null;
+  eventType: string;
+  priceMnt?: unknown;
+};
+
+type EventsListingData = {
+  events: EventListRow[];
+  totalUpcoming: number;
+  totalPast: number;
+  chaptersWithEvents: number;
+};
+
 export default async function EventsPage({ searchParams }: { searchParams: SearchParams }) {
   const chapterFilter = parseInt(searchParams.chapter || "0", 10);
   const status = ["upcoming", "past", "all"].includes(searchParams.status || "") ? searchParams.status! : "upcoming";
@@ -41,8 +62,10 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
   if (dateFrom) urlParams.set("date_from", dateFrom);
   if (dateTo) urlParams.set("date_to", dateTo);
 
-  const res = await serverAuthedFetch(`/events?${urlParams.toString()}`).then(r => r.json()).catch(() => ({ ok: false }));
-  const data = res.ok ? res.data : { events: [], totalUpcoming: 0, totalPast: 0, chaptersWithEvents: 0 };
+  const res = await serverAuthedFetch(`/events?${urlParams.toString()}`)
+    .then((r) => r.json())
+    .catch(() => ({ ok: false }));
+  const data = (res.ok ? res.data : { events: [], totalUpcoming: 0, totalPast: 0, chaptersWithEvents: 0 }) as EventsListingData;
 
   const { events, totalUpcoming, totalPast, chaptersWithEvents } = data;
 
@@ -57,7 +80,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
         )
       : [];
 
-  const getEventTitle = (ev: any) => {
+  const getEventTitle = (ev: EventListRow) => {
     return ev.title ? ev.title : (ev.chapter?.name ? `${ev.chapter.name}` : 'Хурал / эвент');
   };
 
@@ -164,8 +187,8 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
 
           {featuredEvents.map((fe) => {
             const bullets = eventListingSummaryBullets({
-              location: fe.location,
-              isOnline: fe.isOnline,
+              location: fe.location ?? null,
+              isOnline: Boolean(fe.isOnline),
               curriculumOverrideJson: fe.curriculumOverrideJson ?? undefined,
               chapterName: fe.chapter?.name ?? null,
             });

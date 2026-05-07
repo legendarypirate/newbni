@@ -1,6 +1,7 @@
 "use strict";
 
 const db = require("../../models");
+const { syncEventRegistrationFormFromLegacyJson } = require("../../lib/trip-form-sync");
 
 function parseNum(v) {
   const n = Number(v);
@@ -147,10 +148,20 @@ exports.upsert = async (req, res) => {
       const exists = await db.BniEvent.findByPk(eventId, { attributes: ["id"] });
       if (!exists) return res.status(404).json({ ok: false, errorKey: "notfound" });
       await db.BniEvent.update(payload, { where: { id: eventId } });
+      try {
+        await syncEventRegistrationFormFromLegacyJson(eventId, payload.registrationFormJson);
+      } catch (e) {
+        console.error("[admin events.upsert] syncEventRegistrationFormFromLegacyJson", e);
+      }
       return res.json({ ok: true, id: String(eventId) });
     }
 
     const created = await db.BniEvent.create(payload);
+    try {
+      await syncEventRegistrationFormFromLegacyJson(created.id, payload.registrationFormJson);
+    } catch (e) {
+      console.error("[admin events.upsert] syncEventRegistrationFormFromLegacyJson", e);
+    }
     return res.json({ ok: true, id: String(created.id) });
   } catch (err) {
     console.error("admin events upsert failed:", err);

@@ -15,8 +15,6 @@ export async function saveTripAction(formData: FormData): Promise<void> {
   }
 
   const accountId = BigInt(session.id);
-  // executeSaveTrip still uses prisma. We should migrate this logic to the backend.
-  // For now, I'll keep it but it's a target for next step.
   const result = await executeSaveTrip(accountId, formData);
   if (result.kind === "redirect") {
     redirect(result.to);

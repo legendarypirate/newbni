@@ -1,5 +1,6 @@
 "use strict";
 
+const db = require("../models");
 const {
   listWeeklyMeetingsForOrganizer,
   createWeeklyMeetingForAccount,

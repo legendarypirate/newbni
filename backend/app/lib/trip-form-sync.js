@@ -196,8 +196,175 @@ async function syncTripRegistrationFormFromLegacyJson(tripId, registration) {
   }
 }
 
+async function syncEventRegistrationFormFromLegacyJson(eventId, registration) {
+  const parsed = parseLegacyRegistrationArray(registration);
+  const rows = parsed.filter((r) => r.label.trim());
+
+  if (rows.length === 0) {
+    const forms = await db.TripRegistrationForm.findAll({ where: { eventId }, attributes: ["id"] });
+    for (const f of forms) {
+      const qs = await db.TripFormQuestion.findAll({ where: { formId: f.id }, attributes: ["id"] });
+      for (const q of qs) {
+        const cnt = await db.TripFormResponseAnswer.count({ where: { questionId: q.id } });
+        if (cnt > 0) {
+          await db.TripFormQuestion.update(
+            { retiredFromForm: true, sortOrder: 999000 },
+            { where: { id: q.id } },
+          );
+        } else {
+          await db.TripFormQuestionOption.destroy({ where: { questionId: q.id } });
+          await db.TripFormQuestion.destroy({ where: { id: q.id } });
+        }
+      }
+      await db.TripRegistrationForm.update({ isPublished: false }, { where: { id: f.id } });
+    }
+    return;
+  }
+
+  const ev = await db.BniEvent.findByPk(eventId, { attributes: ["title"] });
+  if (!ev) return;
+
+  const transaction = await db.sequelize.transaction();
+  try {
+    let form = await db.TripRegistrationForm.findOne({
+      where: { eventId },
+      order: [["createdAt", "ASC"]],
+      transaction,
+    });
+
+    if (!form) {
+      const publicSlug = `t${crypto.randomBytes(8).toString("hex")}`;
+      form = await db.TripRegistrationForm.create(
+        {
+          id: crypto.randomUUID(),
+          eventId,
+          tripId: null,
+          title: ev.title?.trim() || "Эвентийн бүртгэл",
+          description: null,
+          publicSlug,
+          isPublished: true,
+          settings: {
+            thankYouMn: "Таны бүртгэл амжилттай илгээгдлээ. Зохион байгуулагч таны мэдээллийг шалгаж баталгаажуулна.",
+          },
+        },
+        { transaction },
+      );
+    } else {
+      await form.update(
+        {
+          isPublished: true,
+          title: ev.title?.trim() || form.title,
+        },
+        { transaction },
+      );
+    }
+
+    await db.TripRegistrationForm.update(
+      { isPublished: false },
+      { where: { eventId, id: { [db.Sequelize.Op.ne]: form.id } }, transaction },
+    );
+
+    const desired = rows.map((row, idx) => ({
+      id: stableLegacyQuestionId(row.name, idx),
+      sortOrder: idx,
+      row,
+    }));
+    const desiredIds = new Set(desired.map((d) => d.id));
+
+    const existing = await db.TripFormQuestion.findAll({
+      where: { formId: form.id },
+      attributes: ["id"],
+      transaction,
+    });
+
+    const answerQuestionRows = await db.TripFormResponseAnswer.findAll({
+      include: [
+        {
+          model: db.TripFormResponse,
+          as: "response",
+          where: { formId: form.id },
+          attributes: [],
+        },
+      ],
+      attributes: ["questionId"],
+      group: ["questionId"],
+      transaction,
+    });
+    const questionIdsWithAnswers = new Set(answerQuestionRows.map((r) => r.questionId));
+
+    for (const d of desired) {
+      const row = d.row;
+      const type = legacyStringToTripType(row.type);
+      const isRequired = row.required === 1;
+
+      const [qInst] = await db.TripFormQuestion.findOrCreate({
+        where: { id: d.id },
+        defaults: {
+          id: d.id,
+          formId: form.id,
+          label: row.label.trim(),
+          type,
+          placeholder: row.placeholder.trim() || null,
+          isRequired,
+          sortOrder: d.sortOrder,
+          retiredFromForm: false,
+        },
+        transaction,
+      });
+
+      await qInst.update(
+        {
+          formId: form.id,
+          label: row.label.trim(),
+          type,
+          placeholder: row.placeholder.trim() || null,
+          isRequired,
+          sortOrder: d.sortOrder,
+          retiredFromForm: false,
+        },
+        { transaction },
+      );
+
+      await db.TripFormQuestionOption.destroy({ where: { questionId: d.id }, transaction });
+      if (needsTripOptions(type)) {
+        const opts = row.options.length > 0 ? row.options : ["Сонголт 1", "Сонголт 2"];
+        await db.TripFormQuestionOption.bulkCreate(
+          opts.map((label, i) => ({
+            questionId: d.id,
+            label,
+            value: label,
+            sortOrder: i,
+          })),
+          { transaction },
+        );
+      }
+    }
+
+    let retireSeq = 0;
+    for (const ex of existing) {
+      if (desiredIds.has(ex.id)) continue;
+      if (questionIdsWithAnswers.has(ex.id)) {
+        await db.TripFormQuestion.update(
+          { retiredFromForm: true, sortOrder: 900000 + retireSeq++ },
+          { where: { id: ex.id }, transaction },
+        );
+      } else {
+        await db.TripFormQuestionOption.destroy({ where: { questionId: ex.id }, transaction });
+        await db.TripFormQuestion.destroy({ where: { id: ex.id }, transaction });
+      }
+    }
+
+    await transaction.commit();
+  } catch (err) {
+    await transaction.rollback();
+    console.error("Sync event form failed:", err);
+    throw err;
+  }
+}
+
 module.exports = {
   stableLegacyQuestionId,
   parseLegacyRegistrationArray,
   syncTripRegistrationFormFromLegacyJson,
+  syncEventRegistrationFormFromLegacyJson,
 };

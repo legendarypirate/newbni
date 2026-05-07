@@ -1,4 +1,4 @@
-import type { BusyMeetingGroup, BusyMeetingRegistration, BusyWeeklyMeeting } from "@prisma/client";
+import type { BusyMeetingGroup, BusyMeetingRegistration, BusyWeeklyMeeting } from "@/lib/platform-db-types";
 
 export type RosterMeetingBundle = {
   group: BusyMeetingGroup;

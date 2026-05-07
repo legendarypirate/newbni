@@ -1,19 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getApiPlatformUser } from "@/lib/api-platform-session";
-import { buildAdminTripRegistrationExportCsv } from "@/lib/trip-registration-form/organizer";
+import { serverAuthedFetch } from "@admin/lib/server-authed-fetch";
 
 export const runtime = "nodejs";
 
 type Ctx = { params: Promise<{ tripId: string }> };
 
-function statusFromError(e: unknown): number {
-  if (e instanceof Error && typeof (e as Error & { status?: number }).status === "number") {
-    return (e as Error & { status?: number }).status!;
-  }
-  return 400;
-}
-
-/** UTF-8 CSV (Excel) — all registration responses for this trip (admin). */
+/** UTF-8 CSV — proxies to Node API (no Prisma in Next). */
 export async function GET(req: NextRequest, ctx: Ctx) {
   const user = await getApiPlatformUser(req);
   if (!user || user.legacyRole !== "admin") {
@@ -27,16 +20,22 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   }
 
   try {
-    const { filename, body } = await buildAdminTripRegistrationExportCsv(tripId);
+    const res = await serverAuthedFetch(`/admin/trips/${tripId}/registration-responses/export`);
+    if (!res.ok) {
+      return NextResponse.json({ error: "failed" }, { status: res.status === 404 ? 404 : 400 });
+    }
+    const body = await res.text();
+    const ct = res.headers.get("Content-Type") || "text/csv; charset=utf-8";
+    const cd = res.headers.get("Content-Disposition") || `attachment; filename="trip${tripId}_hariultuud.csv"`;
     return new NextResponse(body, {
       status: 200,
       headers: {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Type": ct,
+        "Content-Disposition": cd,
         "Cache-Control": "no-store",
       },
     });
-  } catch (e) {
-    return NextResponse.json({ error: "failed" }, { status: statusFromError(e) });
+  } catch {
+    return NextResponse.json({ error: "failed" }, { status: 500 });
   }
 }

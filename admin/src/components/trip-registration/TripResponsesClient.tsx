@@ -1,7 +1,7 @@
 "use client";
 
 import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
-import type { TripFormMoneyStatus, TripFormResponseWorkflowStatus } from "@prisma/client";
+import type { TripFormMoneyStatus, TripFormResponseWorkflowStatus } from "@/lib/platform-db-types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

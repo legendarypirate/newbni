@@ -1,6 +1,5 @@
-import type { PlatformRole } from "@prisma/client";
+import type { PlatformRole } from "@/lib/platform-db-types";
 import { headers } from "next/headers";
-import { prisma } from "@/lib/prisma";
 import { readBniTokenFromCookieHeader } from "@/lib/auth-cookie-token";
 import { resolveServerApiBase } from "@/lib/resolve-api-base";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
@@ -79,21 +78,27 @@ export type BusyAuthzSnapshot = {
   permissionKeys: string[];
 };
 
-/** Busy role slugs + permission keys (Prisma — used when session is cookie-based without JWT busy payload). */
+/** Busy role slugs + permission keys from `/auth/me` (requires bearer token). */
 export async function fetchBusyAuthzForAccount(accountId: bigint): Promise<BusyAuthzSnapshot> {
+  const h = await headers();
+  const cookieHeader = h.get("cookie");
+  const hdrs = new Headers();
+  if (cookieHeader) hdrs.set("cookie", cookieHeader);
+  const tok = readBniTokenFromCookieHeader(cookieHeader);
+  if (!tok) return { roleSlugs: [], permissionKeys: [] };
+  hdrs.set("Authorization", `Bearer ${tok}`);
   try {
-    const rows = await prisma.busyUserRoleAssignment.findMany({
-      where: { accountId },
-      include: { role: { include: { permissions: { include: { permission: true } } } } },
-    });
-    const roleSlugs = [...new Set(rows.map((r) => r.role.slug))];
-    const permissionKeys = new Set<string>();
-    for (const r of rows) {
-      for (const rp of r.role.permissions) {
-        permissionKeys.add(rp.permission.key);
-      }
-    }
-    return { roleSlugs, permissionKeys: [...permissionKeys] };
+    const res = await fetch(`${resolveServerApiBase()}/auth/me`, { headers: hdrs, cache: "no-store" });
+    if (!res.ok) return { roleSlugs: [], permissionKeys: [] };
+    const data = (await res.json()) as {
+      user?: { id?: string | number; busyRoleSlugs?: unknown; busyPermissionKeys?: unknown };
+    };
+    const u = data.user;
+    if (!u || String(u.id) !== String(accountId)) return { roleSlugs: [], permissionKeys: [] };
+    return {
+      roleSlugs: Array.isArray(u.busyRoleSlugs) ? u.busyRoleSlugs.map(String) : [],
+      permissionKeys: Array.isArray(u.busyPermissionKeys) ? u.busyPermissionKeys.map(String) : [],
+    };
   } catch {
     return { roleSlugs: [], permissionKeys: [] };
   }

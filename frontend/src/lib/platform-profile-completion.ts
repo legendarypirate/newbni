@@ -1,4 +1,4 @@
-import type { PlatformProfile } from "@prisma/client";
+import type { PlatformProfile } from "@/lib/platform-db-types";
 
 /** Same weights as PHP `platform-home.php` (`$profileFields`). */
 export function computeProfileCompletionPct(

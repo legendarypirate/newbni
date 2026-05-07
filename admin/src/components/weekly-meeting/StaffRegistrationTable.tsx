@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { BusyMeetingAttendanceStatus, BusyMeetingPaymentStatus } from "@prisma/client";
+import type { BusyMeetingAttendanceStatus, BusyMeetingPaymentStatus } from "@/lib/platform-db-types";
 
 type Row = {
   id: string;

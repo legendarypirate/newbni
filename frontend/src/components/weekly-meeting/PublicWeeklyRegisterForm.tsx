@@ -1,6 +1,6 @@
 "use client";
 
-import type { BusyMeetingParticipantType } from "@prisma/client";
+import type { BusyMeetingParticipantType } from "@/lib/platform-db-types";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { publicRegisterForWeeklyMeetingAction } from "@/app/dashboard/weekly-meetings/weekly-meeting-actions";

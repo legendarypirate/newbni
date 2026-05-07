@@ -13,12 +13,21 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardEventsPage() {
-  const res = await serverAuthedFetch("/events?status=upcoming").then(r => r.json()).catch(() => ({ ok: false }));
-  const events = res.ok ? res.data.events : [];
+type DashboardEventRow = {
+  id: bigint | number | string;
+  title?: string | null;
+  startsAt: string | Date;
+  eventType: string;
+  chapter?: { name?: string | null } | null;
+};
 
-  const title = (ev: (typeof events)[number]) =>
-    ev.title?.trim() || ev.chapter?.name?.trim() || "Хурал / эвент";
+export default async function DashboardEventsPage() {
+  const res = (await serverAuthedFetch("/events?status=upcoming")
+    .then((r) => r.json())
+    .catch(() => ({ ok: false }))) as { ok?: boolean; data?: { events?: DashboardEventRow[] } };
+  const events: DashboardEventRow[] = res.ok && Array.isArray(res.data?.events) ? res.data!.events! : [];
+
+  const title = (ev: DashboardEventRow) => ev.title?.trim() || ev.chapter?.name?.trim() || "Хурал / эвент";
 
   return (
     <DashboardPage>

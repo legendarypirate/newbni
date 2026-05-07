@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { mediaUrl } from "@/lib/media-url";
+import { fetchPlatformProfileByAccountId } from "@/lib/fetch-platform-profile";
 import { getPlatformSession } from "@/lib/platform-session";
-import { prisma } from "@/lib/prisma";
 
 function str(v: unknown): string {
   return v == null ? "" : String(v);
@@ -22,12 +22,7 @@ export default async function PremiumPanel() {
   if (!session) {
     redirect("/auth/login?next=/platform/premium");
   }
-  const accountId = BigInt(session.id);
-
-  const profile = await prisma.platformProfile.findUnique({
-    where: { accountId },
-    select: { businessJson: true },
-  });
+  const profile = await fetchPlatformProfileByAccountId(session.id);
 
   const biz =
     profile?.businessJson && typeof profile.businessJson === "object" && !Array.isArray(profile.businessJson)

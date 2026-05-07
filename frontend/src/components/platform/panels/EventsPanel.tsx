@@ -10,7 +10,6 @@ import EventManageForm from "@/components/platform/panels/EventManageForm";
 import { deleteEventAction } from "@/app/platform/events-actions";
 import { parseBniEventDetailEnvelope } from "@/lib/bni-event-detail";
 import { formatEventDatetimeWireUb, formatEventDisplayUb } from "@/lib/event-datetime-ub";
-import { prisma } from "@/lib/prisma";
 import { getPlatformSession } from "@/lib/platform-session";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 import { registrationLegacyJsonForEventEditor } from "@/lib/trip-registration-form/event-registration-editor-load";
@@ -139,14 +138,15 @@ export default async function EventsPanel({ searchParams, venue = "platform" }: 
   let curriculums: { id: number; name: string; chapter: { name: string } | null }[] = [];
   let managedEvents: EventPanelRow[] = [];
   let existing: EventPanelRow | null = null;
-  let adminBootstrapError = false;
+  let bootstrapError = false;
 
-  if (venue === "admin") {
+  if (venue === "admin" || venue === "platform") {
     try {
+      const bootstrapBase = venue === "admin" ? "/admin/events/bootstrap" : "/platform/events/bootstrap";
       const bootstrapPath =
         editEventId > BigInt(0)
-          ? `/admin/events/bootstrap?edit_event=${encodeURIComponent(editEventId.toString())}`
-          : "/admin/events/bootstrap";
+          ? `${bootstrapBase}?edit_event=${encodeURIComponent(editEventId.toString())}`
+          : bootstrapBase;
       const res = await serverAuthedFetch(bootstrapPath);
       const data = (await res.json().catch(() => ({}))) as {
       ok?: boolean;
@@ -234,35 +234,8 @@ export default async function EventsPanel({ searchParams, venue = "platform" }: 
           }
         : null;
     } catch {
-      adminBootstrapError = true;
+      bootstrapError = true;
     }
-  } else {
-    const rows = await Promise.all([
-      prisma.chapter.findMany({
-        orderBy: [{ region: { name: "asc" } }, { name: "asc" }],
-        include: { region: { select: { name: true } } },
-      }),
-      prisma.chapterWeeklySchedule.findMany({
-        take: 500,
-        orderBy: { id: "desc" },
-        include: { chapter: true, curriculum: true },
-      }),
-      prisma.curriculum.findMany({
-        orderBy: { name: "asc" },
-        include: { chapter: true },
-      }),
-      prisma.bniEvent.findMany({
-        take: 100,
-        orderBy: { startsAt: "desc" },
-        include: { chapter: true, curriculum: true },
-      }),
-      editEventId > BigInt(0) ? prisma.bniEvent.findUnique({ where: { id: editEventId } }) : null,
-    ]);
-    chapters = rows[0];
-    schedules = rows[1];
-    curriculums = rows[2];
-    managedEvents = rows[3];
-    existing = rows[4] as EventPanelRow | null;
   }
 
   if (editEventId > BigInt(0) && !existing) {
@@ -322,7 +295,7 @@ export default async function EventsPanel({ searchParams, venue = "platform" }: 
 
   return (
     <div className="pl-panel-inner px-3 py-4">
-      {adminBootstrapError ? (
+      {bootstrapError ? (
         <div className="alert alert-danger py-2 small mb-3">
           Админ API холболт алдаатай байна. API (backend) ажиллаж байгаа эсэхийг шалгаад дахин оролдоно уу.
         </div>

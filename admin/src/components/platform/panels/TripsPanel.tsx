@@ -1,18 +1,23 @@
 import Link from "next/link";
 import TripEditorForm from "@/components/platform/trips/TripEditorForm";
 import { deleteTripAction, toggleTripFeaturedAction } from "@/app/platform/trips-actions";
-import { dbBusinessTrip } from "@/lib/prisma";
 import { getPlatformSession } from "@/lib/platform-session";
+import { serverAuthedFetch } from "@admin/lib/server-authed-fetch";
 import {
   errorBanner,
   firstParam,
   fmtMoney,
   toInputDate,
 } from "@/components/platform/trips/trip-editor-helpers";
+import type { BusinessTrip } from "@/lib/platform-db-types";
 
 type Props = {
   searchParams?: Record<string, string | string[] | undefined>;
 };
+
+function toDate(v: unknown): Date {
+  return new Date(String(v ?? ""));
+}
 
 export default async function TripsPanel({ searchParams }: Props) {
   const viewer = await getPlatformSession();
@@ -21,14 +26,30 @@ export default async function TripsPanel({ searchParams }: Props) {
   const editRaw = firstParam(searchParams?.edit_trip) ?? firstParam(searchParams?.edit);
   const editTripId = Math.max(0, Number(editRaw ?? ""));
 
-  const trips = dbBusinessTrip();
-  const managedTrips = await trips.findMany({
-    orderBy: [{ isFeatured: "desc" }, { startDate: "desc" }],
-    take: 200,
-  });
+  const listRes = await serverAuthedFetch("/platform/trips");
+  const listJson = (await listRes.json().catch(() => ({}))) as {
+    data?: { trips?: Record<string, unknown>[] };
+    trips?: Record<string, unknown>[];
+  };
+  const rawTrips = listJson.data?.trips ?? listJson.trips ?? [];
+  const managedTrips = rawTrips.map((mt) => ({
+    id: Number(mt.id ?? 0),
+    destination: String(mt.destination ?? ""),
+    seatsLabel: mt.seatsLabel == null ? null : String(mt.seatsLabel),
+    startDate: toDate(mt.startDate ?? mt.start_date),
+    endDate: toDate(mt.endDate ?? mt.end_date),
+    priceMnt: mt.priceMnt ?? mt.price_mnt,
+    isFeatured: Number(mt.isFeatured ?? mt.is_featured ?? 0),
+  }));
 
-  const editTrip =
-    editTripId > 0 ? await trips.findUnique({ where: { id: editTripId } }) : null;
+  let editTrip: BusinessTrip | null = null;
+  if (editTripId > 0) {
+    const tr = await serverAuthedFetch(`/platform/trips/${editTripId}`);
+    if (tr.ok) {
+      const tj = (await tr.json().catch(() => ({}))) as { trip?: BusinessTrip };
+      editTrip = (tj.trip as BusinessTrip) ?? null;
+    }
+  }
 
   if (editTripId > 0 && !editTrip) {
     return (

@@ -1,4 +1,4 @@
-import type { TripFormQuestionType } from "@prisma/client";
+import type { TripFormQuestionType } from "@/lib/platform-db-types";
 
 export type { TripFormQuestionType };
 

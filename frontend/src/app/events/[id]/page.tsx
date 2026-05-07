@@ -25,6 +25,14 @@ export const dynamic = "force-dynamic";
 const EVENT_DEFAULT_HERO = "/assets/img/meeting-hero.png";
 const EVENT_MINI_IMG = "/assets/img/meeting-hero.png";
 
+type SimilarEventSummary = {
+  id: bigint | number | string;
+  title?: string | null;
+  startsAt: string | Date;
+  priceMnt?: unknown;
+  chapter?: { name?: string | null } | null;
+};
+
 type Props = { params: Promise<{ id: string }> };
 
 function ubTime(d: string | Date): string {
@@ -59,6 +67,7 @@ export default async function EventDetailPage({ params }: Props) {
   if (!res.ok) notFound();
   
   const { event: ev, registeredTotal, publishedForm, similar } = res.data;
+  const similarEvents: SimilarEventSummary[] = (similar as SimilarEventSummary[] | undefined) ?? [];
 
   const envelope = parseBniEventDetailEnvelope(ev.curriculumOverrideJson ?? undefined);
   const description = resolvedEventDescription(envelope);
@@ -289,10 +298,10 @@ export default async function EventDetailPage({ params }: Props) {
                 )}
               </div>
               <div className="event-scroll-container">
-                {similar.length === 0 ? (
+                {similarEvents.length === 0 ? (
                   <p className="small text-muted mb-0 px-2">Төстэй ирээдүйн арга хэмжээ байхгүй байна.</p>
                 ) : (
-                  similar.map((sim) => {
+                  similarEvents.map((sim) => {
                     const simTitle = sim.title?.trim() || sim.chapter?.name?.trim() || "Хурал";
                     const simDate = formatMnDate(sim.startsAt);
                     const simPrice = sim.priceMnt != null && Number(sim.priceMnt) > 0;

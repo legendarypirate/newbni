@@ -4,16 +4,47 @@ import { DashboardBreadcrumb } from "@/components/dashboard/DashboardBreadcrumb"
 import { DashboardPage } from "@/components/dashboard/DashboardPage";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 import { formatClockUtc, formatMnDate } from "@/lib/format-date";
+import type { BusyMeetingAttendanceStatus, BusyMeetingPaymentStatus } from "@/lib/platform-db-types";
 import StaffRegistrationTable from "@/components/weekly-meeting/StaffRegistrationTable";
 
 export const dynamic = "force-dynamic";
+
+type RegistrationRow = {
+  id: bigint | number | string;
+  participantType: string;
+  displayName: string;
+  companyName: string | null;
+  position: string | null;
+  businessCategory: string | null;
+  phone: string | null;
+  email: string | null;
+  invitedBy: string | null;
+  shortIntroduction: string | null;
+  paymentStatus: BusyMeetingPaymentStatus;
+  attendanceStatus: BusyMeetingAttendanceStatus;
+};
+
+type MeetingDetail = {
+  id: bigint | number | string;
+  publicToken: string;
+  feeMnt: unknown;
+  meetingDate: string | Date;
+  startTime: string | Date;
+  endTime: string | Date | null;
+  location: string | null;
+  enableShortIntroduction: boolean;
+  group: { name: string };
+  registrations: RegistrationRow[];
+};
 
 type Props = { params: Promise<{ id: string }> };
 
 export default async function WeeklyMeetingDetailPage({ params }: Props) {
   const { id } = await params;
-  
-  const res = await serverAuthedFetch(`/meetings/weekly/${id}`).then(r => r.json()).catch(() => ({ ok: false }));
+
+  const res = (await serverAuthedFetch(`/meetings/weekly/${id}`)
+    .then((r) => r.json())
+    .catch(() => ({ ok: false }))) as { ok?: boolean; meeting?: MeetingDetail };
   const meeting = res.ok ? res.meeting : null;
 
   if (!meeting) notFound();
@@ -23,7 +54,7 @@ export default async function WeeklyMeetingDetailPage({ params }: Props) {
       ? `${Number(meeting.feeMnt).toLocaleString("mn-MN")} ₮`
       : "—";
 
-  const rows = meeting.registrations.map((r) => ({
+  const rows = meeting.registrations.map((r: RegistrationRow) => ({
     id: r.id.toString(),
     participantType: r.participantType,
     displayName: r.displayName,
@@ -59,8 +90,8 @@ export default async function WeeklyMeetingDetailPage({ params }: Props) {
             <div className="card-body">
               <h1 className="h4 fw-bold mb-2">{meeting.group.name}</h1>
               <p className="text-muted mb-3">
-                {formatMnDate(meeting.meetingDate)} · {formatClockUtc(meeting.startTime)}
-                {meeting.endTime ? ` — ${formatClockUtc(meeting.endTime)}` : ""}
+                {formatMnDate(new Date(meeting.meetingDate))} · {formatClockUtc(new Date(meeting.startTime))}
+                {meeting.endTime ? ` — ${formatClockUtc(new Date(meeting.endTime))}` : ""}
               </p>
               <p className="mb-2">
                 <span className="text-muted">Байршил:</span> {meeting.location ?? "—"}

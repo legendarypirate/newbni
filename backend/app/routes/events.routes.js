@@ -9,6 +9,7 @@ module.exports = (app) => {
   router.get("/events", ctrl.listPublic);
   router.get("/events/:id", ctrl.getById);
   router.post("/events", authMiddleware, ctrl.upsert);
+  router.patch("/events/:id", authMiddleware, ctrl.upsert);
   router.delete("/events/:id", authMiddleware, ctrl.remove);
 
   app.use("/api", router);

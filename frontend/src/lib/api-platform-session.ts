@@ -1,8 +1,7 @@
 import type { NextRequest } from "next/server";
 import { PLATFORM_ACCOUNT_REF_COOKIE, readCookieValueFromHeader } from "@/lib/platform-session-cookies";
-import { prisma } from "@/lib/prisma";
 import { fetchBusyAuthzForAccount } from "@/lib/busy-rbac";
-import type { PlatformAccount, PlatformProfile } from "@prisma/client";
+import type { PlatformProfile, PlatformRole } from "@/lib/platform-db-types";
 import { resolveServerApiBase } from "@/lib/resolve-api-base";
 
 export type ApiPlatformUser = {
@@ -10,7 +9,7 @@ export type ApiPlatformUser = {
   email: string;
   displayName: string;
   /** Legacy `PlatformRole` from `bni_platform_accounts.role`. */
-  legacyRole: PlatformAccount["role"];
+  legacyRole: PlatformRole;
   profile: Pick<PlatformProfile, "displayName" | "photoUrl"> | null;
   /** Populated when resolved via JWT `/auth/me`. */
   busyRoleSlugs?: string[];
@@ -74,7 +73,7 @@ async function loadApiPlatformUserFromJwt(req: NextRequest): Promise<ApiPlatform
     const u = data.user;
     if (!u?.id || !u?.email) return null;
     const id = BigInt(String(u.id));
-    const legacyRole = u.role as PlatformAccount["role"];
+    const legacyRole = u.role as PlatformRole;
     const busyRoleSlugs = Array.isArray(u.busyRoleSlugs) ? u.busyRoleSlugs.map(String) : undefined;
     const busyPermissionKeys = Array.isArray(u.busyPermissionKeys) ? u.busyPermissionKeys.map(String) : undefined;
 
@@ -106,43 +105,15 @@ function resolveAccountIdFromRequest(req: NextRequest): bigint | null {
   );
 }
 
-async function loadApiPlatformUserByAccountId(id: bigint): Promise<ApiPlatformUser | null> {
-  let account: (PlatformAccount & { profile: PlatformProfile | null }) | null;
-  try {
-    account = await prisma.platformAccount.findUnique({
-      where: { id },
-      include: { profile: true },
-    });
-  } catch {
-    return null;
-  }
-
-  if (!account || account.status !== "active") return null;
-
-  const display =
-    account.profile?.displayName && account.profile.displayName.trim() !== ""
-      ? account.profile.displayName.trim()
-      : account.email;
-
-  return {
-    id: account.id,
-    email: account.email,
-    displayName: display,
-    legacyRole: account.role,
-    profile: account.profile
-      ? { displayName: account.profile.displayName, photoUrl: account.profile.photoUrl }
-      : null,
-  };
-}
-
-/** Prefer JWT `/auth/me` (works without DATABASE_URL on admin); fallback platform cookies + Prisma. */
+/** Prefer JWT `/auth/me`. Cookie-only sessions without a bearer token are not resolved here. */
 export async function getApiPlatformUser(req: NextRequest): Promise<ApiPlatformUser | null> {
   const jwtUser = await loadApiPlatformUserFromJwt(req);
   if (jwtUser) return jwtUser;
 
   const id = resolveAccountIdFromRequest(req);
   if (!id) return null;
-  return loadApiPlatformUserByAccountId(id);
+  void id;
+  return null;
 }
 
 export async function getApiPlatformUserWithBusyAuthz(req: NextRequest): Promise<ApiPlatformUserWithBusyAuthz | null> {

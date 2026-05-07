@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { TripFormQuestionType } from "@prisma/client";
+import type { TripFormQuestionType } from "@/lib/platform-db-types";
 import { tripFormUi as ui } from "@/components/trip-registration/trip-form-ui";
 
 /** YYYY.MM.DD from trip ISO — identical on server and client (avoids `toLocaleDateString` hydration mismatch). */

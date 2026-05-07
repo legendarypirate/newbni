@@ -1,4 +1,4 @@
-import type { TripFormQuestionType } from "@prisma/client";
+import type { TripFormQuestionType } from "@/lib/platform-db-types";
 import type { TripFormQuestionSnapshot, TripFormSubmitAnswer } from "@/lib/trip-registration-form/submit-validation";
 
 /** Илгээх үед `trip_form_responses.answers_snapshot` дээр хадгалах элемент. */

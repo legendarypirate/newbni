@@ -11,6 +11,28 @@ type SearchParams = {
   verified?: string;
 };
 
+type MemberCard = {
+  id: number | string;
+  featured?: number;
+  company?: string | null;
+  name: string;
+  industry?: string | null;
+  position?: string | null;
+  bio?: string | null;
+  photo?: string | null;
+  website?: string | null;
+  email?: string | null;
+  updatedAt?: string | Date | null;
+};
+
+type MembersListingData = {
+  members: MemberCard[];
+  totalActive: number;
+  featuredMembers: MemberCard[];
+  recentMembers: MemberCard[];
+  allActiveMembers: MemberCard[];
+};
+
 export default async function MembersPage({ searchParams }: { searchParams: SearchParams }) {
   const query = searchParams.q?.trim() || "";
   const industryFilter = searchParams.industry?.trim() || "";
@@ -23,15 +45,19 @@ export default async function MembersPage({ searchParams }: { searchParams: Sear
   if (locationFilter) urlParams.set("location", locationFilter);
   if (verifiedFilter) urlParams.set("verified", verifiedFilter);
 
-  const res = await serverAuthedFetch(`/members?${urlParams.toString()}`).then(r => r.json()).catch(() => ({ ok: false }));
-  const data = res.ok ? res.data : { members: [], totalActive: 0, featuredMembers: [], recentMembers: [], allActiveMembers: [] };
+  const res = await serverAuthedFetch(`/members?${urlParams.toString()}`)
+    .then((r) => r.json())
+    .catch(() => ({ ok: false }));
+  const data = (res.ok
+    ? res.data
+    : { members: [], totalActive: 0, featuredMembers: [], recentMembers: [], allActiveMembers: [] }) as MembersListingData;
 
   const { members, totalActive, featuredMembers, recentMembers, allActiveMembers } = data;
 
   const industriesSet = new Set<string>();
   const locationsSet = new Set<string>();
 
-  for (const m of (allActiveMembers || [])) {
+  for (const m of allActiveMembers ?? []) {
     if (m.industry && m.industry.trim()) {
       industriesSet.add(m.industry.trim());
     }
@@ -54,7 +80,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Sear
   const industries = Array.from(industriesSet).sort();
   const locations = Array.from(locationsSet).sort();
 
-  const mLogo = (name: string, company: string | null) => {
+  const mLogo = (name: string, company?: string | null) => {
     const text = (company || name).trim();
     if (!text) return "BN";
     const tokens = text.split(/\s+/);
@@ -242,7 +268,11 @@ export default async function MembersPage({ searchParams }: { searchParams: Sear
                                           <div className="rc-name">{rMember.company || rMember.name}</div>
                                           <div className="rc-desc">{rMember.industry || 'Хамтын ажиллагааны санал'}</div>
                                       </div>
-                                      <div className="rc-time">{rMember.updatedAt ? rMember.updatedAt.toISOString().split("T")[0] : ""}</div>
+                                      <div className="rc-time">
+                                    {rMember.updatedAt
+                                      ? new Date(rMember.updatedAt).toISOString().split("T")[0]
+                                      : ""}
+                                  </div>
                                   </div>
                               ))}
                           </div>

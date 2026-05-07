@@ -1,10 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import {
-  BusyMeetingAttendanceStatus,
-  BusyMeetingPaymentStatus,
-} from "@prisma/client";
+import type { BusyMeetingAttendanceStatus, BusyMeetingPaymentStatus } from "@/lib/platform-db-types";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 import type { CreateWeeklyMeetingInput, PublicRegisterMeetingInput } from "@/lib/meetings/weekly-meeting-types";
 

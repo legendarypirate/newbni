@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { BusinessTrip } from "@prisma/client";
+import type { BusinessTrip } from "@/lib/platform-db-types";
 import { mediaUrl } from "@/lib/media-url";
 import PlatformTripRegistrationJsonBuilder from "@/components/platform/forms/PlatformTripRegistrationJsonBuilder";
 import TripFormUploadPendingOverlay from "@admin/components/platform/forms/TripFormUploadPendingOverlay";

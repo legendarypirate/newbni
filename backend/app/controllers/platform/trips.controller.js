@@ -1,5 +1,6 @@
 "use strict";
 
+const { Op } = require("sequelize");
 const db = require("../../models");
 const { readExtras } = require("../../lib/trip-helpers");
 const { syncTripRegistrationFormFromLegacyJson } = require("../../lib/trip-form-sync");
@@ -246,7 +247,6 @@ exports.deleteTrip = async (req, res) => {
 exports.toggleFeatured = async (req, res) => {
   const id = parseInt(req.params.id);
   const { isFeatured } = req.body;
-  const { Op } = require("sequelize");
   if (isNaN(id) || id < 1) return res.status(400).json({ ok: false });
 
   try {

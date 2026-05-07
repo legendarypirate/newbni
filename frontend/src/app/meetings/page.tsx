@@ -4,9 +4,20 @@ import { internalApiUrl } from "@/lib/backend-api";
 
 export const dynamic = "force-dynamic";
 
+type LegacyMeetingRow = {
+  id: number | string;
+  title: string;
+  meetingDate: string | Date;
+  startTime: string | Date;
+  endTime: string | Date;
+  location?: string | null;
+};
+
 export default async function MeetingsPage() {
-  const res = await fetch(internalApiUrl("/api/legacy-meetings"), { cache: "no-store" }).then(r => r.json()).catch(() => ({ ok: false }));
-  const meetings = res.ok ? res.data : [];
+  const res = await fetch(internalApiUrl("/api/legacy-meetings"), { cache: "no-store" })
+    .then((r) => r.json())
+    .catch(() => ({ ok: false }));
+  const meetings: LegacyMeetingRow[] = res.ok ? (res.data as LegacyMeetingRow[]) : [];
 
   return (
     <main className="container py-4">
@@ -29,7 +40,7 @@ export default async function MeetingsPage() {
             >
               <div className="fw-semibold">{m.title}</div>
               <div className="small text-muted">
-                {formatMnDate(m.meetingDate)} · {formatClockUtc(m.startTime)} — {formatClockUtc(m.endTime)}
+                {formatMnDate(m.meetingDate)} · {formatClockUtc(new Date(m.startTime))} — {formatClockUtc(new Date(m.endTime))}
               </div>
               {m.location ? <div className="small mt-1">{m.location}</div> : null}
             </Link>

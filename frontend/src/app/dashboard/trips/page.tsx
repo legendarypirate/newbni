@@ -12,8 +12,6 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-import { serverAuthedFetch } from "@/lib/server-authed-fetch";
-
 export default async function DashboardTripsPage() {
   const user = await getPlatformSession();
   const res = await serverAuthedFetch("/platform/trips").then(r => r.json()).catch(() => ({ ok: false }));
