@@ -133,10 +133,16 @@ exports.saveTrip = async (req, res) => {
 
 exports.listTrips = async (req, res) => {
   try {
-    const { country, focus, date_from, date_to, trip_type, budget_max } = req.query;
+    const { country, focus, date_from, date_to, trip_type, budget_max, mine } = req.query;
     const where = {};
     const now = new Date();
     now.setHours(0, 0, 0, 0);
+
+    // `mine=1` → only return trips owned by the authenticated user
+    // (used by the platform "Миний аялалууд" panel).
+    if (String(mine || "") === "1" && req.user?.id) {
+      where.managerAccountId = req.user.id;
+    }
 
     if (country) {
       where.destination = { [Op.iLike]: `%${country}%` };

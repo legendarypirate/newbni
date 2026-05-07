@@ -63,10 +63,16 @@ export default function TripsPanel({ searchParams: _searchParams }: Props) {
           if (!cancelled && name) setGreetingName(name);
         }
 
-        const tripsRes = await apiFetch("/platform/trips");
+        const tripsRes = await apiFetch("/platform/trips?mine=1");
         if (tripsRes.ok) {
-          const data = (await tripsRes.json()) as { trips?: Array<Record<string, unknown>> };
-          if (!cancelled) setManagedTrips((data.trips ?? []).map(toManagedTripRow));
+          const json = (await tripsRes.json()) as {
+            trips?: Array<Record<string, unknown>>;
+            data?: { trips?: Array<Record<string, unknown>> };
+          };
+          // Backend wraps payload as `{ ok, data: { trips, ... } }`; tolerate
+          // either shape so older deployments don't break the UI.
+          const list = json.data?.trips ?? json.trips ?? [];
+          if (!cancelled) setManagedTrips(list.map(toManagedTripRow));
         } else if (!cancelled) {
           setManagedTrips([]);
         }
