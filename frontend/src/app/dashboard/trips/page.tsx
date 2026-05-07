@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { DashboardPage } from "@/components/dashboard/DashboardPage";
 import TripsDashboardTable from "@/components/dashboard/TripsDashboardTable";
 import { Button } from "@/components/ui/button";
-import { getPlatformSession } from "@/lib/platform-session";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 export const metadata: Metadata = {
@@ -13,9 +12,11 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function DashboardTripsPage() {
-  const user = await getPlatformSession();
+  // Auth is enforced by `DashboardAuthGate` in the layout. Trip ownership is
+  // resolved client-side once the data lands; we no longer need the server
+  // session just to compute `currentUserId` for highlighting.
   const res = await serverAuthedFetch("/platform/trips").then(r => r.json()).catch(() => ({ ok: false }));
-  const trips = res.ok ? res.data.trips : [];
+  const trips = res.ok ? res.data?.trips ?? res.trips ?? [] : [];
 
   const tripRows = (trips || []).map((t: any) => ({
     id: t.id,
@@ -46,7 +47,7 @@ export default async function DashboardTripsPage() {
         </div>
       </div>
 
-      <TripsDashboardTable trips={tripRows} currentUserId={user?.id != null ? Number(user.id) : null} />
+      <TripsDashboardTable trips={tripRows} currentUserId={null} />
     </DashboardPage>
   );
 }

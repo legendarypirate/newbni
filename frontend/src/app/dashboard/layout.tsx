@@ -1,10 +1,15 @@
 import Link from "next/link";
 import PlatformBodyClass from "@/components/platform/PlatformBodyClass";
+import DashboardAuthGate from "@/components/dashboard/DashboardAuthGate";
 import DashboardSidebarNav from "./DashboardSidebarNav";
 import DashboardSidebarToggle from "./DashboardSidebarToggle";
 import "@/styles/dashboard-shell.css";
 
-/** Session reads must not be served from the full-route cache without the real request cookies. */
+/**
+ * Auth is enforced *client-side* by `DashboardAuthGate` (JWT from
+ * `localStorage` → `/auth/me`). The server layout itself does no session
+ * lookup so individual pages never need to redirect to login.
+ */
 export const dynamic = "force-dynamic";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -110,7 +115,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </header>
 
           <div className="flex-grow-1" style={{ background: "var(--pl-bg, #f8fafc)" }}>
-            {children}
+            <DashboardAuthGate>{children}</DashboardAuthGate>
           </div>
         </main>
 

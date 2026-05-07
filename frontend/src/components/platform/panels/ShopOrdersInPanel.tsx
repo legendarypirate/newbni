@@ -1,12 +1,10 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getPlatformSession } from "@/lib/platform-session";
+"use client";
 
-export default async function ShopOrdersInPanel() {
-  const session = await getPlatformSession();
-  if (!session) {
-    redirect("/auth/login?next=/platform/shop_orders_in");
-  }
+import Link from "next/link";
+import { usePlatformSession } from "@/components/platform/PlatformSessionContext";
+
+export default function ShopOrdersInPanel() {
+  const session = usePlatformSession();
 
   return (
     <>
@@ -25,7 +23,10 @@ export default async function ShopOrdersInPanel() {
           <i className="fa-solid fa-inbox fa-2x mb-3 d-block opacity-50" />
           <div className="fw-semibold text-dark mb-1">Ирсэн захиалга байхгүй</div>
           <div className="small mb-3">Хэрэглэгчид таны нээлттэй дэлгүүрээс захиалга өгөхөд энд харагдана.</div>
-          <Link href={`/company/${session.id.toString()}?tab=shop`} className="pm-btn-primary text-decoration-none d-inline-flex px-4 py-2">
+          <Link
+            href={`/company/${session.id}?tab=shop`}
+            className="pm-btn-primary text-decoration-none d-inline-flex px-4 py-2"
+          >
             Дэлгүүр үзэх
           </Link>
         </div>

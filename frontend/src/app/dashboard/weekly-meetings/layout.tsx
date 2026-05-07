@@ -1,15 +1,11 @@
-import { connection } from "next/server";
-import { redirect } from "next/navigation";
 import WeeklyMeetingShell from "@/components/weekly-meeting/WeeklyMeetingShell";
-import { getPlatformSession } from "@/lib/platform-session";
 
+/**
+ * Auth is already enforced by the parent `DashboardAuthGate` in
+ * `/dashboard/layout.tsx`; this layout only adds the weekly-meeting chrome.
+ */
 export const dynamic = "force-dynamic";
 
-export default async function WeeklyMeetingsAuthLayout({ children }: { children: React.ReactNode }) {
-  await connection();
-  const user = await getPlatformSession();
-  if (!user) {
-    redirect(`/auth/login?next=${encodeURIComponent("/dashboard/weekly-meetings")}`);
-  }
+export default function WeeklyMeetingsAuthLayout({ children }: { children: React.ReactNode }) {
   return <WeeklyMeetingShell>{children}</WeeklyMeetingShell>;
 }

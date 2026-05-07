@@ -1,12 +1,4 @@
-import { redirect } from "next/navigation";
-import { getPlatformSession } from "@/lib/platform-session";
-
-export default async function ShopOrdersOutPanel() {
-  const session = await getPlatformSession();
-  if (!session) {
-    redirect("/auth/login?next=/platform/shop_orders");
-  }
-
+export default function ShopOrdersOutPanel() {
   return (
     <>
       <div className="ps-hero mb-4">

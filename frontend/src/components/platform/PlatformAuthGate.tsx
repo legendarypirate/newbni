@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { publicApiBase } from "@/lib/client-api-base";
 import PlatformTopNav from "./PlatformTopNav";
+import {
+  PlatformSessionProvider,
+  type PlatformSessionUser,
+} from "./PlatformSessionContext";
 
 /**
  * Client-side JWT auth gate for `/platform/*` pages.
@@ -10,8 +14,8 @@ import PlatformTopNav from "./PlatformTopNav";
  * Reads `bni_token` from `localStorage`, calls the backend's `/auth/me`
  * with `Authorization: Bearer ${token}`, and:
  *   - if missing or invalid: redirects to `/auth/login?next=<currentPath>`
- *   - if valid: renders the top-nav (with the user's name/avatar) followed
- *     by the route's children
+ *   - if valid: renders the top-nav and exposes the full session to all
+ *     descendants via `PlatformSessionContext`.
  *
  * Renders a tiny inline loader during the check so we never flash the page
  * to a logged-out visitor.
@@ -21,14 +25,24 @@ import PlatformTopNav from "./PlatformTopNav";
  * rely on the JS-set cookie either (SameSite / Secure / cross-subdomain
  * pitfalls). The browser is the source of truth.
  */
-type GateUser = {
-  displayName: string;
-  photoUrl: string | null;
-};
+type RawMeUser = Partial<PlatformSessionUser> & { id?: string | number | null };
+
+function normalizeUser(raw: RawMeUser): PlatformSessionUser {
+  return {
+    id: raw.id == null ? "" : String(raw.id),
+    email: String(raw.email ?? ""),
+    displayName: String(raw.displayName ?? ""),
+    role: String(raw.role ?? ""),
+    photoUrl: raw.photoUrl == null ? null : String(raw.photoUrl),
+    companyName: raw.companyName == null ? null : String(raw.companyName),
+    businessPhone: raw.businessPhone == null ? null : String(raw.businessPhone),
+    businessEmail: raw.businessEmail == null ? null : String(raw.businessEmail),
+  };
+}
 
 export default function PlatformAuthGate({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<"checking" | "ok" | "redirecting">("checking");
-  const [user, setUser] = useState<GateUser>({ displayName: "", photoUrl: null });
+  const [user, setUser] = useState<PlatformSessionUser | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,17 +66,14 @@ export default function PlatformAuthGate({ children }: { children: React.ReactNo
           return;
         }
         const data = (await res.json().catch(() => null)) as
-          | { ok?: boolean; user?: { displayName?: string; photoUrl?: string | null } }
+          | { ok?: boolean; user?: RawMeUser }
           | null;
         if (!data?.ok || !data?.user) {
           if (!cancelled) bounce();
           return;
         }
         if (!cancelled) {
-          setUser({
-            displayName: String(data.user.displayName ?? ""),
-            photoUrl: data.user.photoUrl ?? null,
-          });
+          setUser(normalizeUser(data.user));
           setState("ok");
         }
       } catch {
@@ -89,12 +100,12 @@ export default function PlatformAuthGate({ children }: { children: React.ReactNo
     };
   }, []);
 
-  if (state === "ok") {
+  if (state === "ok" && user) {
     return (
-      <>
+      <PlatformSessionProvider value={user}>
         <PlatformTopNav displayName={user.displayName} photoUrl={user.photoUrl} />
         <div className="pl-panel-container">{children}</div>
-      </>
+      </PlatformSessionProvider>
     );
   }
 

@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getPlatformSession } from "@/lib/platform-session";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 import { parseEventDatetimeWireUb } from "@/lib/event-datetime-ub";
 const ADMIN_EVENTS_PATH = "/admin/meetings";
@@ -66,14 +65,8 @@ function parseExistingEnvelopeObject(raw: unknown): Record<string, unknown> {
 
 export async function saveEventAction(formData: FormData): Promise<void> {
   const listPath = eventListPathFromFormData(formData);
-  const session = await getPlatformSession();
-  if (!session) {
-    redirect(
-      listPath === ADMIN_EVENTS_PATH
-        ? `/admin/login?next=${encodeURIComponent(ADMIN_EVENTS_PATH)}`
-        : "/auth/login?next=/platform/events",
-    );
-  }
+  // Auth is enforced by the backend (`serverAuthedFetch` forwards JWT cookie);
+  // no explicit session check here so we never redirect-to-login mid-form.
   const eventIdRaw = String(formData.get("event_id") ?? "0").trim();
   let eventId = 0;
   try {
@@ -206,14 +199,8 @@ export async function saveEventAction(formData: FormData): Promise<void> {
 
 export async function deleteEventAction(formData: FormData): Promise<void> {
   const listPath = eventListPathFromFormData(formData);
-  const session = await getPlatformSession();
-  if (!session) {
-    redirect(
-      listPath === ADMIN_EVENTS_PATH
-        ? `/admin/login?next=${encodeURIComponent(ADMIN_EVENTS_PATH)}`
-        : "/auth/login?next=/platform/events",
-    );
-  }
+  // Auth is enforced by the backend (`serverAuthedFetch` forwards JWT cookie);
+  // no explicit session check here so we never redirect-to-login mid-action.
   const raw = String(formData.get("event_id") ?? "0").trim();
   const eventId = raw === "" ? "0" : raw;
 

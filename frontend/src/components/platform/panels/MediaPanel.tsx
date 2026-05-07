@@ -1,8 +1,10 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
 import MediaHeroShell from "@/components/platform/panels/MediaHeroShell";
 import { mediaUrl } from "@/lib/media-url";
-import { fetchPlatformProfileByAccountId } from "@/lib/fetch-platform-profile";
-import { getPlatformSession } from "@/lib/platform-session";
+import { apiFetch } from "@/lib/api-client";
+import { usePlatformSession } from "@/components/platform/PlatformSessionContext";
 
 function heroSlidesFromBiz(json: unknown): string[] {
   if (!json || typeof json !== "object" || Array.isArray(json)) {
@@ -15,13 +17,41 @@ function heroSlidesFromBiz(json: unknown): string[] {
   return raw.filter((u): u is string => typeof u === "string").map((u) => mediaUrl(u));
 }
 
-export default async function MediaPanel() {
-  const session = await getPlatformSession();
-  if (!session) {
-    redirect("/auth/login?next=/platform/media");
-  }
-  const profile = await fetchPlatformProfileByAccountId(session.id);
+export default function MediaPanel() {
+  const session = usePlatformSession();
+  const [slides, setSlides] = useState<string[] | null>(null);
 
-  const slides = heroSlidesFromBiz(profile?.businessJson ?? null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch(`/profiles/${encodeURIComponent(session.id)}`);
+        if (!res.ok) {
+          if (!cancelled) setSlides([]);
+          return;
+        }
+        const json = (await res.json().catch(() => null)) as
+          | { ok?: boolean; data?: { businessJson?: unknown } }
+          | null;
+        if (!cancelled) {
+          setSlides(heroSlidesFromBiz(json?.data?.businessJson ?? null));
+        }
+      } catch {
+        if (!cancelled) setSlides([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session.id]);
+
+  if (slides === null) {
+    return (
+      <div className="text-muted small py-5 text-center" aria-busy="true">
+        Уншиж байна…
+      </div>
+    );
+  }
+
   return <MediaHeroShell slides={slides} />;
 }

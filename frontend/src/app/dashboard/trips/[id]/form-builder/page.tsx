@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { DashboardBreadcrumb } from "@/components/dashboard/DashboardBreadcrumb";
 import { DashboardPage } from "@/components/dashboard/DashboardPage";
 import TripFormsHubClient from "@/components/trip-registration/TripFormsHubClient";
-import { requirePlatformUser } from "@/lib/platform-session";
 
 export const dynamic = "force-dynamic";
 
@@ -22,9 +21,7 @@ export default async function TripFormBuilderPage({ params }: Props) {
   const { id } = await params;
   const tripId = id;
 
-  const nextPath = `/dashboard/trips/${tripId}/form-builder`;
-  const user = await requirePlatformUser(nextPath);
-
+  // Auth is enforced by `DashboardAuthGate` in the layout.
   const res = await serverAuthedFetch(`/trips/${tripId}`).then(r => r.json()).catch(() => ({ ok: false }));
   if (!res.ok) notFound();
   const trip = res.trip;

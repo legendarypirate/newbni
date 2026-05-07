@@ -1,9 +1,11 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
 import CompanyProfileForm from "@/components/platform/profile/CompanyProfileForm";
 import { MONGOLIA_BANKS_CATALOG } from "@/lib/mongolia-banks";
 import { computeProfileCompletionPct } from "@/lib/platform-profile-completion";
-import { fetchPlatformProfileByAccountId } from "@/lib/fetch-platform-profile";
-import { getPlatformSession } from "@/lib/platform-session";
+import { apiFetch } from "@/lib/api-client";
+import { usePlatformSession } from "@/components/platform/PlatformSessionContext";
 
 function asRecord(json: unknown): Record<string, unknown> {
   if (json && typeof json === "object" && !Array.isArray(json)) {
@@ -12,25 +14,76 @@ function asRecord(json: unknown): Record<string, unknown> {
   return {};
 }
 
-export default async function ProfilePanel() {
-  const session = await getPlatformSession();
-  if (!session) {
-    redirect("/auth/login?next=/platform/profile");
-  }
-  const profileRow = await fetchPlatformProfileByAccountId(session.id);
-  const profile = profileRow
-    ? {
-        displayName: String(profileRow.displayName ?? ""),
-        companyName: profileRow.companyName == null ? null : String(profileRow.companyName),
-        businessPhone: profileRow.businessPhone == null ? null : String(profileRow.businessPhone),
-        businessEmail: profileRow.businessEmail == null ? null : String(profileRow.businessEmail),
-        website: profileRow.website == null ? null : String(profileRow.website),
-        addressLine: profileRow.addressLine == null ? null : String(profileRow.addressLine),
-        bio: profileRow.bio == null ? null : String(profileRow.bio),
-        businessJson: profileRow.businessJson,
-        photoUrl: profileRow.photoUrl == null ? null : String(profileRow.photoUrl),
+type ProfileRow = {
+  displayName: string;
+  companyName: string | null;
+  businessPhone: string | null;
+  businessEmail: string | null;
+  website: string | null;
+  addressLine: string | null;
+  bio: string | null;
+  businessJson: unknown;
+  photoUrl: string | null;
+};
+
+function readProfile(raw: Record<string, unknown> | null): ProfileRow | null {
+  if (!raw) return null;
+  return {
+    displayName: String(raw.displayName ?? ""),
+    companyName: raw.companyName == null ? null : String(raw.companyName),
+    businessPhone: raw.businessPhone == null ? null : String(raw.businessPhone),
+    businessEmail: raw.businessEmail == null ? null : String(raw.businessEmail),
+    website: raw.website == null ? null : String(raw.website),
+    addressLine: raw.addressLine == null ? null : String(raw.addressLine),
+    bio: raw.bio == null ? null : String(raw.bio),
+    businessJson: raw.businessJson,
+    photoUrl: raw.photoUrl == null ? null : String(raw.photoUrl),
+  };
+}
+
+export default function ProfilePanel() {
+  const session = usePlatformSession();
+  const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch(`/profiles/${encodeURIComponent(session.id)}`);
+        if (!res.ok) {
+          if (!cancelled) {
+            setProfile(null);
+            setLoading(false);
+          }
+          return;
+        }
+        const json = (await res.json().catch(() => null)) as
+          | { ok?: boolean; data?: Record<string, unknown> }
+          | null;
+        if (!cancelled) {
+          setProfile(readProfile(json?.data ?? null));
+          setLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setProfile(null);
+          setLoading(false);
+        }
       }
-    : null;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session.id]);
+
+  if (loading) {
+    return (
+      <div className="text-muted small py-5 text-center" aria-busy="true">
+        Уншиж байна…
+      </div>
+    );
+  }
 
   const biz = asRecord(profile?.businessJson);
 
@@ -47,7 +100,7 @@ export default async function ProfilePanel() {
 
   return (
     <CompanyProfileForm
-      accountIdStr={session.id.toString()}
+      accountIdStr={session.id}
       email={session.email}
       completionPct={pct}
       savedBankCode={savedBankCode}

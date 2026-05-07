@@ -1,12 +1,4 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import { mediaUrl } from "@/lib/media-url";
-import { fetchPlatformProfileByAccountId } from "@/lib/fetch-platform-profile";
-import { getPlatformSession } from "@/lib/platform-session";
-
-function str(v: unknown): string {
-  return v == null ? "" : String(v);
-}
+import PremiumStatusBlock from "@/components/platform/panels/PremiumStatusBlock";
 
 function uniquePriceMnt(): number {
   const raw = process.env.UNIQUE_COMPANY_PROFILE_PRICE_MNT?.trim();
@@ -17,23 +9,7 @@ function uniquePriceMnt(): number {
   return Math.max(1000, Math.floor(n));
 }
 
-export default async function PremiumPanel() {
-  const session = await getPlatformSession();
-  if (!session) {
-    redirect("/auth/login?next=/platform/premium");
-  }
-  const profile = await fetchPlatformProfileByAccountId(session.id);
-
-  const biz =
-    profile?.businessJson && typeof profile.businessJson === "object" && !Array.isArray(profile.businessJson)
-      ? (profile.businessJson as Record<string, unknown>)
-      : {};
-
-  const uniqueUntilRaw = str(biz.unique_profile_until);
-  const uniqueTs = uniqueUntilRaw ? Date.parse(uniqueUntilRaw) : NaN;
-  const isProfileUnique = Number.isFinite(uniqueTs) && uniqueTs > Date.now();
-  const uniqueUntilStr = Number.isFinite(uniqueTs) ? new Date(uniqueTs).toLocaleDateString("mn-MN") : "—";
-  const badgeUrl = str(biz.unique_badge_url);
+export default function PremiumPanel() {
   const price = uniquePriceMnt();
 
   return (
@@ -45,20 +21,7 @@ export default async function PremiumPanel() {
           </h2>
           <p className="mb-0 small text-muted">Компанийн тань профайлыг илүү олон хүнд хүргэ.</p>
         </div>
-        <div className="pps-status-widget">
-          <div className="pps-status-icon">
-            <i className="fa-solid fa-user-shield" />
-          </div>
-          <div className="pps-status-info">
-            <span className="pps-status-label">Одоогийн түвшин</span>
-            <span className="pps-status-value">{isProfileUnique ? "ОНЦЛОХ ГИШҮҮН" : "ҮНЭГҮЙ ГИШҮҮН"}</span>
-          </div>
-          {!isProfileUnique ? (
-            <Link href="#" className="pps-status-link">
-              Түвшин ахиулах <i className="fa-solid fa-chevron-right small" />
-            </Link>
-          ) : null}
-        </div>
+        <PremiumStatusBlock slot="header" />
       </div>
 
       <div className="pps-grid">
@@ -139,14 +102,7 @@ export default async function PremiumPanel() {
                 <div className="pps-badge-preview-box">
                   <div className="pps-status-label mb-2">Одоогийн харагдац</div>
                   <div className="pps-badge-img-wrap">
-                    {badgeUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={mediaUrl(badgeUrl)} alt="" style={{ maxHeight: 40 }} />
-                    ) : (
-                      <div className="badge bg-warning text-dark px-2 py-1">
-                        <i className="fa-solid fa-crown me-1" /> ОНЦЛОХ КОМПАНИ
-                      </div>
-                    )}
+                    <PremiumStatusBlock slot="badge" />
                   </div>
                 </div>
               </div>
@@ -211,7 +167,9 @@ export default async function PremiumPanel() {
               </div>
               <div className="pps-invoice-row">
                 <span className="pps-invoice-label">Дуусах огноо</span>
-                <span className="pps-invoice-value">{isProfileUnique ? uniqueUntilStr : "—"}</span>
+                <span className="pps-invoice-value">
+                  <PremiumStatusBlock slot="invoice-date" fallback="—" />
+                </span>
               </div>
               <div className="pps-invoice-row">
                 <span className="pps-invoice-label">НӨАТ (тооцоолол)</span>

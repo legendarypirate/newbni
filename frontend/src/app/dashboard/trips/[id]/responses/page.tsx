@@ -4,7 +4,6 @@ import { notFound, redirect } from "next/navigation";
 import { DashboardBreadcrumb } from "@/components/dashboard/DashboardBreadcrumb";
 import { DashboardPage } from "@/components/dashboard/DashboardPage";
 import TripResponsesClient from "@/components/trip-registration/TripResponsesClient";
-import { requirePlatformUser } from "@/lib/platform-session";
 
 export const dynamic = "force-dynamic";
 
@@ -29,9 +28,8 @@ export default async function TripResponsesPage({ params, searchParams }: Props)
   const sp = await searchParams;
   const formId = typeof sp.formId === "string" && sp.formId.length > 0 ? sp.formId : null;
 
-  const nextPath = `/dashboard/trips/${tripId}/responses${formId ? `?formId=${encodeURIComponent(formId)}` : ""}`;
-  const user = await requirePlatformUser(nextPath);
-
+  // Auth is enforced by `DashboardAuthGate` in the layout; this page just
+  // fetches data and lets the backend reject unauthenticated requests.
   const tripRes = await serverAuthedFetch(`/trips/${tripId}`).then(r => r.json()).catch(() => ({ ok: false }));
   if (!tripRes.ok) notFound();
   const trip = tripRes.trip;

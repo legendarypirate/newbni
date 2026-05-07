@@ -10,7 +10,6 @@ import EventManageForm from "@/components/platform/panels/EventManageForm";
 import { deleteEventAction } from "@/app/platform/events-actions";
 import { parseBniEventDetailEnvelope } from "@/lib/bni-event-detail";
 import { formatEventDatetimeWireUb, formatEventDisplayUb } from "@/lib/event-datetime-ub";
-import { getPlatformSession } from "@/lib/platform-session";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 import { registrationLegacyJsonForEventEditor } from "@/lib/trip-registration-form/event-registration-editor-load";
 
@@ -93,17 +92,9 @@ type Props = {
 
 export default async function EventsPanel({ searchParams, venue = "platform" }: Props) {
   const basePath = venue === "admin" ? "/admin/meetings" : "/platform/events";
-  const session = await getPlatformSession();
-  if (!session) {
-    redirect(venue === "admin" ? "/admin/login?next=/admin/meetings" : "/auth/login?next=/platform/events");
-  }
-  const adminVenueOk =
-    session.role === "admin" ||
-    session.role === "super_admin" ||
-    session.role === "event_manager";
-  if (venue === "admin" && !adminVenueOk) {
-    redirect(`/admin/login?next=${encodeURIComponent("/admin/meetings")}`);
-  }
+  // Auth is enforced client-side by `PlatformAuthGate` (or the admin layout for
+  // `venue === "admin"`); we never redirect from this panel itself, so a
+  // missing cookie just means data fetches below return empty rows.
 
   const err = errorBanner(firstParam(searchParams?.error));
   const editRaw = firstParam(searchParams?.edit_event);
