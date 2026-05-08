@@ -1,14 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import HomeTripRegisterDrawer from "@/components/home/HomeTripRegisterDrawer";
+import SafeImage from "@/components/SafeImage";
 import type { HomePayload } from "@/lib/home-data";
 import { loadHomeData } from "@/lib/home-data";
 import { formatMnDate } from "@/lib/format-date";
 import { mediaUrl } from "@/lib/media-url";
 import {
   SHOW_HOME_HERO_CREATE_TRIP_AND_EVENT_BUTTONS,
+  SHOW_HOME_FEATURED_MEMBERS_SECTION,
   SHOW_HOME_HERO_LEFT_MARKETING_SECTION,
   SHOW_HOME_HERO_V3_SECTION,
+  SHOW_HOME_INVESTMENT_AND_NEWS_SECTION,
+  SHOW_HOME_MEMBER_ORGS_SECTION,
 } from "@/lib/public-marketing-flags";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +20,17 @@ export const dynamic = "force-dynamic";
 const PLACEHOLDER_TRIP = "https://images.unsplash.com/photo-1528360983277-13d401cdc186?auto=format&fit=crop&w=600&q=80";
 const PLACEHOLDER_EVENT = "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=600&q=80";
 const PLACEHOLDER_NEWS = "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=400&q=80";
+
+/** Trip / news descriptions sometimes arrive as HTML (Summernote, news article body).
+ *  Card UIs only have room for a short plain-text excerpt, so strip tags + collapse
+ *  whitespace before slicing. */
+function stripHtmlToPlainText(raw: string): string {
+  return raw
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 /** Top hero + dashboard mockup (hidden when `SHOW_HOME_HERO_V3_SECTION` is false). */
 function HomeHeroV3Section({ data }: { data: HomePayload }) {
@@ -294,7 +309,7 @@ export default async function HomePage() {
                 const tTitle = trip.destination || "Бизнес аялал";
                 const tImage = mediaUrl(trip.coverImageUrl) || PLACEHOLDER_TRIP;
                 const tDate = trip.startDate ? `${formatMnDate(trip.startDate)}${trip.endDate ? ` - ${formatMnDate(trip.endDate).slice(5)}` : ""}` : "Огноо удахгүй";
-                const tDesc = trip.description || "Бизнес аяллын дэлгэрэнгүй мэдээлэл удахгүй нэмэгдэнэ.";
+                const tDesc = stripHtmlToPlainText(trip.description || "") || "Бизнес аяллын дэлгэрэнгүй мэдээлэл удахгүй нэмэгдэнэ.";
                 const tStatus = trip.statusLabel || "Идэвхтэй";
 
                 return (
@@ -336,6 +351,7 @@ export default async function HomePage() {
       </section>
 
       {/* Featured Members Section */}
+      {SHOW_HOME_FEATURED_MEMBERS_SECTION ? (
       <section className="py-4">
         <div className="container">
           <div className="featured-members-box">
@@ -348,12 +364,14 @@ export default async function HomePage() {
                 data.featuredMembers.slice(0, 12).map((member) => (
                   <div className="featured-member-item" key={member.id}>
                     <div className="member-item-logo featured-member-logo">
-                      {member.photo ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={mediaUrl(member.photo)} alt={member.name} />
-                      ) : (
-                        <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>{member.name.charAt(0)}</span>
-                      )}
+                      <SafeImage
+                        src={member.photo ? mediaUrl(member.photo) : ""}
+                        alt={member.name}
+                        loading="lazy"
+                        fallback={
+                          <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>{member.name.charAt(0)}</span>
+                        }
+                      />
                     </div>
                     <div className="featured-member-name">{member.company || member.name}</div>
                   </div>
@@ -367,8 +385,10 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+      ) : null}
 
       {/* Partners Section — after Онцлох гишүүд */}
+      {SHOW_HOME_MEMBER_ORGS_SECTION ? (
       <section className="partners-section">
         <div className="container">
           <div className="partners-head">
@@ -409,6 +429,7 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+      ) : null}
 
       {/* Company News */}
       {data.latestNews && data.latestNews.length > 0 && (
@@ -421,8 +442,20 @@ export default async function HomePage() {
             <div className="company-news-home-grid">
               {data.latestNews.slice(0, 6).map((news) => (
                 <Link href="/news" className="company-news-home-card" key={news.id}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={mediaUrl(news.image) || PLACEHOLDER_NEWS} className="company-news-home-img" alt={news.title} />
+                  <SafeImage
+                    src={mediaUrl(news.image) || PLACEHOLDER_NEWS}
+                    alt={news.title}
+                    loading="lazy"
+                    className="company-news-home-img"
+                    fallback={
+                      <div
+                        className="company-news-home-img d-flex align-items-center justify-content-center text-muted"
+                        style={{ background: "#f1f5f9" }}
+                      >
+                        <i className="fa-regular fa-image" style={{ fontSize: "1.6rem" }} />
+                      </div>
+                    }
+                  />
                   <div className="company-news-home-body">
                     <h3 className="company-news-home-title">{news.title.length > 72 ? news.title.slice(0, 72) + "..." : news.title}</h3>
                     <div className="company-news-home-date">{formatMnDate(news.createdAt)}</div>
@@ -435,6 +468,7 @@ export default async function HomePage() {
       )}
 
       {/* Bottom Sections Grid */}
+      {SHOW_HOME_INVESTMENT_AND_NEWS_SECTION ? (
       <section className="py-5">
         <div className="container">
           <div className="row">
@@ -486,8 +520,20 @@ export default async function HomePage() {
                 {data.latestNews && data.latestNews.length > 0 ? (
                   data.latestNews.slice(0, 3).map((article) => (
                     <div className="news-card-exact" key={article.id}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={mediaUrl(article.image) || PLACEHOLDER_NEWS} className="news-exact-img" alt={article.title} />
+                      <SafeImage
+                        src={mediaUrl(article.image) || PLACEHOLDER_NEWS}
+                        alt={article.title}
+                        loading="lazy"
+                        className="news-exact-img"
+                        fallback={
+                          <div
+                            className="news-exact-img d-flex align-items-center justify-content-center text-muted"
+                            style={{ background: "#f1f5f9" }}
+                          >
+                            <i className="fa-regular fa-image" style={{ fontSize: "1.4rem" }} />
+                          </div>
+                        }
+                      />
                       <div className="news-exact-body">
                         <h3 className="news-exact-title">{article.title.slice(0, 80)}</h3>
                         <div className="news-exact-date">{formatMnDate(article.createdAt)}</div>
@@ -508,6 +554,7 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+      ) : null}
 
       <HomeTripRegisterDrawer />
     </main>

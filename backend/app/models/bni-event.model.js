@@ -19,6 +19,12 @@ module.exports = function defineBniEvent(sequelize, DataTypes) {
       title: { type: DataTypes.STRING(255), allowNull: true },
       priceMnt: { type: DataTypes.DECIMAL(12, 2), field: "price_mnt", allowNull: true },
       advanceOrderMnt: { type: DataTypes.DECIMAL(12, 2), field: "advance_order_mnt", allowNull: true },
+      // Explicit attribute so `where: { createdAt }` and `attributes: ["createdAt"]`
+      // resolve to the snake_case `created_at` column. Without this, Sequelize's
+      // `createdAt: "created_at"` option renames the attribute itself to
+      // `created_at` and any camelCase reference fails with
+      // `column "BniEvent.createdAt" does not exist`.
+      createdAt: { type: DataTypes.DATE, field: "created_at", allowNull: false },
     },
     {
       tableName: "bni_events",

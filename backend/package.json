@@ -8,7 +8,11 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "db:migrate": "sequelize-cli db:migrate",
-    "db:migrate:undo": "sequelize-cli db:migrate:undo"
+    "db:migrate:undo": "sequelize-cli db:migrate:undo",
+    "db:import-members": "node scripts/import-members.js",
+    "db:import-members:reset": "node scripts/import-members.js --reset",
+    "db:import-profiles": "node scripts/import-platform-profiles.js",
+    "db:import-profiles:reset": "node scripts/import-platform-profiles.js --reset"
   },
   "engines": {
     "node": ">=20"

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MarketingListingHero } from "@/components/marketing/MarketingListingHero";
 import { TripsFilterBudgetInputs } from "@/components/trips/TripsFilterBudgetInputs";
+import SafeImage from "@/components/SafeImage";
 import { formatMnDate } from "@/lib/format-date";
 import { getMarketingListingHeroSlides } from "@/lib/marketing-listing-hero";
 import { mediaUrl } from "@/lib/media-url";
@@ -152,8 +153,20 @@ export default async function TripsPage({ searchParams }: { searchParams: Search
           {/* Featured Large Card(s) */}
           {featuredTrips.map((ftrip) => (
             <div className="featured-trip-card featured-trip-card-stack" key={ftrip.id}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={mediaUrl(ftrip.coverImageUrl) || PLACEHOLDER_TRIP} alt={ftrip.destination} className="featured-trip-img" />
+              <SafeImage
+                src={mediaUrl(ftrip.coverImageUrl) || PLACEHOLDER_TRIP}
+                alt={ftrip.destination}
+                loading="lazy"
+                className="featured-trip-img"
+                fallback={
+                  <div
+                    className="featured-trip-img d-flex align-items-center justify-content-center text-muted"
+                    style={{ background: "#f1f5f9" }}
+                  >
+                    <i className="fa-regular fa-image" style={{ fontSize: "2rem" }} />
+                  </div>
+                }
+              />
               <div className="featured-trip-content">
                 <div className="featured-trip-header">
                   <div>
@@ -205,8 +218,19 @@ export default async function TripsPage({ searchParams }: { searchParams: Search
               limitedTripCards.map((trip) => (
                 <div className="trip-card-v4" key={trip.id}>
                   <div className="trip-img-wrap">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={mediaUrl(trip.coverImageUrl) || PLACEHOLDER_TRIP} alt={trip.destination} />
+                    <SafeImage
+                      src={mediaUrl(trip.coverImageUrl) || PLACEHOLDER_TRIP}
+                      alt={trip.destination}
+                      loading="lazy"
+                      fallback={
+                        <div
+                          className="d-flex align-items-center justify-content-center text-muted w-100 h-100"
+                          style={{ background: "#f1f5f9" }}
+                        >
+                          <i className="fa-regular fa-image" style={{ fontSize: "1.5rem" }} />
+                        </div>
+                      }
+                    />
                     <button type="button" className="trip-bookmark" aria-label="Хадгалах"><i className="fa-regular fa-bookmark"></i></button>
                     <div className="trip-date-overlay"><i className="fa-regular fa-calendar me-1"></i> {formatMnDate(trip.startDate)} - {formatMnDate(trip.endDate)}</div>
                   </div>

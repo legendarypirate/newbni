@@ -74,8 +74,12 @@ export default function TripEditorForm({
   const durationLabel = daysLen > 0 ? `${daysLen} өдөр` : "—";
   const statusBadge = editTrip?.statusLabel?.trim() === "Нийтлэгдсэн" ? "Нийтлэгдсэн" : "Ноорог";
 
+  // React 19 sets `method` and `encType` automatically when the `action`
+  // is a function (server action). Specifying them produces a console
+  // warning and is overridden anyway, so we omit both — React picks
+  // multipart whenever the form contains a file input.
   return (
-    <form id="tripMainForm" action={formAction} onSubmit={handleSubmit} method="post" encType="multipart/form-data">
+    <form id="tripMainForm" action={formAction} onSubmit={handleSubmit}>
       <TripFormUploadPendingOverlay busy={isSubmitting} />
 
       <input type="hidden" name="trip_id" value={editTrip?.id ?? 0} />

@@ -554,7 +554,7 @@ export default function CompanyProfileForm({
               </div>
               <div className="pm-card-body">
                 <div className="pm-card-subtitle mb-3">Таны олон нийтэд харагдах профайл хуудасны урьдчилсан харагдац.</div>
-                <Link href={`/company/${accountIdStr}`} target="_blank" className="pm-preview-btn">
+                <Link href={`/member/${accountIdStr}`} target="_blank" className="pm-preview-btn">
                   <i className="fa-regular fa-eye" /> Урьдчилан харах
                 </Link>
               </div>

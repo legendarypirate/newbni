@@ -29,7 +29,13 @@ export default function MediaHeroShell({ slides: initialSlides }: Props) {
         <div className={`alert ${state.ok ? "alert-success" : "alert-danger"} border-0 rounded-3 mb-3`}>{state.message}</div>
       ) : null}
 
-      <form action={formAction} encType="multipart/form-data">
+      {/*
+        React 19 manages `encType` / `method` for forms whose `action` is a
+        function (server action). Setting `encType="multipart/form-data"` here
+        triggers a console warning and is overridden anyway, so we omit it —
+        React picks multipart automatically when the form contains files.
+      */}
+      <form action={formAction}>
         <FormPendingBackdrop />
         <div className="med-grid">
           <div className="med-main">

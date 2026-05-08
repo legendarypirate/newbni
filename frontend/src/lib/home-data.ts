@@ -11,7 +11,17 @@ type BusinessTrip = {
   statusLabel: string | null;
   priceMnt: number | null;
 };
-type LegacyMember = { id: number; name: string; company: string | null; photo: string | null };
+type LegacyMember = {
+  id: number;
+  name: string;
+  company: string | null;
+  photo: string | null;
+  /** Optional fields populated when the home endpoint returns full member rows
+   *  (e.g. for `loadInvestmentsData` to derive industry/position facets). */
+  position?: string | null;
+  industry?: string | null;
+  bio?: string | null;
+};
 type NewsArticle = { id: number; title: string; image: string | null; createdAt: string };
 
 export type HomePartner = { name: string; logo: string; href: string };

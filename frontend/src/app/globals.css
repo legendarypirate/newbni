@@ -75,6 +75,24 @@ a {
   text-decoration: none;
 }
 
+/* ── Broken-image safety net ─────────────────────────────────────────
+ * When an <img> fails to load (404, blocked, etc.) browsers show the
+ * `alt` text and a "broken image" icon inside the element's box. With
+ * dynamic, oversized covers/avatars (e.g. m-card-cover, result-item-icon)
+ * that overflow can render as huge alt text with no styling.
+ * Hiding the alt text visually keeps things tidy site-wide; SafeImage
+ * still renders a proper fallback when JS is enabled. */
+img {
+  font-size: 0;
+  color: transparent;
+  /* Modern browsers: hide the user-agent broken-image icon too */
+  text-indent: -9999px;
+}
+img::before,
+img::after {
+  display: none;
+}
+
 /* BUSY.mn vision block (home + shared marketing) */
 .busy-vision-audiences {
   background: linear-gradient(180deg, #f8fafc 0%, #fff 40%);

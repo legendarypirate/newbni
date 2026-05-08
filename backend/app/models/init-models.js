@@ -203,6 +203,12 @@ function initModels(sequelize) {
       authorId: { type: DataTypes.INTEGER, field: "author_id", allowNull: false },
       status: { type: DataTypes.STRING(32), allowNull: false, defaultValue: "draft" },
       featured: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+      // Explicit attributes so `where: { createdAt }` / `order: [["createdAt", ...]]`
+      // resolve to the snake_case columns. Without these, Sequelize's
+      // `createdAt: "created_at"` model option renames the attribute itself
+      // and any camelCase reference fails with `column "createdAt" does not exist`.
+      createdAt: { type: DataTypes.DATE, field: "created_at", allowNull: false },
+      updatedAt: { type: DataTypes.DATE, field: "updated_at", allowNull: false },
     },
     { tableName: "news", timestamps: true, createdAt: "created_at", updatedAt: "updated_at", indexes: [{ fields: ["status"] }] },
   );

@@ -25,7 +25,7 @@ export default async function ShopOrdersInPanel() {
           <i className="fa-solid fa-inbox fa-2x mb-3 d-block opacity-50" />
           <div className="fw-semibold text-dark mb-1">Ирсэн захиалга байхгүй</div>
           <div className="small mb-3">Хэрэглэгчид таны нээлттэй дэлгүүрээс захиалга өгөхөд энд харагдана.</div>
-          <Link href={`/company/${session.id.toString()}?tab=shop`} className="pm-btn-primary text-decoration-none d-inline-flex px-4 py-2">
+          <Link href={`/member/${session.id.toString()}?tab=shop`} className="pm-btn-primary text-decoration-none d-inline-flex px-4 py-2">
             Дэлгүүр үзэх
           </Link>
         </div>

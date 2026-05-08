@@ -19,7 +19,6 @@ import {
 
 /** Matches `includes/header.php` `<nav>` children (paths adapted for Next App Router). */
 const NAV = [
-  { href: "/", label: "Нүүр", id: "home" },
   { href: "/trips", label: "Бизнес аялал", id: "trips" },
   { href: "/events", label: "Хурал/Эвент", id: "events" },
   { href: "/companies", label: "Үйлдвэр холболт", id: "companies" },
@@ -27,7 +26,6 @@ const NAV = [
   { href: "/members", label: "Гишүүд", id: "members" },
   { href: "/news", label: "Мэдээлэл", id: "news" },
   { href: "/busy-ai", label: "BUSY AI", id: "busy_ai" },
-  { href: "/contact", label: "Холбоо барих", id: "contact" },
 ] as const;
 
 function isNavItemVisible(pageId: (typeof NAV)[number]["id"]): boolean {

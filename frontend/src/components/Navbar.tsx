@@ -103,11 +103,6 @@ export default function Navbar() {
         >
           <ul className="navbar-nav mx-auto align-items-lg-center">
             <li className="nav-item">
-              <Link className={`nav-link${pathname === "/" ? " active" : ""}`} href="/">
-                Нүүр
-              </Link>
-            </li>
-            <li className="nav-item">
               <Link className={`nav-link${pathname.startsWith("/trips") ? " active" : ""}`} href="/trips">
                 Бизнес аялал
               </Link>
@@ -144,11 +139,6 @@ export default function Navbar() {
             <li className="nav-item">
               <Link className={`nav-link${pathname.startsWith("/news") ? " active" : ""}`} href="/news">
                 Мэдээлэл
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className={`nav-link${pathname.startsWith("/contact") ? " active" : ""}`} href="/contact">
-                Холбоо барих
               </Link>
             </li>
             {SHOW_PUBLIC_NAV_BUSY_AI ? (
@@ -216,12 +206,6 @@ export default function Navbar() {
                   </>
                 ) : (
                   <>
-                    <a
-                      href="/api/auth/google?next=/platform"
-                      className="btn btn-light px-3 fw-medium rounded-pill border"
-                    >
-                      Google
-                    </a>
                     <Link href="/auth/login" className="btn btn-light px-4 fw-medium rounded-pill border">
                       Нэвтрэх
                     </Link>
