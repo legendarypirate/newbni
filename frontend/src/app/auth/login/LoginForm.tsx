@@ -2,29 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/client";
 import { setAuthToken } from "@/lib/api-client";
 import { publicApiBase as resolveApiBase } from "@/lib/client-api-base";
 
-const copy = {
-  title: "Платформд нэвтрэх",
-  subtitle: "Имэйл, нууц үг эсвэл Google ашиглан нэвтэрнэ үү.",
-  email: "Имэйл",
-  password: "Нууц үг",
-  submit: "Нэвтрэх",
-  or: "эсвэл",
-  forgot: "Нууц үгээ мартсан уу?",
-  noAccount: "Бүртгэлгүй юу?",
-  register: "Бүртгүүлэх",
-  google: "Google-р нэвтрэх",
-  googlePlatform: "Google-р нэвтрэх (BUSY платформ)",
-  errInvalid: "Имэйл эсвэл нууц үг буруу байна.",
-  errGoogle: "Энэ бүртгэл Google-р нэвтэрдэг. Доорх товчийг ашиглана уу.",
-} as const;
-
-function SubmitButton({ pending }: { pending: boolean }) {
+function SubmitButton({ pending, label }: { pending: boolean; label: string }) {
   return (
     <button type="submit" className="bni-auth-btn-primary" disabled={pending}>
-      {pending ? "…" : copy.submit}
+      {pending ? "…" : label}
     </button>
   );
 }
@@ -32,10 +17,8 @@ function SubmitButton({ pending }: { pending: boolean }) {
 type Props = {
   nextPath: string;
   legacyBase: string | null;
-  /** Next.js `/api/auth/google` эсвэл legacy `google-start.php`; null бол Google товч харагдахгүй. */
   googleHref: string | null;
   defaultEmail: string;
-  /** True when Google opens this app’s OAuth (`/api/auth/...`) — sets Next platform session cookies. */
   googleUsesNextPlatformOAuth?: boolean;
 };
 
@@ -46,6 +29,7 @@ export default function LoginForm({
   defaultEmail,
   googleUsesNextPlatformOAuth = false,
 }: Props) {
+  const t = useT();
   const [pending, setPending] = useState(false);
   const [errorKey, setErrorKey] = useState<"invalid" | "use_google" | null>(null);
   const [emailValue, setEmailValue] = useState(defaultEmail);
@@ -53,7 +37,8 @@ export default function LoginForm({
   const registerHref = `/auth/register${nextPath !== "/" ? `?next=${encodeURIComponent(nextPath)}` : ""}`;
   const forgotHref = legacyBase ? `${legacyBase}/auth/forgot-password.php` : "#";
 
-  const errMsg = errorKey === "use_google" ? copy.errGoogle : errorKey === "invalid" ? copy.errInvalid : null;
+  const errMsg =
+    errorKey === "use_google" ? t("auth.errLoginUseGoogle") : errorKey === "invalid" ? t("auth.errLoginInvalid") : null;
 
   const apiBase = resolveApiBase();
 
@@ -105,7 +90,7 @@ export default function LoginForm({
       ) : null}
       <div className="mb-3">
         <label className="form-label" htmlFor="email">
-          {copy.email}
+          {t("auth.email")}
         </label>
         <div className="bni-auth-input-icon">
           <span className="bni-auth-input-ico">
@@ -126,7 +111,7 @@ export default function LoginForm({
       </div>
       <div className="mb-2">
         <label className="form-label" htmlFor="password">
-          {copy.password}
+          {t("auth.password")}
         </label>
         <div className="bni-auth-input-icon">
           <span className="bni-auth-input-ico">
@@ -145,26 +130,26 @@ export default function LoginForm({
       <div className="text-end mb-4">
         {legacyBase ? (
           <a href={forgotHref} className="small text-decoration-none">
-            {copy.forgot}
+            {t("auth.forgotPassword")}
           </a>
         ) : (
-          <span className="small text-muted">{copy.forgot}</span>
+          <span className="small text-muted">{t("auth.forgotPassword")}</span>
         )}
       </div>
-      <SubmitButton pending={pending} />
+      <SubmitButton pending={pending} label={t("auth.login")} />
       {googleHref ? (
         <>
           <div className="bni-auth-divider">
-            <span>{copy.or}</span>
+            <span>{t("auth.or")}</span>
           </div>
           <a href={googleHref} className="bni-auth-btn-google">
             <i className="fa-brands fa-google" aria-hidden="true" />
-            {googleUsesNextPlatformOAuth ? copy.googlePlatform : copy.google}
+            {googleUsesNextPlatformOAuth ? t("auth.googlePlatform") : t("auth.google")}
           </a>
         </>
       ) : null}
       <div className="bni-auth-footer">
-        <span>{copy.noAccount}</span> <Link href={registerHref}>{copy.register}</Link>
+        <span>{t("auth.noAccount")}</span> <Link href={registerHref}>{t("auth.register")}</Link>
       </div>
     </form>
   );

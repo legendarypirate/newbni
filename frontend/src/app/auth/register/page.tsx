@@ -1,12 +1,17 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { BUSY_PLATFORM_GOAL } from "@/lib/busy-platform-vision";
+import { cookies } from "next/headers";
+import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
 import RegisterForm from "./RegisterForm";
 
-export const metadata: Metadata = {
-  title: "Бүртгүүлэх | BUSY.mn",
-  description: "Имэйл, нууц үгээр платформын данс нээх",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const lang = getLangFromCookies(await cookies());
+  const t = createServerT(lang);
+  return {
+    title: `${t("auth.registerTitle")} | BUSY.mn`,
+    description: t("auth.registerMetaDesc"),
+  };
+}
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +24,8 @@ function firstString(v: string | string[] | undefined): string {
 }
 
 export default async function RegisterPage({ searchParams }: { searchParams: SearchParams }) {
+  const lang = getLangFromCookies(await cookies());
+  const t = createServerT(lang);
   const sp = await searchParams;
   const rawNext = firstString(sp.next);
   const nextPath =
@@ -53,11 +60,8 @@ export default async function RegisterPage({ searchParams }: { searchParams: Sea
               <div className="bni-auth-icon-wrap" aria-hidden="true">
                 <i className="fa-solid fa-user-plus" />
               </div>
-              <h1 className="bni-auth-title">Бүртгүүлэх</h1>
-              <p className="bni-auth-lead text-muted mb-0">
-                Имэйл, нууц үгээр платформын дансаа үүсгээд аялал, хурал, эвент зохион байгуулах болон бүртгэлээ нэг дор
-                удирдана уу.
-              </p>
+              <h1 className="bni-auth-title">{t("auth.registerTitle")}</h1>
+              <p className="bni-auth-lead text-muted mb-0">{t("auth.registerLead")}</p>
             </div>
 
             <RegisterForm
@@ -67,13 +71,13 @@ export default async function RegisterPage({ searchParams }: { searchParams: Sea
             />
 
             <p className="small text-muted text-center mt-4 mb-0 px-1" style={{ lineHeight: 1.45 }}>
-              {BUSY_PLATFORM_GOAL}
+              {t("vision.goal")}
             </p>
 
             <div className="text-center mt-3">
               <Link href="/" className="small text-decoration-none text-muted">
                 <i className="fas fa-arrow-left me-1" aria-hidden="true" />
-                Нүүр руу буцах
+                {t("auth.backHome")}
               </Link>
             </div>
           </div>

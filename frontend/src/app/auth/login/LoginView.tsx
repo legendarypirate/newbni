@@ -2,21 +2,18 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
 import { PLATFORM_ACCOUNT_REF_COOKIE } from "@/lib/platform-session-cookies";
-import { BUSY_ARCHITECTURE_RULE, BUSY_MISSION_LINES, BUSY_PLATFORM_GOAL } from "@/lib/busy-platform-vision";
 import LoginForm from "./LoginForm";
 
-const OAUTH_ERROR_COPY: Record<string, string> = {
-  google_config:
-    "Google нэвтрэлтийн тохиргоо дутуу. GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET болон Google Console дээр redirect URI (жишээ нь …/api/auth/google/callback) тохируулна уу.",
-  google_state: "Google нэвтрэлтийн state буруу байна. Дахин оролдоно уу.",
-  google_denied: "Google нэвтрэлт цуцлагдсан.",
-  google_code: "Google-аас баталгаажуулах код ирсэнгүй.",
-  google_token: "Google token авахад алдаа гарлаа.",
-  google_profile: "Google хэрэглэгчийн мэдээлэл авахад алдаа гарлаа.",
-  google_email: "Google профайлд имэйл байхгүй байна.",
-  google_db: "Өгөгдлийн санд бүртгэл хадгалахад алдаа гарлаа.",
-  google_env_db:
-    "Өгөгдлийн сангийн холболт (DATABASE_URL) тохируулаагүй байна. Төслийн үндсэн хавтас дахь .env файлд DATABASE_URL нэмээд dev серверээ дахин асаана уу.",
+const OAUTH_ERROR_KEYS: Record<string, string> = {
+  google_config: "auth.oauth.googleConfig",
+  google_state: "auth.oauth.googleState",
+  google_denied: "auth.oauth.googleDenied",
+  google_code: "auth.oauth.googleCode",
+  google_token: "auth.oauth.googleToken",
+  google_profile: "auth.oauth.googleProfile",
+  google_email: "auth.oauth.googleEmail",
+  google_db: "auth.oauth.googleDb",
+  google_env_db: "auth.oauth.googleEnvDb",
 };
 
 type SearchParamsInput = Promise<Record<string, string | string[] | undefined>> | Record<string, string | string[] | undefined>;
@@ -56,7 +53,8 @@ export default async function LoginView({ searchParams }: { searchParams: Search
   const googleHref = `/api/auth/google${nextPath !== "/" ? `?next=${encodeURIComponent(nextPath)}` : ""}`;
 
   const errKey = firstString(sp.error);
-  const oauthMessage = errKey && OAUTH_ERROR_COPY[errKey] ? OAUTH_ERROR_COPY[errKey] : null;
+  const oauthMessage =
+    errKey && OAUTH_ERROR_KEYS[errKey] ? t(OAUTH_ERROR_KEYS[errKey]) : null;
   const oauthDetailRaw = firstString(sp.detail);
   const oauthDetail = oauthDetailRaw ? oauthDetailRaw : null;
 
@@ -74,17 +72,17 @@ export default async function LoginView({ searchParams }: { searchParams: Search
               <p className="bni-auth-lead text-muted mb-1">{t("auth.loginLead")}</p>
               <div className="small text-muted text-center mb-0 px-1" style={{ lineHeight: 1.55 }}>
                 <p className="mb-2 fw-semibold text-body-secondary" style={{ marginBottom: "0.5rem" }}>
-                  {BUSY_MISSION_LINES.join(" ")}
+                  {t("vision.mission")}
                 </p>
                 <p className="mb-2" style={{ marginBottom: "0.5rem" }}>
-                  {BUSY_ARCHITECTURE_RULE}
+                  {t("vision.architecture")}
                 </p>
                 <p className="mb-2" style={{ marginBottom: "0.5rem" }}>
-                  {BUSY_PLATFORM_GOAL}
+                  {t("vision.goal")}
                 </p>
                 <p className="mb-0">
                   <Link href="/#busy-participant-journey" className="text-primary text-decoration-none">
-                    Оролцогчийн замнал (нүүр → follow-up)
+                    {t("vision.participantJourney")}
                   </Link>
                 </p>
               </div>
@@ -99,11 +97,9 @@ export default async function LoginView({ searchParams }: { searchParams: Search
             ) : null}
             {showPhpLegacyHint ? (
               <div className="alert alert-info bni-auth-alert mb-4" role="status">
-                <strong className="d-block mb-1">Платформын нэвтрэлт</strong>
+                <strong className="d-block mb-1">{t("auth.legacyLoginTitle")}</strong>
                 <span className="small d-block" style={{ lineHeight: 1.55 }}>
-                  Хуучин вэбээр нэвтэрсэн бол түүний нэвтрэлт тусдаа хэвээр байж болно. Аялал үүсгэх, хадгалах зэрэг
-                  платформын үйлдлүүдэд доорх <strong>Google</strong> эсвэл <strong>имэйл</strong> товчоор энэ
-                  хуудаснаас нэг удаа дахин нэвтэрнэ үү.
+                  {t("auth.legacyLoginBody")}
                 </span>
               </div>
             ) : null}
@@ -117,7 +113,7 @@ export default async function LoginView({ searchParams }: { searchParams: Search
             <div className="text-center mt-3">
               <Link href="/" className="small text-decoration-none text-muted">
                 <i className="fas fa-arrow-left me-1" aria-hidden="true" />
-                Нүүр руу буцах
+                {t("auth.backHome")}
               </Link>
             </div>
           </div>

@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n/client";
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
 export function ContactPageForm() {
+  const t = useT();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -15,8 +17,8 @@ export function ContactPageForm() {
 
   useEffect(() => {
     if (status !== "success") return;
-    const t = window.setTimeout(() => setStatus("idle"), 5000);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(() => setStatus("idle"), 5000);
+    return () => window.clearTimeout(timer);
   }, [status]);
 
   async function onSubmit(e: React.FormEvent) {
@@ -34,7 +36,7 @@ export function ContactPageForm() {
         const msg =
           typeof data === "object" && data && "error" in data && typeof (data as { error: unknown }).error === "string"
             ? (data as { error: string }).error
-            : "Илгээхэд алдаа гарлаа.";
+            : t("contact.form.errSend");
         setErrorText(msg);
         setStatus("error");
         return;
@@ -45,17 +47,15 @@ export function ContactPageForm() {
       setPhone("");
       setMessage("");
     } catch {
-      setErrorText("Сүлжээний алдаа. Дахин оролдоно уу.");
+      setErrorText(t("contact.form.errNetwork"));
       setStatus("error");
     }
   }
 
   return (
     <div className="rounded-3 border bg-white p-4 p-md-5 shadow-sm">
-      <h2 className="h5 fw-bold mb-1">Зурвас илгээх</h2>
-      <p className="text-muted small mb-4">
-        Санал, хамтын ажиллагаа, техникийн асуулт — бид тань руу имэйлээр хариу өгнө.
-      </p>
+      <h2 className="h5 fw-bold mb-1">{t("contact.form.title")}</h2>
+      <p className="text-muted small mb-4">{t("contact.form.lead")}</p>
 
       {status === "success" ? (
         <div>
@@ -66,18 +66,18 @@ export function ContactPageForm() {
           >
             <i className="fa-solid fa-circle-check mt-1 flex-shrink-0" aria-hidden />
             <div>
-              <strong className="d-block">Амжилттай илгээгдлээ</strong>
-              <span className="small">Удахгүй холбогдох болно. 5 секундын дараа маягт дахин нээгдэнэ.</span>
+              <strong className="d-block">{t("contact.form.successTitle")}</strong>
+              <span className="small">{t("contact.form.successBody")}</span>
             </div>
           </div>
           <button type="button" className="btn-brand-outline w-100 py-2" onClick={() => setStatus("idle")}>
-            Одоо шинэ зурвас бичих
+            {t("contact.form.newMessage")}
           </button>
         </div>
       ) : (
         <form onSubmit={onSubmit} noValidate>
           <div className="visually-hidden" aria-hidden="true">
-            <label htmlFor="contact-website">Вэбсайт</label>
+            <label htmlFor="contact-website">Website</label>
             <input
               id="contact-website"
               type="text"
@@ -96,7 +96,7 @@ export function ContactPageForm() {
 
           <div className="mb-3">
             <label htmlFor="contact-name" className="form-label small fw-semibold">
-              Нэр <span className="text-danger">*</span>
+              {t("contact.form.name")} <span className="text-danger">*</span>
             </label>
             <input
               id="contact-name"
@@ -114,7 +114,7 @@ export function ContactPageForm() {
 
           <div className="mb-3">
             <label htmlFor="contact-email" className="form-label small fw-semibold">
-              Имэйл <span className="text-danger">*</span>
+              {t("contact.form.email")} <span className="text-danger">*</span>
             </label>
             <input
               id="contact-email"
@@ -131,7 +131,8 @@ export function ContactPageForm() {
 
           <div className="mb-3">
             <label htmlFor="contact-phone" className="form-label small fw-semibold">
-              Утас <span className="text-muted fw-normal">(сонголттой)</span>
+              {t("contact.form.phone")}{" "}
+              <span className="text-muted fw-normal">{t("contact.form.phoneOptional")}</span>
             </label>
             <input
               id="contact-phone"
@@ -148,7 +149,7 @@ export function ContactPageForm() {
 
           <div className="mb-4">
             <label htmlFor="contact-message" className="form-label small fw-semibold">
-              Зурвас <span className="text-danger">*</span>
+              {t("contact.form.message")} <span className="text-danger">*</span>
             </label>
             <textarea
               id="contact-message"
@@ -161,13 +162,13 @@ export function ContactPageForm() {
               value={message}
               onChange={(ev) => setMessage(ev.target.value)}
               disabled={status === "submitting"}
-              placeholder="Товчхон бичнэ үү…"
+              placeholder={t("contact.form.messagePlaceholder")}
             />
-            <div className="form-text">Хамгийн багадаа 10 тэмдэгт.</div>
+            <div className="form-text">{t("contact.form.messageHint")}</div>
           </div>
 
           <button type="submit" className="btn-brand w-100 py-2" disabled={status === "submitting"}>
-            {status === "submitting" ? "Илгээж байна…" : "Илгээх"}
+            {status === "submitting" ? t("contact.form.submitting") : t("contact.form.submit")}
           </button>
         </form>
       )}

@@ -3,38 +3,17 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/client";
 import type { RegisterFormState } from "./actions";
 import { registerAction } from "./actions";
 
 const initial: RegisterFormState = { errorKey: null, displayName: "", email: "" };
 
-const copy = {
-  displayName: "Овог нэр",
-  email: "Имэйл",
-  password: "Нууц үг",
-  passwordConfirm: "Нууц үг давтах",
-  passwordHint: "Хамгийн багадаа 8 тэмдэгт.",
-  submit: "Бүртгүүлэх",
-  or: "эсвэл",
-  hasAccount: "Данстай юу?",
-  login: "Нэвтрэх",
-  google: "Google-р нэвтрэх",
-  googlePlatform: "Google-р нэвтрэх (BUSY платформ)",
-  errPasswordMismatch: "Нууц үг таарахгүй байна.",
-  errPasswordWeak: "Нууц үг хамгийн багадаа 8 тэмдэгт байна.",
-  errTerms: "Үргэлжлүүлэхийн тулд нөхцөлийг зөвшөөрнө үү.",
-  errEmailTaken: "Энэ имэйлээр бүртгэл аль хэдийн байна. Нэвтрэх хуудас ашиглана уу.",
-  errUseGoogle: "Энэ имэйл Google-р бүртгэгдсэн. Google-р нэвтрэх товчийг ашиглана уу.",
-  errInactive: "Энэ имэйлтэй холбоотой данс идэвхгүй байна. Дэмжлэгт холбогдоно уу.",
-  errServer: "Бүртгэл үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
-  errInvalid: "Бүх шаардлагатай талбарыг бөглөнө үү.",
-};
-
-function SubmitButton() {
+function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <button type="submit" className="bni-auth-btn-primary" disabled={pending}>
-      {pending ? "…" : copy.submit}
+      {pending ? "…" : label}
     </button>
   );
 }
@@ -54,6 +33,7 @@ export default function RegisterForm({
   defaultEmail = "",
   defaultDisplayName = "",
 }: Props) {
+  const t = useT();
   const [state, formAction] = useActionState(registerAction, {
     ...initial,
     email: defaultEmail,
@@ -64,21 +44,21 @@ export default function RegisterForm({
 
   const errMsg =
     state.errorKey === "invalid"
-      ? copy.errInvalid
+      ? t("auth.errInvalid")
       : state.errorKey === "password_mismatch"
-        ? copy.errPasswordMismatch
+        ? t("auth.errPasswordMismatch")
         : state.errorKey === "password_weak"
-          ? copy.errPasswordWeak
+          ? t("auth.errPasswordWeak")
           : state.errorKey === "terms_required"
-            ? copy.errTerms
+            ? t("auth.errTerms")
             : state.errorKey === "email_taken"
-              ? copy.errEmailTaken
+              ? t("auth.errEmailTaken")
               : state.errorKey === "use_google"
-                ? copy.errUseGoogle
+                ? t("auth.errUseGoogle")
                 : state.errorKey === "account_inactive"
-                  ? copy.errInactive
+                  ? t("auth.errInactive")
                   : state.errorKey === "server_error"
-                    ? copy.errServer
+                    ? t("auth.errServer")
                     : null;
 
   return (
@@ -91,7 +71,7 @@ export default function RegisterForm({
       ) : null}
       <div className="mb-3">
         <label className="form-label" htmlFor="displayName">
-          {copy.displayName}
+          {t("auth.displayName")}
         </label>
         <div className="bni-auth-input-icon">
           <span className="bni-auth-input-ico">
@@ -105,14 +85,14 @@ export default function RegisterForm({
             required
             autoComplete="name"
             maxLength={255}
-            placeholder="Бат Болд"
+            placeholder={t("auth.placeholderName")}
             defaultValue={state.displayName || defaultDisplayName}
           />
         </div>
       </div>
       <div className="mb-3">
         <label className="form-label" htmlFor="email">
-          {copy.email}
+          {t("auth.email")}
         </label>
         <div className="bni-auth-input-icon">
           <span className="bni-auth-input-ico">
@@ -132,7 +112,7 @@ export default function RegisterForm({
       </div>
       <div className="mb-3">
         <label className="form-label" htmlFor="password">
-          {copy.password}
+          {t("auth.password")}
         </label>
         <div className="bni-auth-input-icon">
           <span className="bni-auth-input-ico">
@@ -150,12 +130,12 @@ export default function RegisterForm({
           />
         </div>
         <div id="passwordHelp" className="form-text">
-          {copy.passwordHint}
+          {t("auth.passwordHint")}
         </div>
       </div>
       <div className="mb-3">
         <label className="form-label" htmlFor="passwordConfirm">
-          {copy.passwordConfirm}
+          {t("auth.passwordConfirm")}
         </label>
         <div className="bni-auth-input-icon">
           <span className="bni-auth-input-ico">
@@ -176,31 +156,32 @@ export default function RegisterForm({
         <div className="form-check">
           <input className="form-check-input" type="checkbox" name="terms" id="terms" value="on" required />
           <label className="form-check-label small" htmlFor="terms">
+            {t("auth.termsPrefix")}
             <Link href="#" className="text-primary text-decoration-none">
-              Нөхцөл, болзол
+              {t("footer.links.terms")}
             </Link>
-            {" болон "}
+            {t("auth.termsAnd")}
             <Link href="#" className="text-primary text-decoration-none">
-              нууцлалын бодлого
+              {t("footer.links.privacy")}
             </Link>
-            -ыг зөвшөөрнө
+            {t("auth.termsSuffix")}
           </label>
         </div>
       </div>
-      <SubmitButton />
+      <SubmitButton label={t("auth.register")} />
       {googleHref ? (
         <>
           <div className="bni-auth-divider">
-            <span>{copy.or}</span>
+            <span>{t("auth.or")}</span>
           </div>
           <a href={googleHref} className="bni-auth-btn-google">
             <i className="fa-brands fa-google" aria-hidden="true" />
-            {googleUsesNextPlatformOAuth ? copy.googlePlatform : copy.google}
+            {googleUsesNextPlatformOAuth ? t("auth.googlePlatform") : t("auth.google")}
           </a>
         </>
       ) : null}
       <div className="bni-auth-footer">
-        <span>{copy.hasAccount}</span> <Link href={loginHref}>{copy.login}</Link>
+        <span>{t("auth.hasAccount")}</span> <Link href={loginHref}>{t("auth.login")}</Link>
       </div>
     </form>
   );
