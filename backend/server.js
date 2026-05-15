@@ -41,6 +41,7 @@ app.use(
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(require("./app/middleware/resolve-lang.middleware"));
 
 require("./app/routes/auth.routes")(app);
 require("./app/routes/platform/trips.routes")(app);

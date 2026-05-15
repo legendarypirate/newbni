@@ -2,6 +2,7 @@
 
 const forms = require("../services/trip-registration-forms");
 const db = require("../models");
+const { translateOne } = require("../lib/content-translations");
 const {
   parseLegacyRegistrationArray,
   stableLegacyQuestionId,
@@ -238,9 +239,12 @@ exports.getPublicTripById = async (req, res) => {
     order: [["updatedAt", "DESC"]],
   });
 
+  const lang = req.bniLang || "mn";
+  const tripOut = await translateOne(trip, "trip", lang, { autoFillMissing: true });
+
   return res.json({
     success: true,
-    trip: trip.toJSON(),
+    trip: tripOut,
     registrationPublicSlug: publishedForm?.publicSlug || null,
   });
 };

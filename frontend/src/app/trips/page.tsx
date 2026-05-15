@@ -6,6 +6,8 @@ import { formatMnDate } from "@/lib/format-date";
 import { getMarketingListingHeroSlides } from "@/lib/marketing-listing-hero";
 import { mediaUrl } from "@/lib/media-url";
 import { resolveServerApiBase } from "@/lib/resolve-api-base";
+import { cookies } from "next/headers";
+import { apiLangHeaders, createServerT, getLangFromCookies, withLangQuery } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +23,8 @@ type SearchParams = {
 };
 
 export default async function TripsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const lang = getLangFromCookies(await cookies());
+  const t = createServerT(lang);
   const sp = await searchParams;
   const country = sp.country?.trim() || "";
   const focus = sp.focus?.trim() || "";
@@ -38,8 +42,13 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
   urlParams.set("trip_type", tripType);
   if (budgetMax > 0) urlParams.set("budget_max", budgetMax.toString());
 
-  const res = await fetch(`${resolveServerApiBase()}/platform/trips?${urlParams.toString()}`, {
+  const apiUrl = withLangQuery(
+    `${resolveServerApiBase()}/platform/trips?${urlParams.toString()}`,
+    lang,
+  );
+  const res = await fetch(apiUrl, {
     cache: "no-store",
+    headers: apiLangHeaders(lang),
   })
     .then((r) => r.json())
     .catch(() => ({ ok: false }));
@@ -76,7 +85,7 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
     <main className="page-content" style={{ backgroundColor: "var(--bg-page)" }}>
       <MarketingListingHero slides={heroSlides} fallbackImageUrl={heroFallback}>
         <h1 className="fw-bold" style={{ fontSize: "2.25rem", color: "var(--text-main)", marginBottom: "0.5rem" }}>
-          Бизнес аялал
+          {t("trips.title")}
         </h1>
         <p style={{ color: "var(--text-muted)", fontSize: "1.1rem" }}>
           Олон улсын бизнес аялал, үзэсгэлэн, үйлдвэртэй танилцах хөтөлбөрүүд

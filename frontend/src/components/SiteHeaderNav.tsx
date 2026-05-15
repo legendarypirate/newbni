@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  BNI_ALLOWED_LANGS,
-  BNI_LANGUAGES,
-  type BniLangCode,
-  isBniLang,
-} from "@/lib/nav-php-parity";
+import type { BniLangCode } from "@/lib/nav-php-parity";
+import { isBniLang } from "@/lib/nav-php-parity";
+import { useT } from "@/lib/i18n/client";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import {
   SHOW_PUBLIC_HEADER_LOGIN_REGISTER,
   SHOW_PUBLIC_NAV_BUSY_AI,
@@ -19,13 +17,13 @@ import {
 
 /** Matches `includes/header.php` `<nav>` children (paths adapted for Next App Router). */
 const NAV = [
-  { href: "/trips", label: "Бизнес аялал", id: "trips" },
-  { href: "/events", label: "Хурал/Эвент", id: "events" },
-  { href: "/companies", label: "Үйлдвэр холболт", id: "companies" },
-  { href: "/investments", label: "Хөрөнгө оруулалт", id: "investments" },
-  { href: "/members", label: "Гишүүд", id: "members" },
-  { href: "/news", label: "Мэдээлэл", id: "news" },
-  { href: "/busy-ai", label: "BUSY AI", id: "busy_ai" },
+  { href: "/trips", labelKey: "nav.trips" as const, id: "trips" },
+  { href: "/events", labelKey: "nav.events" as const, id: "events" },
+  { href: "/companies", labelKey: "nav.companies" as const, id: "companies" },
+  { href: "/investments", labelKey: "nav.investments" as const, id: "investments" },
+  { href: "/members", labelKey: "nav.members" as const, id: "members" },
+  { href: "/news", labelKey: "nav.news" as const, id: "news" },
+  { href: "/busy-ai", labelKey: "nav.busyAi" as const, id: "busy_ai" },
 ] as const;
 
 function isNavItemVisible(pageId: (typeof NAV)[number]["id"]): boolean {
@@ -82,7 +80,7 @@ export function SiteHeaderNav({
 }: SiteHeaderNavProps) {
   const pathname = usePathname() ?? "/";
   const navLang: BniLangCode = isBniLang(initialLang) ? initialLang : "mn";
-  const curLang = BNI_LANGUAGES[navLang];
+  const t = useT();
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   useEffect(() => {
@@ -96,14 +94,6 @@ export function SiteHeaderNav({
     mq.addEventListener("change", onMq);
     return () => mq.removeEventListener("change", onMq);
   }, []);
-
-  const langHref = (code: BniLangCode) => {
-    if (legacySiteUrl && !headerAuthUseNext) {
-      return `${legacySiteUrl}/scripts/change-lang.php?lang=${encodeURIComponent(code)}`;
-    }
-    const next = encodeURIComponent(pathname || "/");
-    return `/api/set-lang?lang=${encodeURIComponent(code)}&next=${next}`;
-  };
 
   const loginHref =
     headerAuthUseNext || !legacySiteUrl ? "/auth/login" : `${legacySiteUrl}/auth/login.php`;
@@ -144,44 +134,13 @@ export function SiteHeaderNav({
                   className={`nav-link${navActive(pathname, item.href, item.id) ? " active" : ""}`}
                   href={item.href}
                 >
-                  {item.label}
+                  {t(item.labelKey)}
                 </Link>
               </li>
             ))}
           </ul>
           <div className="d-flex align-items-center gap-2 ms-lg-auto flex-wrap mt-3 mt-lg-0">
-            <div className="dropdown">
-              <button
-                className="btn btn-light btn-sm rounded-pill border px-2 px-md-3 d-flex align-items-center gap-1"
-                type="button"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-                title="Хэл солих"
-              >
-                <span aria-hidden>{curLang.flag}</span>
-                <span className="fw-semibold small">{navLang.toUpperCase()}</span>
-                <i className="fa-solid fa-chevron-down small opacity-50 d-none d-sm-inline" aria-hidden />
-              </button>
-              <ul
-                className="dropdown-menu dropdown-menu-end shadow border-0 py-2"
-                style={{ borderRadius: 12, minWidth: "11rem" }}
-              >
-                {BNI_ALLOWED_LANGS.map((lc) => {
-                  const row = BNI_LANGUAGES[lc];
-                  return (
-                    <li key={lc}>
-                      <a
-                        className={`dropdown-item py-2 d-flex align-items-center gap-2${navLang === lc ? " active" : ""}`}
-                        href={langHref(lc)}
-                      >
-                        <span aria-hidden>{row.flag}</span>
-                        <span>{row.name}</span>
-                      </a>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+            <LanguageSwitcher legacySiteUrl={legacySiteUrl} headerAuthUseNext={headerAuthUseNext} />
             {platformUser ? (
               <div className="dropdown">
                 <button

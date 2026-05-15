@@ -10,6 +10,7 @@
 
 const defineBniEvent = require("./bni-event.model");
 const defineBusinessTrip = require("./business-trip.model");
+const defineContentTranslation = require("./content-translation.model");
 const defineTripRegistrationModels = require("./trip-registration.model");
 
 function initModels(sequelize) {
@@ -185,6 +186,7 @@ function initModels(sequelize) {
   );
 
   const BusinessTrip = defineBusinessTrip(sequelize, DataTypes);
+  const ContentTranslation = defineContentTranslation(sequelize, DataTypes);
 
   const NewsArticle = sequelize.define(
     "NewsArticle",
@@ -488,6 +490,7 @@ function initModels(sequelize) {
     LegacyMeeting,
     BusinessTrip,
     NewsArticle,
+    ContentTranslation,
     LegacyMember,
     PaymentOrder,
     BusyRole,

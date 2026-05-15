@@ -17,6 +17,8 @@ import { mediaUrl } from "@/lib/media-url";
 import { marketingSiteOrigin } from "@/lib/marketing-site-origin";
 import { readExtras } from "@/components/platform/trips/trip-editor-helpers";
 import { internalApiUrl } from "@/lib/backend-api";
+import { cookies } from "next/headers";
+import { apiLangHeaders, getLangFromCookies, withLangQuery } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -39,8 +41,11 @@ type TripDetailPayload = {
   registrationPublicSlug?: string | null;
 };
 
-async function loadTripDetail(tripId: number): Promise<TripDetailPayload["trip"] | null> {
-  const res = await fetch(internalApiUrl(`/api/public/trips/${tripId}`), { cache: "no-store" });
+async function loadTripDetail(tripId: number, lang: ReturnType<typeof getLangFromCookies>): Promise<TripDetailPayload["trip"] | null> {
+  const res = await fetch(withLangQuery(internalApiUrl(`/api/public/trips/${tripId}`), lang), {
+    cache: "no-store",
+    headers: apiLangHeaders(lang),
+  });
   if (!res.ok) return null;
   const data = (await res.json()) as TripDetailPayload;
   if (!data.success || !data.trip) return null;
@@ -56,12 +61,13 @@ async function loadTripRegistrationPublicSlug(tripId: number): Promise<string | 
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const lang = getLangFromCookies(await cookies());
   const { id } = await params;
   const tripId = parseInt(id, 10);
   const fallback: Metadata = { title: "Аялал | BUSY.mn" };
   if (isNaN(tripId)) return fallback;
 
-  const trip = await loadTripDetail(tripId);
+  const trip = await loadTripDetail(tripId, lang);
   if (!trip) return fallback;
 
   const extras = readExtras(trip.extrasJson);
@@ -173,13 +179,14 @@ function normalizeTripHelpChatHref(raw: string): string | null {
 }
 
 export default async function TripDetailsPage({ params }: Props) {
+  const lang = getLangFromCookies(await cookies());
   const { id } = await params;
   const tripId = parseInt(id, 10);
   if (isNaN(tripId)) {
     notFound();
   }
 
-  const trip = await loadTripDetail(tripId);
+  const trip = await loadTripDetail(tripId, lang);
 
   if (!trip) {
     return (

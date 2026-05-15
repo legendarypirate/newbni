@@ -2,6 +2,7 @@
 
 const { Op } = require("sequelize");
 const db = require("../models");
+const { translateRecords, translateOne } = require("../lib/content-translations");
 const { syncEventRegistrationFormFromLegacyJson } = require("../lib/trip-form-sync");
 const {
   EVENT_STATUS,
@@ -98,6 +99,8 @@ exports.listPublic = async (req, res) => {
 
     const publishedIds = await publishedEventIdSet();
     const rows = rowsRaw.filter((ev) => eventIsPublic(ev, publishedIds)).slice(0, 80);
+    const lang = req.bniLang || "mn";
+    const eventsOut = await translateRecords(rows, "event", lang);
 
     const [totalUpcoming, totalPast, distinctChapters] = await Promise.all([
       db.BniEvent.count({ where: { endsAt: { [Op.gte]: now } } }),
@@ -111,7 +114,7 @@ exports.listPublic = async (req, res) => {
     res.json({
       ok: true,
       data: {
-        events: rows,
+        events: eventsOut,
         totalUpcoming,
         totalPast,
         chaptersWithEvents: distinctChapters.length,
@@ -167,13 +170,17 @@ exports.getById = async (req, res) => {
         : Promise.resolve([]),
     ]);
 
+    const lang = req.bniLang || "mn";
+    const eventOut = await translateOne(event, "event", lang, { autoFillMissing: true });
+    const similarOut = await translateRecords(similar, "event", lang);
+
     res.json({
       ok: true,
       data: {
-        event,
+        event: eventOut,
         registeredTotal,
         publishedForm,
-        similar,
+        similar: similarOut,
       },
     });
   } catch (err) {

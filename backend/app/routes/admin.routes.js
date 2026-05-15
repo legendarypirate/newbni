@@ -8,6 +8,7 @@ module.exports = (app) => {
   const uploads = require("../controllers/admin/uploads.controller");
   const adminEvents = require("../controllers/admin/events-admin.controller");
   const regExport = require("../controllers/admin-registration-export.controller");
+  const translationsAdmin = require("../controllers/translations-admin.controller");
   const platformAccounts = require("../controllers/admin/platform-accounts.controller");
   const authMiddleware = require("../middleware/auth.middleware");
   const requirePlatformAdminJwt = require("../middleware/admin-role.middleware");
@@ -56,6 +57,10 @@ module.exports = (app) => {
   router.post("/events/:id/approval", authMiddleware, requirePlatformAdminJwt, adminEvents.setApproval);
   router.delete("/events/:id", authMiddleware, requirePlatformAdminJwt, adminEvents.remove);
   router.post("/trips/:id/approval", authMiddleware, requirePlatformAdminJwt, require("../controllers/platform/trips.controller").setTripApproval);
+  router.post("/translations/auto", authMiddleware, requirePlatformAdminJwt, translationsAdmin.autoTranslate);
+  router.post("/translations/auto-batch", authMiddleware, requirePlatformAdminJwt, translationsAdmin.autoTranslateBatch);
+  router.post("/translations/text", authMiddleware, requirePlatformAdminJwt, translationsAdmin.translateText);
+  router.post("/translations/upsert", authMiddleware, requirePlatformAdminJwt, translationsAdmin.upsertManual);
   router.post(
     "/marketing-listing-hero-upload",
     authMiddleware,

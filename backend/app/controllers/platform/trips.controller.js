@@ -12,6 +12,7 @@ const {
   tripStatusForPublic,
 } = require("../../lib/content-approval");
 const tripForms = require("../../services/trip-registration-forms");
+const { translateRecords, translateOne } = require("../../lib/content-translations");
 
 async function publishTripRegistrationForms(tripId) {
   const forms = await db.TripRegistrationForm.findAll({
@@ -270,7 +271,9 @@ exports.listTrips = async (req, res) => {
       limit: 200,
     });
 
-    const tripsOut = await attachTripFormMeta(rows);
+    const lang = req.bniLang || "mn";
+    let tripsOut = await attachTripFormMeta(rows);
+    tripsOut = await translateRecords(tripsOut, "trip", lang);
 
     const next90 = new Date(now);
     next90.setDate(next90.getDate() + 90);
@@ -314,8 +317,10 @@ exports.getTrip = async (req, res) => {
       return res.status(404).json({ ok: false, message: "Trip not found" });
     }
 
+    const lang = req.bniLang || "mn";
     const [enriched] = await attachTripFormMeta([trip]);
-    res.json({ ok: true, trip: enriched });
+    const tripOut = await translateOne(enriched, "trip", lang, { autoFillMissing: true });
+    res.json({ ok: true, trip: tripOut });
   } catch (err) {
     console.error("Get trip failed:", err);
     res.status(500).json({ ok: false, message: "Internal server error" });

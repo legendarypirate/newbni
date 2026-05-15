@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { Suspense } from "react";
 import BackendApiFetchPatch from "@/components/BackendApiFetchPatch";
@@ -7,6 +8,8 @@ import RuntimePublicConfig from "@/components/RuntimePublicConfig";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { marketingSiteOrigin } from "@/lib/marketing-site-origin";
+import { I18nProvider } from "@/lib/i18n/client";
+import { getLangFromCookies, htmlLangAttr } from "@/lib/i18n/server";
 import TokenHandler from "./TokenHandler";
 
 function rootMetadataBase(): URL {
@@ -26,13 +29,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const lang = getLangFromCookies(await cookies());
+
   return (
-    <html lang="mn">
+    <html lang={htmlLangAttr(lang)}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -59,11 +64,13 @@ export default function RootLayout({
         <RuntimePublicConfig />
         <BackendApiFetchPatch />
         <Suspense><TokenHandler /></Suspense>
-        <header className="site-header sticky-top border-bottom bg-white" style={{ zIndex: 1030 }}>
-          <Navbar />
-        </header>
-        {children}
-        <Footer />
+        <I18nProvider initialLang={lang}>
+          <header className="site-header sticky-top border-bottom bg-white" style={{ zIndex: 1030 }}>
+            <Navbar />
+          </header>
+          {children}
+          <Footer />
+        </I18nProvider>
         <Script
           src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
           strategy="afterInteractive"

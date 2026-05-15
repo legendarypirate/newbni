@@ -1,11 +1,12 @@
-import AdminPlaceholder from "@/components/admin/AdminPlaceholder";
+import DbTranslationsPanel from "@admin/components/admin/DbTranslationsPanel";
 
 export const metadata = { title: "DB орчуулга | Админ" };
 
 export default function AdminDbTranslationsPage() {
   return (
-    <AdminPlaceholder title="DB орчуулга (AI)">
-      PHP дээрх <code>auto_translate</code> / орчуулгын удирдлагыг энд шилжүүлэх шаардлагатай. Одоогоор placeholder.
-    </AdminPlaceholder>
+    <div>
+      <h1 className="h4 fw-bold mb-3">DB орчуулга (AI)</h1>
+      <DbTranslationsPanel />
+    </div>
   );
 }

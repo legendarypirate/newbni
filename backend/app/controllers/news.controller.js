@@ -1,6 +1,7 @@
 "use strict";
 
 const db = require("../models");
+const { translateRecords, translateOne } = require("../lib/content-translations");
 
 /**
  * Looks up the public byline data for a set of `news.author_id` values.
@@ -57,8 +58,10 @@ exports.list = async (req, res) => {
       ...n.toJSON(),
       author: authors.get(Number(n.authorId)) || null,
     }));
+    const lang = req.bniLang || "mn";
+    const newsOut = await translateRecords(enriched, "news", lang);
 
-    return res.json({ ok: true, data: { news: enriched, total } });
+    return res.json({ ok: true, data: { news: newsOut, total } });
   } catch (err) {
     console.error("news list failed:", err);
     return res.status(500).json({ ok: false, message: "failed" });
@@ -80,10 +83,16 @@ exports.getById = async (req, res) => {
       return res.status(404).json({ ok: false, message: "Article not found" });
     }
     const authors = await loadAuthorsByIds([article.authorId]);
-    const data = {
-      ...article.toJSON(),
-      author: authors.get(Number(article.authorId)) || null,
-    };
+    const lang = req.bniLang || "mn";
+    const data = await translateOne(
+      {
+        ...article.toJSON(),
+        author: authors.get(Number(article.authorId)) || null,
+      },
+      "news",
+      lang,
+      { autoFillMissing: true },
+    );
     return res.json({ ok: true, data });
   } catch (err) {
     console.error("news get failed:", err);

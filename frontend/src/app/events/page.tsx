@@ -10,6 +10,8 @@ import { formatMnDate } from "@/lib/format-date";
 import { getMarketingListingHeroSlides } from "@/lib/marketing-listing-hero";
 import { mediaUrl } from "@/lib/media-url";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
+import { cookies } from "next/headers";
+import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +48,8 @@ type EventsListingData = {
 };
 
 export default async function EventsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const lang = getLangFromCookies(await cookies());
+  const t = createServerT(lang);
   const sp = await searchParams;
   const chapterFilter = parseInt(sp.chapter || "0", 10);
   const status = ["upcoming", "past", "all"].includes(sp.status || "") ? sp.status! : "upcoming";
@@ -63,6 +67,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   if (dateFrom) urlParams.set("date_from", dateFrom);
   if (dateTo) urlParams.set("date_to", dateTo);
 
+  urlParams.set("lang", lang);
   const res = await serverAuthedFetch(`/events?${urlParams.toString()}`)
     .then((r) => r.json())
     .catch(() => ({ ok: false }));
