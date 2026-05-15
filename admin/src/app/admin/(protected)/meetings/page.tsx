@@ -54,9 +54,14 @@ export default async function AdminMeetingsPage() {
           <h1 className="h4 fw-bold mb-1">Meetings</h1>
           <p className="text-muted small mb-0">Admin API backed list.</p>
         </div>
-        <Link href="/admin/bni-events" className="btn btn-sm btn-outline-primary">
-          Open BNI Events
-        </Link>
+        <div className="d-flex gap-2">
+          <Link href="/admin/meetings/manage" className="btn btn-sm btn-primary">
+            Эвент удирдах
+          </Link>
+          <Link href="/admin/bni-events" className="btn btn-sm btn-outline-primary">
+            BNI хурлууд
+          </Link>
+        </div>
       </div>
 
       {!ok ? <div className="alert alert-danger">Backend API unavailable. Check backend deploy/PM2.</div> : null}

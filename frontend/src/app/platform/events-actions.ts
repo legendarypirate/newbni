@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 import { parseEventDatetimeWireUb } from "@/lib/event-datetime-ub";
-const ADMIN_EVENTS_PATH = "/admin/meetings";
+const ADMIN_EVENTS_PATH = "/admin/meetings/manage";
 const PLATFORM_EVENTS_PATH = "/platform/events";
 
 function eventListPathFromFormData(formData: FormData): typeof ADMIN_EVENTS_PATH | typeof PLATFORM_EVENTS_PATH {

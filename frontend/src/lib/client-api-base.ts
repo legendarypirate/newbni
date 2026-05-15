@@ -42,7 +42,7 @@ function isLocalHostUrl(u: string): boolean {
 }
 
 /** Map a browser hostname to a hard-coded backend base. Returns "" when unknown. */
-function mapBrowserHostToApiBase(hostRaw: string | null | undefined): string {
+export function mapBrowserHostToApiBase(hostRaw: string | null | undefined): string {
   const host = String(hostRaw || "").toLowerCase().trim();
   if (!host) return "";
   // Frontend public hosts
@@ -55,6 +55,37 @@ function mapBrowserHostToApiBase(hostRaw: string | null | undefined): string {
 }
 
 /**
+ * Server-side API base (SSR, Server Actions, Route Handlers).
+ * Uses request host mapping first so `testadmin.busy.mn` → `testapi.busy.mn/api`.
+ */
+export function apiBaseForServer(hostHint?: string | null): string {
+  const mapped = mapBrowserHostToApiBase(hostHint);
+  if (mapped) return mapped;
+
+  const internal = withApiSuffix(process.env.API_INTERNAL_URL || "");
+  const pub = withApiSuffix(process.env.NEXT_PUBLIC_API_URL || "");
+
+  if (internal && !isLocalHostUrl(internal)) return internal;
+  if (pub && !isLocalHostUrl(pub)) return pub;
+  if (internal) return internal;
+  if (pub) return pub;
+  return "http://127.0.0.1:3001/api";
+}
+
+/**
+ * Public backend base for server-rendered browser URLs (`form action`, etc.).
+ */
+export function publicApiBaseForServer(hostHint?: string | null): string {
+  const mapped = mapBrowserHostToApiBase(hostHint);
+  if (mapped) return mapped;
+
+  const pub = withApiSuffix(process.env.NEXT_PUBLIC_API_URL || "");
+  if (pub && !isLocalHostUrl(pub)) return pub;
+
+  return apiBaseForServer(hostHint);
+}
+
+/**
  * Backend API base ending in `/api`, suitable for both server and client.
  *
  * Use this for fetches initiated from server code or client code where the
@@ -64,17 +95,13 @@ function mapBrowserHostToApiBase(hostRaw: string | null | undefined): string {
  * If you need a URL that will be embedded in HTML for the browser to hit
  * (e.g. `<img src>`, `<a href>`, `<form action>`), use {@link publicApiBase}.
  *
- * - Server: `API_INTERNAL_URL` → `NEXT_PUBLIC_API_URL` → `http://127.0.0.1:3001/api`.
+ * - Server: host map → `API_INTERNAL_URL` → `NEXT_PUBLIC_API_URL` → localhost.
  * - Client: known host map → `NEXT_PUBLIC_API_URL` (if not localhost) →
  *           `http://localhost:3001/api`.
  */
 export function apiBase(): string {
   if (typeof window === "undefined") {
-    const internal = withApiSuffix(process.env.API_INTERNAL_URL || "");
-    if (internal) return internal;
-    const pub = withApiSuffix(process.env.NEXT_PUBLIC_API_URL || "");
-    if (pub) return pub;
-    return "http://127.0.0.1:3001/api";
+    return apiBaseForServer(undefined);
   }
 
   // 1. Runtime-injected value (most authoritative — survives stale bundles).
@@ -104,9 +131,7 @@ export function apiBase(): string {
  */
 export function publicApiBase(): string {
   if (typeof window === "undefined") {
-    const pub = withApiSuffix(process.env.NEXT_PUBLIC_API_URL || "");
-    if (pub) return pub;
-    return "http://localhost:3001/api";
+    return publicApiBaseForServer(undefined);
   }
 
   // 1. Runtime-injected value wins (matches whatever the running server has).

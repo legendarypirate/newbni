@@ -1,5 +1,7 @@
 import Link from "next/link";
+import ContentApprovalButtons from "@admin/components/platform/admin/ContentApprovalButtons";
 import { serverAuthedFetch } from "@admin/lib/server-authed-fetch";
+import { marketingSiteOrigin } from "@/lib/marketing-site-origin";
 
 export const metadata = { title: "Trips | Admin" };
 
@@ -14,7 +16,7 @@ type TripRow = {
 
 async function loadTrips(): Promise<{ ok: boolean; rows: TripRow[] }> {
   try {
-    const res = await serverAuthedFetch("/platform/trips");
+    const res = await serverAuthedFetch("/platform/trips?all=1");
     const json = (await res.json().catch(() => ({}))) as {
       trips?: unknown;
       data?: { trips?: unknown };
@@ -76,13 +78,14 @@ export default async function AdminTripsPage() {
               <th>End</th>
               <th>Status</th>
               <th>Price</th>
+              <th className="text-end">Зөвшөөрөл</th>
               <th className="text-end">Action</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-muted">
+                <td colSpan={8} className="text-muted">
                   No data
                 </td>
               </tr>
@@ -96,6 +99,17 @@ export default async function AdminTripsPage() {
                   <td>{r.statusLabel || "-"}</td>
                   <td>{fmtMoney(r.priceMnt)}</td>
                   <td className="text-end">
+                    <ContentApprovalButtons kind="trip" id={r.id} />
+                  </td>
+                  <td className="text-end text-nowrap">
+                    <Link
+                      href={`${marketingSiteOrigin()}/platform/trips?edit_trip=${r.id}`}
+                      className="btn btn-sm btn-outline-primary me-1"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Edit
+                    </Link>
                     <Link href={`/admin/trips/${r.id}/registration-responses`} className="btn btn-sm btn-outline-secondary">
                       Responses
                     </Link>

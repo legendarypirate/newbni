@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { apiBase } from "@/lib/client-api-base";
+import { apiBaseForServer } from "@/lib/client-api-base";
 
 /** Forward pathname for admin auth helpers (same behavior as busybni marketing app). */
 export function middleware(request: NextRequest) {
@@ -8,7 +8,8 @@ export function middleware(request: NextRequest) {
   requestHeaders.set("x-pathname", request.nextUrl.pathname);
   const res = NextResponse.next({ request: { headers: requestHeaders } });
   // Debug header: which backend API base SSR will use.
-  res.headers.set("x-admin-api-base", apiBase());
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  res.headers.set("x-admin-api-base", apiBaseForServer(host));
   return res;
 }
 

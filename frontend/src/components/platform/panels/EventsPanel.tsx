@@ -93,7 +93,7 @@ type Props = {
 };
 
 export default async function EventsPanel({ searchParams, venue = "platform" }: Props) {
-  const basePath = venue === "admin" ? "/admin/meetings" : "/platform/events";
+  const basePath = venue === "admin" ? "/admin/meetings/manage" : "/platform/events";
   // Auth is enforced client-side by `PlatformAuthGate` (or the admin layout for
   // `venue === "admin"`); we never redirect from this panel itself, so a
   // missing cookie just means data fetches below return empty rows.

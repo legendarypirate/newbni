@@ -1,4 +1,4 @@
-import { apiBase } from "@/lib/client-api-base";
+import { apiBaseForServer } from "@/lib/client-api-base";
 
 export function normalizeApiBase(raw: string | undefined): string {
   const base = (raw || "").replace(/\/$/, "");
@@ -8,10 +8,8 @@ export function normalizeApiBase(raw: string | undefined): string {
 
 /**
  * Server-side API root (SSR / Route Handlers → backend).
- *
- * `hostHint` is accepted for backwards compatibility but no longer used —
- * the runtime resolver in {@link apiBase} handles host-based fallbacks.
+ * Pass `x-forwarded-host` / `host` so admin (`testadmin.busy.mn`) hits `testapi.busy.mn`.
  */
-export function resolveServerApiBase(_hostHint?: string | null): string {
-  return apiBase();
+export function resolveServerApiBase(hostHint?: string | null): string {
+  return apiBaseForServer(hostHint);
 }

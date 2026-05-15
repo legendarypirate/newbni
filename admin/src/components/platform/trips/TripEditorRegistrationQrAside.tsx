@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, startTransition } from "react";
 import TripFormQrCard from "@/components/trip-registration/TripFormQrCard";
+import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -45,8 +46,7 @@ export default function TripEditorRegistrationQrAside({ tripId }: { tripId: numb
     setLoadError(null);
     setPubMsg(null);
     try {
-      const res = await fetch(`/api/platform/trips/${tripId}/registration-form-meta`, {
-        credentials: "include",
+      const res = await apiFetch(`/platform/trips/${tripId}/registration-form-meta`, {
         cache: "no-store",
       });
       const data = await readJson<{ trip?: TripMeta; form?: FormMeta | null; error?: string }>(res);
