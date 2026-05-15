@@ -8,8 +8,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { apiFetch } from "@/lib/api-client";
 import { formatOrderSummaryMn } from "@/lib/trip-registration-form/order-summary-format";
 import { cn } from "@/lib/utils";
+
+function loadErrorMessage(code: string | undefined): string {
+  if (code === "unauthorized") return "Нэвтрэх эрхгүй. Дахин нэвтэрнэ үү.";
+  if (code === "failed" || code === "FORBIDDEN") return "Хандах эрхгүй.";
+  return code ?? "Ачаалахад алдаа";
+}
 
 type Row = {
   id: string;
@@ -74,10 +81,10 @@ export default function TripResponsesClient({
 
   const load = useCallback(async () => {
     setError(null);
-    const res = await fetch(`/api/forms/${encodeURIComponent(formId)}/responses`, { cache: "no-store" });
+    const res = await apiFetch(`/forms/${encodeURIComponent(formId)}/responses`, { cache: "no-store" });
     const data = (await res.json().catch(() => ({}))) as { responses?: Row[]; error?: string };
     if (!res.ok) {
-      setError(data.error ?? "Ачаалахад алдаа");
+      setError(loadErrorMessage(data.error));
       return;
     }
     setRows(data.responses ?? []);
@@ -119,9 +126,8 @@ export default function TripResponsesClient({
   async function patchRow(id: string, body: { status?: TripFormResponseWorkflowStatus; paymentStatus?: TripFormMoneyStatus }) {
     setBusyId(id);
     try {
-      const res = await fetch(`/api/responses/${encodeURIComponent(id)}/status`, {
+      const res = await apiFetch(`/responses/${encodeURIComponent(id)}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error("patch");
@@ -134,7 +140,9 @@ export default function TripResponsesClient({
   async function convert(id: string): Promise<boolean> {
     setBusyId(id);
     try {
-      const res = await fetch(`/api/responses/${encodeURIComponent(id)}/convert-to-participant`, { method: "POST" });
+      const res = await apiFetch(`/responses/${encodeURIComponent(id)}/convert-to-participant`, {
+        method: "POST",
+      });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         alert(j.error === "ALREADY_CONVERTED" ? "Аль хэдийн оролцогч болсон." : "Алдаа гарлаа.");
