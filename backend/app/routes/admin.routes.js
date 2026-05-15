@@ -53,7 +53,9 @@ module.exports = (app) => {
   );
   router.post("/events", authMiddleware, requirePlatformAdminJwt, adminEvents.upsert);
   router.patch("/events/:id", authMiddleware, requirePlatformAdminJwt, adminEvents.upsert);
+  router.post("/events/:id/approval", authMiddleware, requirePlatformAdminJwt, adminEvents.setApproval);
   router.delete("/events/:id", authMiddleware, requirePlatformAdminJwt, adminEvents.remove);
+  router.post("/trips/:id/approval", authMiddleware, requirePlatformAdminJwt, require("../controllers/platform/trips.controller").setTripApproval);
   router.post(
     "/marketing-listing-hero-upload",
     authMiddleware,

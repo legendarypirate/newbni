@@ -17,6 +17,7 @@ module.exports = function defineBniEvent(sequelize, DataTypes) {
       curriculumOverrideJson: { type: DataTypes.JSONB, field: "curriculum_override_json", allowNull: true },
       registrationFormJson: { type: DataTypes.JSONB, field: "registration_form_json", allowNull: true },
       title: { type: DataTypes.STRING(255), allowNull: true },
+      bannerImage: { type: DataTypes.STRING(512), field: "banner_image", allowNull: true },
       priceMnt: { type: DataTypes.DECIMAL(12, 2), field: "price_mnt", allowNull: true },
       advanceOrderMnt: { type: DataTypes.DECIMAL(12, 2), field: "advance_order_mnt", allowNull: true },
       // Explicit attribute so `where: { createdAt }` and `attributes: ["createdAt"]`

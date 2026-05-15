@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ContentApprovalButtons from "@/components/platform/admin/ContentApprovalButtons";
 import TripEditorForm from "@/components/platform/trips/TripEditorForm";
 import { deleteTripAction, toggleTripFeaturedAction } from "@/app/platform/trips-actions";
 import { getPlatformSession } from "@/lib/platform-session";
@@ -26,7 +27,7 @@ export default async function TripsPanel({ searchParams }: Props) {
   const editRaw = firstParam(searchParams?.edit_trip) ?? firstParam(searchParams?.edit);
   const editTripId = Math.max(0, Number(editRaw ?? ""));
 
-  const listRes = await serverAuthedFetch("/platform/trips");
+  const listRes = await serverAuthedFetch("/platform/trips?all=1");
   const listJson = (await listRes.json().catch(() => ({}))) as {
     data?: { trips?: Record<string, unknown>[] };
     trips?: Record<string, unknown>[];
@@ -40,6 +41,7 @@ export default async function TripsPanel({ searchParams }: Props) {
     endDate: toDate(mt.endDate ?? mt.end_date),
     priceMnt: mt.priceMnt ?? mt.price_mnt,
     isFeatured: Number(mt.isFeatured ?? mt.is_featured ?? 0),
+    statusLabel: mt.statusLabel == null ? null : String(mt.statusLabel),
   }));
 
   let editTrip: BusinessTrip | null = null;
@@ -83,7 +85,7 @@ export default async function TripsPanel({ searchParams }: Props) {
                 <th>Аялал</th>
                 <th>Огноо</th>
                 <th>Үнэ</th>
-                <th>Хүсэлт</th>
+                <th>Зөвшөөрөл</th>
                 <th>Онцлох</th>
                 <th className="text-end">Үйлдэл</th>
               </tr>
@@ -107,9 +109,7 @@ export default async function TripsPanel({ searchParams }: Props) {
                     </td>
                     <td>{fmtMoney(mt.priceMnt)}</td>
                     <td>
-                      <div className="d-flex flex-wrap gap-1">
-                        <span className="badge rounded-pill bg-light text-muted border">—</span>
-                      </div>
+                      <ContentApprovalButtons kind="trip" id={mt.id} />
                     </td>
                     <td>
                       {mt.isFeatured === 1 ? (

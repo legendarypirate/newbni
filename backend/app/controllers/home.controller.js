@@ -22,6 +22,7 @@ exports.getHome = async (_req, res) => {
       coreEvents,
       latestNews,
       featuredMembers,
+      partners,
     ] = await Promise.all([
       db.BusinessTrip.count(),
       db.BusinessTrip.count({ where: { startDate: { [Op.gte]: now } } }),
@@ -60,6 +61,7 @@ exports.getHome = async (_req, res) => {
         },
       ),
       db.BusinessTrip.findAll({
+        where: { statusLabel: "Нийтлэгдсэн" },
         limit: 3,
         order: [["startDate", "ASC"], ["id", "ASC"]],
         raw: true,
@@ -68,7 +70,7 @@ exports.getHome = async (_req, res) => {
         where: { endsAt: { [Op.gte]: now } },
         limit: 6,
         order: [["startsAt", "ASC"], ["id", "ASC"]],
-        attributes: ["id", "title", "startsAt", "location"],
+        attributes: ["id", "title", "startsAt", "endsAt", "location"],
         raw: true,
       }),
       db.sequelize.query(
@@ -76,6 +78,10 @@ exports.getHome = async (_req, res) => {
            id,
            title,
            image,
+           slug,
+           excerpt,
+           content,
+           body,
            created_at AS "createdAt"
          FROM news
          WHERE status = 'published'
@@ -88,6 +94,13 @@ exports.getHome = async (_req, res) => {
       db.LegacyMember.findAll({
         where: { featured: 1, status: "active" },
         limit: 12,
+        raw: true,
+      }),
+      db.PlatformProfile.findAll({
+        where: { companyName: { [Op.ne]: null } },
+        attributes: ["accountId", "companyName", "photoUrl"],
+        limit: 20,
+        order: [["updatedAt", "DESC"]],
         raw: true,
       }),
     ]);
@@ -105,11 +118,17 @@ exports.getHome = async (_req, res) => {
           revenueMonth: Number(revenueRows?.[0]?.revenue || 0),
         },
         heroTrip: businessTrips[0] || null,
-        coreEvents: coreEvents.map((e) => ({ ...e, id: String(e.id), bannerImage: null })),
+        coreEvents: coreEvents.map((e) => ({ ...e, id: String(e.id), bannerImage: e.bannerImage || null })),
         businessTrips,
         latestNews,
         featuredMembers,
-        partners: [],
+        partners: partners
+          .filter((p) => String(p.companyName || "").trim() !== "")
+          .map((p) => ({
+            name: String(p.companyName || "").trim(),
+            logo: p.photoUrl || "",
+            href: `/member/${p.accountId}`,
+          })),
         recentOrders: recentOrders.map((o) => ({
           orderRef: o.orderRef,
           createdAt: o.createdAt instanceof Date ? o.createdAt.toISOString() : String(o.createdAt),

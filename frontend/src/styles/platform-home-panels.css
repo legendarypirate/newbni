@@ -57,6 +57,11 @@
 .pm-bank-logo-preview.is-visible { display: block; }
 .pm-form-group { display: flex; flex-direction: column; gap: 6px; }
 .pm-label { font-size: 0.75rem; color: #64748b; font-weight: 600; }
+.pl-panel-container { position: relative; z-index: 2; }
+.pl-panel-container .pm-card-body input,
+.pl-panel-container .pm-card-body textarea,
+.pl-panel-container .pm-card-body select,
+.pl-panel-container .pm-card-body button { pointer-events: auto; position: relative; z-index: 1; }
 .pm-input, .pm-select { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; font-size: 0.9rem; color: #1e293b; transition: all 0.2s; }
 .pm-input:focus, .pm-select:focus { outline: none; border-color: #2563eb; background: #fff; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
 .pm-social-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

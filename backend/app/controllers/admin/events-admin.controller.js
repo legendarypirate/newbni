@@ -2,6 +2,22 @@
 
 const db = require("../../models");
 const { syncEventRegistrationFormFromLegacyJson } = require("../../lib/trip-form-sync");
+const {
+  EVENT_STATUS,
+  mergeEventApprovalStatus,
+  readEventApprovalStatus,
+} = require("../../lib/content-approval");
+const tripForms = require("../../services/trip-registration-forms");
+
+async function publishEventForms(eventId) {
+  const forms = await db.TripRegistrationForm.findAll({
+    where: { eventId },
+    order: [["createdAt", "ASC"]],
+    attributes: ["id"],
+  });
+  if (forms.length === 0) return;
+  await tripForms.setTripRegistrationFormPublished(forms[0].id, null, true, { adminBypass: true });
+}
 
 function parseNum(v) {
   const n = Number(v);
@@ -91,6 +107,7 @@ exports.bootstrap = async (req, res) => {
         chapterId: ev.chapterId,
         priceMnt: ev.priceMnt,
         advanceOrderMnt: ev.advanceOrderMnt,
+        approvalStatus: readEventApprovalStatus(ev.curriculumOverrideJson),
       })),
       existing: existing
         ? {
@@ -128,6 +145,16 @@ exports.upsert = async (req, res) => {
       return res.status(400).json({ ok: false, errorKey: "missing" });
     }
 
+    let envelope = req.body?.curriculumOverrideJson || null;
+    const requestedApproval = String(req.body?.approvalStatus || "").trim().toLowerCase();
+    if (requestedApproval === EVENT_STATUS.PUBLISHED) {
+      envelope = mergeEventApprovalStatus(envelope, EVENT_STATUS.PUBLISHED);
+    } else if (requestedApproval === EVENT_STATUS.REJECTED) {
+      envelope = mergeEventApprovalStatus(envelope, EVENT_STATUS.REJECTED);
+    } else if (requestedApproval === EVENT_STATUS.PENDING) {
+      envelope = mergeEventApprovalStatus(envelope, EVENT_STATUS.PENDING);
+    }
+
     const payload = {
       chapterId: parseNum(req.body?.chapterId) > 0 ? parseNum(req.body?.chapterId) : null,
       eventType: String(req.body?.eventType || "event").trim() || "event",
@@ -138,7 +165,7 @@ exports.upsert = async (req, res) => {
       isOnline: Boolean(req.body?.isOnline),
       scheduleId: parseNum(req.body?.scheduleId) > 0 ? parseNum(req.body?.scheduleId) : null,
       curriculumId: parseNum(req.body?.curriculumId) > 0 ? parseNum(req.body?.curriculumId) : null,
-      curriculumOverrideJson: req.body?.curriculumOverrideJson || null,
+      curriculumOverrideJson: envelope,
       registrationFormJson: req.body?.registrationFormJson || null,
       priceMnt: parseMoney(req.body?.priceMnt),
       advanceOrderMnt: parseMoney(req.body?.advanceOrderMnt),
@@ -153,6 +180,9 @@ exports.upsert = async (req, res) => {
       } catch (e) {
         console.error("[admin events.upsert] syncEventRegistrationFormFromLegacyJson", e);
       }
+      if (readEventApprovalStatus(payload.curriculumOverrideJson) === EVENT_STATUS.PUBLISHED) {
+        await publishEventForms(eventId);
+      }
       return res.json({ ok: true, id: String(eventId) });
     }
 
@@ -162,10 +192,41 @@ exports.upsert = async (req, res) => {
     } catch (e) {
       console.error("[admin events.upsert] syncEventRegistrationFormFromLegacyJson", e);
     }
+    if (readEventApprovalStatus(payload.curriculumOverrideJson) === EVENT_STATUS.PUBLISHED) {
+      await publishEventForms(created.id);
+    }
     return res.json({ ok: true, id: String(created.id) });
   } catch (err) {
     console.error("admin events upsert failed:", err);
     res.status(500).json({ ok: false });
+  }
+};
+
+exports.setApproval = async (req, res) => {
+  try {
+    const eventId = parseNum(req.params.id);
+    const action = String(req.body?.action || "").trim().toLowerCase();
+    if (eventId < 1 || !["approve", "reject"].includes(action)) {
+      return res.status(400).json({ ok: false, errorKey: "invalid" });
+    }
+    const ev = await db.BniEvent.findByPk(eventId);
+    if (!ev) return res.status(404).json({ ok: false, errorKey: "notfound" });
+
+    const next =
+      action === "approve" ? EVENT_STATUS.PUBLISHED : EVENT_STATUS.REJECTED;
+    const envelope = mergeEventApprovalStatus(ev.curriculumOverrideJson, next);
+    await ev.update({ curriculumOverrideJson: envelope });
+
+    if (action === "approve") {
+      await publishEventForms(eventId);
+    } else {
+      await db.TripRegistrationForm.update({ isPublished: false }, { where: { eventId } });
+    }
+
+    return res.json({ ok: true, approvalStatus: next });
+  } catch (err) {
+    console.error("admin events setApproval failed:", err);
+    return res.status(500).json({ ok: false });
   }
 };
 

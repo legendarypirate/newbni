@@ -7,6 +7,7 @@ const upload = multer({ storage });
 module.exports = (app) => {
   const trips = require("../../controllers/platform/trips.controller");
   const authMiddleware = require("../../middleware/auth.middleware");
+  const optionalAuth = require("../../middleware/optional-auth.middleware");
   const router = require("express").Router();
 
   router.post(
@@ -20,8 +21,10 @@ module.exports = (app) => {
     trips.saveTrip
   );
 
-  router.get("/trips", authMiddleware, trips.listTrips);
-  router.get("/trips/:id", authMiddleware, trips.getTrip);
+  router.get("/trips", optionalAuth, trips.listTrips);
+  router.get("/trips/:id", optionalAuth, trips.getTrip);
+  router.get("/trips/:id/registration-form-meta", authMiddleware, trips.registrationFormMeta);
+  router.post("/trips/:id/approval", authMiddleware, trips.setTripApproval);
   router.delete("/trips/:id", authMiddleware, trips.deleteTrip);
   router.post("/trips/:id/toggle-featured", authMiddleware, trips.toggleFeatured);
 

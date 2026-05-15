@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import TripEditorForm from "@/components/platform/trips/TripEditorForm";
+import ApprovalStatusBadge from "@/components/platform/ApprovalStatusBadge";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { apiFetch } from "@/lib/api-client";
 import { publicApiBase as resolveApiBase } from "@/lib/client-api-base";
@@ -25,6 +26,8 @@ type ManagedTripRow = {
   endDate: Date;
   priceMnt?: number | string | null;
   isFeatured: number;
+  statusLabel?: string | null;
+  formIsPublished?: boolean;
 };
 
 function toManagedTripRow(row: Record<string, unknown>): ManagedTripRow {
@@ -36,6 +39,8 @@ function toManagedTripRow(row: Record<string, unknown>): ManagedTripRow {
     endDate: new Date(String(row.endDate ?? row.end_date ?? "")),
     priceMnt: row.priceMnt == null ? null : (row.priceMnt as number | string),
     isFeatured: Number(row.isFeatured ?? row.is_featured ?? 0),
+    statusLabel: row.statusLabel == null ? null : String(row.statusLabel),
+    formIsPublished: Boolean(row.formIsPublished ?? row.form_is_published),
   };
 }
 
@@ -197,7 +202,7 @@ export default function TripsPanel({ searchParams: _searchParams }: Props) {
                 <th>Аялал</th>
                 <th>Огноо</th>
                 <th>Үнэ</th>
-                <th>Хүсэлт</th>
+                <th>Зөвшөөрөл</th>
                 <th>Онцлох</th>
                 <th className="text-end">Үйлдэл</th>
               </tr>
@@ -221,9 +226,7 @@ export default function TripsPanel({ searchParams: _searchParams }: Props) {
                     </td>
                     <td>{fmtMoney(mt.priceMnt)}</td>
                     <td>
-                      <div className="d-flex flex-wrap gap-1">
-                        <span className="badge rounded-pill bg-light text-muted border">—</span>
-                      </div>
+                      <ApprovalStatusBadge statusLabel={mt.statusLabel} formPublished={mt.formIsPublished} />
                     </td>
                     <td>
                       {mt.isFeatured === 1 ? (

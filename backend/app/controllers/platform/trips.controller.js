@@ -5,6 +5,49 @@ const db = require("../../models");
 const { readExtras } = require("../../lib/trip-helpers");
 const { syncTripRegistrationFormFromLegacyJson } = require("../../lib/trip-form-sync");
 const { writePlatformUploadImage, destroyCloudinaryBySecureUrl } = require("../../lib/platform-write-image");
+const {
+  TRIP_STATUS,
+  isAdminUser,
+  normalizeTripStatusLabel,
+  tripStatusForPublic,
+} = require("../../lib/content-approval");
+const tripForms = require("../../services/trip-registration-forms");
+
+async function publishTripRegistrationForms(tripId) {
+  const forms = await db.TripRegistrationForm.findAll({
+    where: { tripId },
+    order: [["createdAt", "ASC"]],
+    attributes: ["id"],
+  });
+  if (forms.length === 0) return;
+  const primary = forms[0];
+  await tripForms.setTripRegistrationFormPublished(primary.id, null, true, { adminBypass: true });
+}
+
+async function unpublishTripRegistrationForms(tripId) {
+  await db.TripRegistrationForm.update({ isPublished: false }, { where: { tripId } });
+}
+
+async function attachTripFormMeta(trips) {
+  const ids = trips.map((t) => t.id).filter(Boolean);
+  if (ids.length === 0) return trips;
+  const forms = await db.TripRegistrationForm.findAll({
+    where: { tripId: { [Op.in]: ids } },
+    attributes: ["tripId", "isPublished", "publicSlug"],
+    order: [["createdAt", "ASC"]],
+  });
+  const byTrip = new Map();
+  for (const f of forms) {
+    if (!byTrip.has(f.tripId)) {
+      byTrip.set(f.tripId, { formIsPublished: f.isPublished, registrationPublicSlug: f.publicSlug });
+    }
+  }
+  return trips.map((t) => {
+    const plain = typeof t.toJSON === "function" ? t.toJSON() : { ...t };
+    const meta = byTrip.get(plain.id) || { formIsPublished: false, registrationPublicSlug: null };
+    return { ...plain, ...meta, approvalStatus: normalizeTripStatusLabel(plain.statusLabel) };
+  });
+}
 
 function parseJsonOrNull(raw) {
   if (!raw || typeof raw !== "string") return null;
@@ -26,7 +69,6 @@ exports.saveTrip = async (req, res) => {
   const end = formData.trip_end_date ? new Date(formData.trip_end_date) : null;
   const focus = (formData.trip_focus || "").trim() || null;
   const description = (formData.trip_description || "").trim() || null;
-  const statusLabel = (formData.trip_status_label || "").trim() || null;
   const totalSeats = Math.max(0, Number(formData.trip_total_seats || "30") || 30);
   const seatsLabel = `${totalSeats} суудал`;
   const advancePct = Math.max(0, Number(formData.trip_advance_percent || "20") || 20);
@@ -40,6 +82,24 @@ exports.saveTrip = async (req, res) => {
     if (tripId > 0) {
       existing = await db.BusinessTrip.findByPk(tripId);
       if (!existing) return res.status(404).json({ ok: false, message: "Trip not found" });
+      const isAdmin = isAdminUser(req.user);
+      if (
+        !isAdmin &&
+        existing.managerAccountId &&
+        String(existing.managerAccountId) !== String(accountId)
+      ) {
+        return res.status(403).json({ ok: false, message: "Forbidden" });
+      }
+    }
+
+    const isAdmin = isAdminUser(req.user);
+    let statusLabel = isAdmin
+      ? normalizeTripStatusLabel((formData.trip_status_label || "").trim() || TRIP_STATUS.DRAFT)
+      : TRIP_STATUS.PENDING;
+    if (isAdmin && tripId > 0 && statusLabel === TRIP_STATUS.APPROVED) {
+      // keep admin-selected approved
+    } else if (!isAdmin) {
+      statusLabel = TRIP_STATUS.PENDING;
     }
 
     let coverImageUrl = existing?.coverImageUrl || null;
@@ -124,7 +184,13 @@ exports.saveTrip = async (req, res) => {
 
     await syncTripRegistrationFormFromLegacyJson(trip.id, trip.registrationFormJson);
 
-    res.json({ ok: true, tripId: trip.id });
+    if (statusLabel === TRIP_STATUS.APPROVED) {
+      await publishTripRegistrationForms(trip.id);
+    } else if (!isAdmin) {
+      await unpublishTripRegistrationForms(trip.id);
+    }
+
+    res.json({ ok: true, tripId: trip.id, statusLabel });
   } catch (err) {
     console.error("Save trip failed:", err);
     res.status(500).json({ ok: false, message: "Internal server error" });
@@ -140,8 +206,12 @@ exports.listTrips = async (req, res) => {
 
     // `mine=1` → only return trips owned by the authenticated user
     // (used by the platform "Миний аялалууд" panel).
-    if (String(mine || "") === "1" && req.user?.id) {
+    const mineOnly = String(mine || "") === "1" && req.user?.id;
+    const listAll = String(req.query.all || "") === "1" && isAdminUser(req.user);
+    if (mineOnly) {
       where.managerAccountId = req.user.id;
+    } else if (!listAll) {
+      where.statusLabel = tripStatusForPublic();
     }
 
     if (country) {
@@ -200,12 +270,17 @@ exports.listTrips = async (req, res) => {
       limit: 200,
     });
 
+    const tripsOut = await attachTripFormMeta(rows);
+
     const next90 = new Date(now);
     next90.setDate(next90.getDate() + 90);
 
+    const publicWhere = { statusLabel: tripStatusForPublic() };
     const [totalTrips, nearTrips, registeredMembers] = await Promise.all([
-      db.BusinessTrip.count(),
-      db.BusinessTrip.count({ where: { startDate: { [Op.gte]: now, [Op.lte]: next90 } } }),
+      db.BusinessTrip.count({ where: publicWhere }),
+      db.BusinessTrip.count({
+        where: { ...publicWhere, startDate: { [Op.gte]: now, [Op.lte]: next90 } },
+      }),
       db.PaymentOrder.count({
         where: { targetType: "trip", status: { [Op.in]: ["paid", "success"] } },
       }),
@@ -214,7 +289,7 @@ exports.listTrips = async (req, res) => {
     res.json({
       ok: true,
       data: {
-        trips: rows,
+        trips: tripsOut,
         totalTrips,
         nearTrips,
         registeredMembers,
@@ -230,10 +305,94 @@ exports.getTrip = async (req, res) => {
   try {
     const trip = await db.BusinessTrip.findByPk(req.params.id);
     if (!trip) return res.status(404).json({ ok: false, message: "Trip not found" });
-    res.json({ ok: true, trip });
+
+    const isOwner =
+      req.user?.id && trip.managerAccountId && String(trip.managerAccountId) === String(req.user.id);
+    const isAdmin = isAdminUser(req.user);
+    const approved = normalizeTripStatusLabel(trip.statusLabel) === TRIP_STATUS.APPROVED;
+    if (!approved && !isOwner && !isAdmin) {
+      return res.status(404).json({ ok: false, message: "Trip not found" });
+    }
+
+    const [enriched] = await attachTripFormMeta([trip]);
+    res.json({ ok: true, trip: enriched });
   } catch (err) {
     console.error("Get trip failed:", err);
     res.status(500).json({ ok: false, message: "Internal server error" });
+  }
+};
+
+exports.registrationFormMeta = async (req, res) => {
+  const tripId = Math.max(0, Number(req.params.id || "0"));
+  if (tripId < 1) return res.status(400).json({ ok: false, error: "invalid_id" });
+  try {
+    const trip = await db.BusinessTrip.findByPk(tripId, {
+      attributes: ["id", "destination", "startDate", "endDate", "statusLabel", "managerAccountId"],
+    });
+    if (!trip) return res.status(404).json({ ok: false, error: "not_found" });
+
+    const isOwner =
+      req.user?.id && trip.managerAccountId && String(trip.managerAccountId) === String(req.user.id);
+    if (!isOwner && !isAdminUser(req.user)) {
+      return res.status(403).json({ ok: false, error: "forbidden" });
+    }
+
+    const form = await db.TripRegistrationForm.findOne({
+      where: { tripId },
+      order: [["createdAt", "ASC"]],
+      attributes: ["id", "publicSlug", "isPublished", "title"],
+    });
+
+    res.json({
+      ok: true,
+      trip: {
+        id: trip.id,
+        destination: trip.destination,
+        startDate: trip.startDate,
+        endDate: trip.endDate,
+        statusLabel: trip.statusLabel,
+      },
+      form: form
+        ? {
+            id: form.id,
+            publicSlug: form.publicSlug,
+            isPublished: form.isPublished,
+            title: form.title,
+          }
+        : null,
+    });
+  } catch (err) {
+    console.error("trip registrationFormMeta failed:", err);
+    res.status(500).json({ ok: false, error: "failed" });
+  }
+};
+
+/** Admin: approve or reject a trip for public listing. */
+exports.setTripApproval = async (req, res) => {
+  const tripId = Math.max(0, Number(req.params.id || "0"));
+  const action = String(req.body?.action || "").trim().toLowerCase();
+  if (tripId < 1 || !["approve", "reject"].includes(action)) {
+    return res.status(400).json({ ok: false, errorKey: "invalid" });
+  }
+  if (!isAdminUser(req.user)) {
+    return res.status(403).json({ ok: false, errorKey: "forbidden" });
+  }
+  try {
+    const trip = await db.BusinessTrip.findByPk(tripId);
+    if (!trip) return res.status(404).json({ ok: false, errorKey: "not_found" });
+
+    const nextStatus = action === "approve" ? TRIP_STATUS.APPROVED : TRIP_STATUS.REJECTED;
+    await trip.update({ statusLabel: nextStatus });
+    if (action === "approve") {
+      await publishTripRegistrationForms(tripId);
+    } else {
+      await unpublishTripRegistrationForms(tripId);
+    }
+
+    res.json({ ok: true, statusLabel: nextStatus });
+  } catch (err) {
+    console.error("setTripApproval failed:", err);
+    res.status(500).json({ ok: false, errorKey: "failed" });
   }
 };
 

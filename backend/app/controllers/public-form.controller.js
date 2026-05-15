@@ -112,7 +112,7 @@ async function ensurePublishedTripForm(tripId) {
     title: trip.destination?.trim() || "Бүртгэлийн хураангуй",
     description: null,
     publicSlug: `t${crypto.randomBytes(8).toString("hex")}`,
-    isPublished: true,
+    isPublished: false,
     settings: { thankYouMn: "Таны бүртгэл амжилттай илгээгдлээ." },
     createdAt: now,
     updatedAt: now,
@@ -228,6 +228,9 @@ exports.getPublicTripById = async (req, res) => {
 
   const trip = await db.BusinessTrip.findByPk(tripId);
   if (!trip) return res.status(404).json({ success: false, message: "NOT_FOUND" });
+  if (String(trip.statusLabel || "").trim() !== "Нийтлэгдсэн") {
+    return res.status(404).json({ success: false, message: "NOT_FOUND" });
+  }
 
   const publishedForm = await db.TripRegistrationForm.findOne({
     where: { tripId, isPublished: true },

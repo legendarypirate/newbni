@@ -22,7 +22,16 @@ type LegacyMember = {
   industry?: string | null;
   bio?: string | null;
 };
-type NewsArticle = { id: number; title: string; image: string | null; createdAt: string };
+type NewsArticle = {
+  id: number;
+  title: string;
+  slug?: string | null;
+  excerpt?: string | null;
+  content?: string | null;
+  body?: string | null;
+  image: string | null;
+  createdAt: string;
+};
 
 export type HomePartner = { name: string; logo: string; href: string };
 
@@ -31,6 +40,7 @@ export type HomeCoreEvent = {
   id: string;
   title: string | null;
   startsAt: string;
+  endsAt?: string | null;
   location: string | null;
   bannerImage: string | null;
 };

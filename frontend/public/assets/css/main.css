@@ -83,6 +83,10 @@ h1, h2, h3, h4, h5, h6 {
     background: linear-gradient(135deg, #001f5b 0%, #111111 100%);
 }
 
+.php-home-page .hero-section::before {
+    background: #d9232d;
+}
+
 .hero-content {
     position: relative;
     z-index: 2;

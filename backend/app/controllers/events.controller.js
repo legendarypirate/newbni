@@ -3,6 +3,43 @@
 const { Op } = require("sequelize");
 const db = require("../models");
 const { syncEventRegistrationFormFromLegacyJson } = require("../lib/trip-form-sync");
+const {
+  EVENT_STATUS,
+  isAdminUser,
+  readEventApprovalStatus,
+  mergeEventApprovalStatus,
+} = require("../lib/content-approval");
+const tripForms = require("../services/trip-registration-forms");
+
+async function publishedEventIdSet() {
+  const rows = await db.TripRegistrationForm.findAll({
+    where: { eventId: { [Op.ne]: null }, isPublished: true },
+    attributes: ["eventId"],
+    raw: true,
+  });
+  return new Set(rows.map((r) => String(r.eventId)));
+}
+
+function eventIsPublic(ev, publishedIds) {
+  const env = ev.curriculumOverrideJson;
+  if (readEventApprovalStatus(env) === EVENT_STATUS.PUBLISHED) return true;
+  if (publishedIds.has(String(ev.id))) return true;
+  return false;
+}
+
+async function publishEventRegistrationForms(eventId) {
+  const forms = await db.TripRegistrationForm.findAll({
+    where: { eventId },
+    order: [["createdAt", "ASC"]],
+    attributes: ["id"],
+  });
+  if (forms.length === 0) return;
+  await tripForms.setTripRegistrationFormPublished(forms[0].id, null, true, { adminBypass: true });
+}
+
+async function unpublishEventRegistrationForms(eventId) {
+  await db.TripRegistrationForm.update({ isPublished: false }, { where: { eventId } });
+}
 
 exports.listPublic = async (req, res) => {
   try {
@@ -39,7 +76,7 @@ exports.listPublic = async (req, res) => {
       if (date_to) where.startsAt[Op.lte] = new Date(`${date_to}T23:59:59Z`);
     }
 
-    const rows = await db.BniEvent.findAll({
+    const rowsRaw = await db.BniEvent.findAll({
       where,
       include: [
         {
@@ -56,8 +93,11 @@ exports.listPublic = async (req, res) => {
       order: status === "past" 
         ? [["startsAt", "DESC"], ["id", "DESC"]]
         : [["startsAt", "ASC"], ["id", "ASC"]],
-      limit: 80,
+      limit: 200,
     });
+
+    const publishedIds = await publishedEventIdSet();
+    const rows = rowsRaw.filter((ev) => eventIsPublic(ev, publishedIds)).slice(0, 80);
 
     const [totalUpcoming, totalPast, distinctChapters] = await Promise.all([
       db.BniEvent.count({ where: { endsAt: { [Op.gte]: now } } }),
@@ -100,6 +140,12 @@ exports.getById = async (req, res) => {
       ],
     });
     if (!event) return res.status(404).json({ ok: false, message: "Event not found" });
+
+    const publishedIds = await publishedEventIdSet();
+    const isPublic = eventIsPublic(event, publishedIds);
+    if (!isPublic) {
+      return res.status(404).json({ ok: false, message: "Event not found" });
+    }
 
     const [registeredTotal, publishedForm, similar] = await Promise.all([
       db.TripFormResponse.count({ where: { eventId: id } }),
@@ -146,6 +192,14 @@ exports.upsert = async (req, res) => {
       return res.status(400).json({ ok: false, errorKey: "missing" });
     }
 
+    const isAdmin = isAdminUser(req.user);
+    let envelope = req.body?.curriculumOverrideJson || null;
+    if (!isAdmin) {
+      envelope = mergeEventApprovalStatus(envelope, EVENT_STATUS.PENDING);
+    } else if (envelope && readEventApprovalStatus(envelope) === EVENT_STATUS.PUBLISHED) {
+      envelope = mergeEventApprovalStatus(envelope, EVENT_STATUS.PUBLISHED);
+    }
+
     const payload = {
       chapterId: parseInt(req.body?.chapterId) > 0 ? parseInt(req.body?.chapterId) : null,
       eventType: String(req.body?.eventType || "event").trim() || "event",
@@ -156,7 +210,7 @@ exports.upsert = async (req, res) => {
       isOnline: Boolean(req.body?.isOnline),
       scheduleId: parseInt(req.body?.scheduleId) > 0 ? parseInt(req.body?.scheduleId) : null,
       curriculumId: parseInt(req.body?.curriculumId) > 0 ? parseInt(req.body?.curriculumId) : null,
-      curriculumOverrideJson: req.body?.curriculumOverrideJson || null,
+      curriculumOverrideJson: envelope,
       registrationFormJson: req.body?.registrationFormJson || null,
       priceMnt: req.body?.priceMnt || null,
       advanceOrderMnt: req.body?.advanceOrderMnt || null,
@@ -178,10 +232,53 @@ exports.upsert = async (req, res) => {
       console.error("[events.upsert] syncEventRegistrationFormFromLegacyJson", e);
     }
 
+    if (readEventApprovalStatus(payload.curriculumOverrideJson) === EVENT_STATUS.PUBLISHED) {
+      await publishEventRegistrationForms(savedId);
+    } else if (!isAdmin) {
+      await unpublishEventRegistrationForms(savedId);
+    }
+
     return res.json({ ok: true, id: String(savedId) });
   } catch (err) {
     console.error("events upsert failed:", err);
     res.status(500).json({ ok: false });
+  }
+};
+
+exports.registrationFormMeta = async (req, res) => {
+  const eventId = Math.max(0, Number(req.params.id || "0"));
+  if (eventId < 1) return res.status(400).json({ ok: false, error: "invalid_id" });
+  try {
+    const ev = await db.BniEvent.findByPk(eventId, {
+      attributes: ["id", "title", "startsAt", "endsAt", "curriculumOverrideJson"],
+    });
+    if (!ev) return res.status(404).json({ ok: false, error: "not_found" });
+
+    const form = await db.TripRegistrationForm.findOne({
+      where: { eventId },
+      order: [["createdAt", "ASC"]],
+      attributes: ["id", "publicSlug", "isPublished", "title"],
+    });
+
+    res.json({
+      ok: true,
+      event: {
+        id: String(ev.id),
+        title: ev.title,
+        approvalStatus: readEventApprovalStatus(ev.curriculumOverrideJson),
+      },
+      form: form
+        ? {
+            id: form.id,
+            publicSlug: form.publicSlug,
+            isPublished: form.isPublished,
+            title: form.title,
+          }
+        : null,
+    });
+  } catch (err) {
+    console.error("event registrationFormMeta failed:", err);
+    res.status(500).json({ ok: false, error: "failed" });
   }
 };
 

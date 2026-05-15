@@ -1,13 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, startTransition } from "react";
+import { eventApprovalBadgeProps } from "@/components/platform/ApprovalStatusBadge";
 import TripFormQrCard from "@/components/trip-registration/TripFormQrCard";
+import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type EventMeta = {
   id: string;
   title: string;
+  approvalStatus?: string;
 };
 
 type FormMeta = {
@@ -26,8 +29,6 @@ export default function EventEditorRegistrationQrAside({ eventId }: { eventId: s
   const [form, setForm] = useState<FormMeta | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(eventId !== "0");
-  const [publishing, setPublishing] = useState(false);
-  const [pubMsg, setPubMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (eventId === "0" || eventId === "") {
@@ -39,10 +40,8 @@ export default function EventEditorRegistrationQrAside({ eventId }: { eventId: s
     }
     setLoading(true);
     setLoadError(null);
-    setPubMsg(null);
     try {
-      const res = await fetch(`/api/platform/events/${encodeURIComponent(eventId)}/registration-form-meta`, {
-        credentials: "include",
+      const res = await apiFetch(`/events/${encodeURIComponent(eventId)}/registration-form-meta`, {
         cache: "no-store",
       });
       const data = await readJson<{ event?: EventMeta; form?: FormMeta | null; error?: string }>(res);
@@ -71,28 +70,7 @@ export default function EventEditorRegistrationQrAside({ eventId }: { eventId: s
     return `${window.location.origin}/register/${encodeURIComponent(form.publicSlug)}`;
   }, [form?.publicSlug]);
 
-  async function setPublished(next: boolean) {
-    if (!form) return;
-    if (!next && !window.confirm("Нийтлэлийг ноорог болгох уу? Нийтийн холбоос түр хаагдана.")) return;
-    setPublishing(true);
-    setPubMsg(null);
-    try {
-      const res = await fetch(`/api/forms/${encodeURIComponent(form.id)}/publish`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ isPublished: next }),
-      });
-      const data = await readJson<{ ok?: boolean }>(res);
-      if (!res.ok || !data.ok) throw new Error("failed");
-      setPubMsg(next ? "Нийтлэгдлээ." : "Ноорог болголоо.");
-      await load();
-    } catch {
-      setPubMsg("Төлөв өөрчлөхөд алдаа.");
-    } finally {
-      setPublishing(false);
-    }
-  }
+  const approval = eventApprovalBadgeProps(ev?.approvalStatus, form?.isPublished);
 
   if (eventId === "0" || eventId === "") {
     return (
@@ -100,8 +78,7 @@ export default function EventEditorRegistrationQrAside({ eventId }: { eventId: s
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Нийтийн бүртгэл + QR</CardTitle>
           <CardDescription className="text-xs leading-relaxed">
-            Шинэ эвентийг эхлээд хадгалаад дараа нь энд QR, нийтийн холбоос гарна. Нийтийн хуудас:{" "}
-            <span className="font-mono text-[10px]">/register/…</span>
+            Шинэ эвентийг эхлээд хадгалаад дараа нь энд QR, нийтийн холбоос гарна.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -141,8 +118,11 @@ export default function EventEditorRegistrationQrAside({ eventId }: { eventId: s
         <Card className="border-l-4 border-l-primary py-3 shadow-sm">
           <CardHeader className="space-y-1 px-4 pb-2 pt-0">
             <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Эвент</CardTitle>
-            <p className="text-sm font-semibold leading-snug text-foreground">{ev.title || `ID ${ev.id}`}</p>
-            <CardDescription className="text-[11px] leading-relaxed">ID {ev.id}</CardDescription>
+            <p className="text-sm font-semibold leading-snug text-foreground">{ev.title}</p>
+            <CardDescription className="text-[11px] leading-relaxed d-flex flex-wrap align-items-center gap-2">
+              <span>ID {ev.id}</span>
+              <span className={`badge ${approval.className}`}>{approval.text}</span>
+            </CardDescription>
           </CardHeader>
         </Card>
       ) : null}
@@ -152,8 +132,7 @@ export default function EventEditorRegistrationQrAside({ eventId }: { eventId: s
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Нийтийн форм</CardTitle>
             <CardDescription className="text-xs leading-relaxed">
-              Асуулгууд серверт үүсээгүй байна. Дээрх асуулгыг бөглөөд эвентийг «Хадгалах» дарна уу — дараа нь QR
-              идэвхжинэ.
+              Бүртгэлийн асуулга бөглөөд эвентийг хадгална уу.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
@@ -166,45 +145,24 @@ export default function EventEditorRegistrationQrAside({ eventId }: { eventId: s
         <>
           <Card className="shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Нийтлэл</CardTitle>
-              <CardDescription className="text-xs">
-                QR уншигчид шууд <span className="font-mono text-[10px]">/register/{form.publicSlug}</span> хуудас руу
-                орно.
+              <CardTitle className="text-sm">Админы зөвшөөрөл</CardTitle>
+              <CardDescription className="text-xs leading-relaxed">
+                Админ зөвшөөрсний дараа <span className="font-mono text-[10px]">/events</span> дээр харагдана.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-2 pt-0">
-              {pubMsg ? <p className="text-xs text-primary">{pubMsg}</p> : null}
-              <div className="flex flex-wrap gap-2">
-                {form.isPublished ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={publishing}
-                    onClick={() => void setPublished(false)}
-                  >
-                    Ноорог болгох
-                  </Button>
-                ) : (
-                  <Button type="button" size="sm" disabled={publishing} onClick={() => void setPublished(true)}>
-                    Нийтлэх
-                  </Button>
-                )}
-                {form.isPublished && publicUrl ? (
-                  <Button asChild variant="outline" size="sm">
-                    <a href={publicUrl} target="_blank" rel="noopener noreferrer">
-                      Урьдчилж харах
-                    </a>
-                  </Button>
-                ) : (
-                  <Button type="button" variant="outline" size="sm" disabled className="opacity-50">
+              {form.isPublished && publicUrl ? (
+                <Button asChild variant="outline" size="sm" className="w-fit">
+                  <a href={publicUrl} target="_blank" rel="noopener noreferrer">
                     Урьдчилж харах
-                  </Button>
-                )}
-                <Button type="button" variant="ghost" size="sm" onClick={() => void load()}>
-                  Сэргээх
+                  </a>
                 </Button>
-              </div>
+              ) : (
+                <p className="text-xs text-muted-foreground mb-0">Нийтийн бүртгэл одоогоор хаалттай.</p>
+              )}
+              <Button type="button" variant="ghost" size="sm" className="w-fit" onClick={() => void load()}>
+                Сэргээх
+              </Button>
             </CardContent>
           </Card>
 

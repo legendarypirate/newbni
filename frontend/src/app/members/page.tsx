@@ -34,11 +34,12 @@ type MembersListingData = {
   allActiveMembers: MemberCard[];
 };
 
-export default async function MembersPage({ searchParams }: { searchParams: SearchParams }) {
-  const query = searchParams.q?.trim() || "";
-  const industryFilter = searchParams.industry?.trim() || "";
-  const locationFilter = searchParams.location?.trim() || "";
-  const verifiedFilter = ["1", "0", "all"].includes(searchParams.verified || "1") ? searchParams.verified : "1";
+export default async function MembersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const sp = await searchParams;
+  const query = sp.q?.trim() || "";
+  const industryFilter = sp.industry?.trim() || "";
+  const locationFilter = sp.location?.trim() || "";
+  const verifiedFilter = ["1", "0", "all"].includes(sp.verified || "1") ? sp.verified : "1";
 
   const urlParams = new URLSearchParams();
   if (query) urlParams.set("q", query);

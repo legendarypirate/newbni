@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiOrigin } from "@/lib/client-api-base";
+import { publicApiOrigin } from "@/lib/client-api-base";
 
 function safeNextPath(raw: string | null): string {
   if (!raw) return "/platform";
@@ -10,7 +10,10 @@ function safeNextPath(raw: string | null): string {
 
 export async function GET(request: NextRequest) {
   const nextPath = safeNextPath(request.nextUrl.searchParams.get("next"));
-  const target = new URL("/api/auth/google", apiOrigin());
+  // This URL is followed by the browser, so it must use the same public host
+  // as the backend OAuth callback. Using API_INTERNAL_URL (127.0.0.1 in dev)
+  // sets the state cookie on a different host than BACKEND_URL (localhost).
+  const target = new URL("/api/auth/google", publicApiOrigin());
   if (nextPath !== "/platform") {
     target.searchParams.set("next", nextPath);
   }

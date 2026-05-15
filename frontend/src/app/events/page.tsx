@@ -45,14 +45,15 @@ type EventsListingData = {
   chaptersWithEvents: number;
 };
 
-export default async function EventsPage({ searchParams }: { searchParams: SearchParams }) {
-  const chapterFilter = parseInt(searchParams.chapter || "0", 10);
-  const status = ["upcoming", "past", "all"].includes(searchParams.status || "") ? searchParams.status! : "upcoming";
+export default async function EventsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const sp = await searchParams;
+  const chapterFilter = parseInt(sp.chapter || "0", 10);
+  const status = ["upcoming", "past", "all"].includes(sp.status || "") ? sp.status! : "upcoming";
   const validEt = ["all", "weekly_meeting", "visitor_day", "training", "social", "event"];
-  const eventType = validEt.includes(searchParams.event_type || "") ? searchParams.event_type! : "all";
-  const q = searchParams.q?.trim() || "";
-  const dateFrom = searchParams.date_from?.trim() || "";
-  const dateTo = searchParams.date_to?.trim() || "";
+  const eventType = validEt.includes(sp.event_type || "") ? sp.event_type! : "all";
+  const q = sp.q?.trim() || "";
+  const dateFrom = sp.date_from?.trim() || "";
+  const dateTo = sp.date_to?.trim() || "";
 
   const urlParams = new URLSearchParams();
   if (chapterFilter > 0) urlParams.set("chapter", chapterFilter.toString());
@@ -102,7 +103,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
   const getEventDetailUrl = (id: bigint | number | string) =>
     `/events/${typeof id === "bigint" ? id.toString() : String(id)}`;
 
-  const queryBase = (extra: Record<string, any>) => {
+  const queryBase = (extra: Record<string, string | number | boolean | null | undefined>) => {
     const params = new URLSearchParams();
     if (chapterFilter > 0 && !extra.chapter) params.set('chapter', chapterFilter.toString());
     Object.entries(extra).forEach(([k, v]) => {

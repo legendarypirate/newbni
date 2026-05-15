@@ -1,6 +1,8 @@
 "use strict";
 
-require("dotenv").config();
+const path = require("path");
+
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const express = require("express");
 const cors = require("cors");
@@ -44,6 +46,7 @@ require("./app/routes/auth.routes")(app);
 require("./app/routes/platform/trips.routes")(app);
 require("./app/routes/platform/events.routes")(app);
 require("./app/routes/platform/uploads.routes")(app);
+require("./app/routes/platform/news.routes")(app);
 require("./app/routes/platform/dashboard.routes")(app);
 require("./app/routes/health.routes")(app);
 require("./app/routes/region.routes")(app);
@@ -59,6 +62,7 @@ require("./app/routes/members.routes")(app);
 require("./app/routes/meetings-weekly.routes")(app);
 require("./app/routes/payments.routes")(app);
 require("./app/routes/legacy-meetings.routes")(app);
+require("./app/routes/busy-ai.routes")(app);
 
 db.sequelize
   .authenticate()

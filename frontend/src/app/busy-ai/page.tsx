@@ -1,13 +1,26 @@
 import Link from "next/link";
+import BusyAIInteractions from "./BusyAIInteractions";
 
 export const dynamic = "force-dynamic";
 
-export default function BusyAIPage({ searchParams }: { searchParams: { tab?: string } }) {
-  const currentTab = searchParams.tab?.trim() || 'factory';
+type BusyAITab = "factory" | "email" | "pitch" | "trip" | "translate";
+
+function normalizeTab(raw: string | undefined): BusyAITab {
+  const tab = raw?.trim();
+  if (tab === "email" || tab === "pitch" || tab === "trip" || tab === "translate") {
+    return tab;
+  }
+  return "factory";
+}
+
+export default async function BusyAIPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const sp = await searchParams;
+  const currentTab = normalizeTab(sp.tab);
 
   return (
     <main className="page-content" style={{ backgroundColor: "#f1f5f9" }}>
       <div className="container pt-4">
+        <BusyAIInteractions activeTab={currentTab} />
         
         {/* High-Fidelity Header */}
         <div className="bai-header-card">
@@ -215,7 +228,7 @@ export default function BusyAIPage({ searchParams }: { searchParams: { tab?: str
             {/* Slide Navigator */}
             <div className="pd-nav-col">
               <div className="pd-nav-list">
-                <div className="pd-nav-item active">
+                <div className="pd-nav-item active" data-slide="cover" role="button" tabIndex={0}>
                   <div className="pd-nav-num">1</div>
                   <div className="pd-nav-thumb">
                     <div className="p-2 small text-center" style={{ fontSize: "0.4rem" }}>
@@ -226,7 +239,7 @@ export default function BusyAIPage({ searchParams }: { searchParams: { tab?: str
                   </div>
                   <div className="pd-nav-label">1. Cover</div>
                 </div>
-                <div className="pd-nav-item">
+                <div className="pd-nav-item" data-slide="problem" role="button" tabIndex={0}>
                   <div className="pd-nav-num">2</div>
                   <div className="pd-nav-thumb">
                     <div className="p-2">
@@ -236,12 +249,12 @@ export default function BusyAIPage({ searchParams }: { searchParams: { tab?: str
                   </div>
                   <div className="pd-nav-label">2. Problem</div>
                 </div>
-                <div className="pd-nav-item">
+                <div className="pd-nav-item" data-slide="solution" role="button" tabIndex={0}>
                   <div className="pd-nav-num">3</div>
                   <div className="pd-nav-thumb"></div>
                   <div className="pd-nav-label">3. Solution</div>
                 </div>
-                <div className="pd-nav-item">
+                <div className="pd-nav-item" data-slide="market" role="button" tabIndex={0}>
                   <div className="pd-nav-num">4</div>
                   <div className="pd-nav-thumb"></div>
                   <div className="pd-nav-label">4. Market Size</div>
@@ -260,20 +273,20 @@ export default function BusyAIPage({ searchParams }: { searchParams: { tab?: str
                   </div>
                 </div>
                 <div className="pd-preview">
-                  <div className="row align-items-center h-100">
-                    <div className="col-6">
-                      <div className="d-flex align-items-center gap-2 mb-4">
-                        <div style={{ width: 40, height: 40, background: "#10b981", borderRadius: 8, display: "grid", placeItems: "center", color: "#fff", fontWeight: 800 }}>E</div>
-                        <h2 className="fw-bold mb-0">EcoRide</h2>
+                  <i className="fa-solid fa-bicycle pd-preview-watermark" data-pd-watermark aria-hidden />
+                  <div className="pd-preview-cover">
+                    <div className="pd-preview-copy">
+                      <div className="pd-preview-brand">
+                        <div className="pd-preview-logo" data-pd-logo>E</div>
+                        <h2 data-pd-brand>EcoRide</h2>
                       </div>
-                      <h1 className="fw-bold mb-3" style={{ fontSize: "2.2rem", lineHeight: 1.2 }}>Хотын хөдөлгөөнийг<br/><span className="text-success">Ногоон, Хялбар</span> болгоё</h1>
-                      <p className="text-muted small">Цахилгаан дугуй түрээсийн платформ</p>
+                      <h1 data-pd-title>
+                        Хотын хөдөлгөөнийг <span>Ногоон, Хялбар</span> болгоё
+                      </h1>
+                      <p data-pd-subtitle>Цахилгаан дугуй түрээсийн платформ</p>
                     </div>
-                    <div className="col-6 text-center">
-                      <i className="fa-solid fa-bicycle text-primary" style={{ fontSize: "8rem", opacity: 0.1, position: "absolute", right: 20, bottom: 20 }}></i>
-                      <div className="p-4 rounded-4 bg-light d-inline-block">
-                        <i className="fa-solid fa-bicycle text-primary" style={{ fontSize: "5rem" }}></i>
-                      </div>
+                    <div className="pd-preview-visual" aria-hidden>
+                      <i className="fa-solid fa-bicycle" data-pd-icon />
                     </div>
                   </div>
                 </div>

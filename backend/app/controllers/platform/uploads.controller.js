@@ -29,4 +29,5 @@ async function uploadOne(req, res) {
 exports.uploadEventDetailHero = uploadOne;
 exports.uploadEventSpeakerPhoto = uploadOne;
 exports.uploadTripItineraryDayBanner = uploadOne;
+exports.uploadNewsCover = uploadOne;
 

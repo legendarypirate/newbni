@@ -5,7 +5,7 @@ import SafeImage from "@/components/SafeImage";
 import { formatMnDate } from "@/lib/format-date";
 import { getMarketingListingHeroSlides } from "@/lib/marketing-listing-hero";
 import { mediaUrl } from "@/lib/media-url";
-import { serverAuthedFetch } from "@/lib/server-authed-fetch";
+import { resolveServerApiBase } from "@/lib/resolve-api-base";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +20,15 @@ type SearchParams = {
   budget_max?: string;
 };
 
-export default async function TripsPage({ searchParams }: { searchParams: SearchParams }) {
-  const country = searchParams.country?.trim() || "";
-  const focus = searchParams.focus?.trim() || "";
-  const dateFrom = searchParams.date_from?.trim() || "";
-  const dateTo = searchParams.date_to?.trim() || "";
+export default async function TripsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const sp = await searchParams;
+  const country = sp.country?.trim() || "";
+  const focus = sp.focus?.trim() || "";
+  const dateFrom = sp.date_from?.trim() || "";
+  const dateTo = sp.date_to?.trim() || "";
   const validTypes = ["all", "near", "vip", "factory", "expo", "trip"];
-  const tripType = validTypes.includes(searchParams.trip_type?.trim() || "") ? searchParams.trip_type!.trim() : "all";
-  const budgetMax = Math.max(0, parseInt(searchParams.budget_max || "0", 10));
+  const tripType = validTypes.includes(sp.trip_type?.trim() || "") ? sp.trip_type!.trim() : "all";
+  const budgetMax = Math.max(0, parseInt(sp.budget_max || "0", 10));
 
   const urlParams = new URLSearchParams();
   if (country) urlParams.set("country", country);
@@ -37,7 +38,11 @@ export default async function TripsPage({ searchParams }: { searchParams: Search
   urlParams.set("trip_type", tripType);
   if (budgetMax > 0) urlParams.set("budget_max", budgetMax.toString());
 
-  const res = await serverAuthedFetch(`/platform/trips?${urlParams.toString()}`).then(r => r.json()).catch(() => ({ ok: false }));
+  const res = await fetch(`${resolveServerApiBase()}/platform/trips?${urlParams.toString()}`, {
+    cache: "no-store",
+  })
+    .then((r) => r.json())
+    .catch(() => ({ ok: false }));
   const data = res.ok ? res.data : { trips: [], totalTrips: 0, nearTrips: 0, registeredMembers: 0 };
 
   const { trips, totalTrips, nearTrips, registeredMembers } = data;

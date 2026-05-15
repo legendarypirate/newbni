@@ -357,6 +357,24 @@ async function patchTripFormResponseStatus(responseId, accountId, data) {
   await response.update(patch);
 }
 
+async function setTripRegistrationFormPublished(formId, accountId, isPublished, { adminBypass = false } = {}) {
+  if (!adminBypass) {
+    await assertFormEditableByAccount(formId, accountId);
+  }
+  const form = await db.TripRegistrationForm.findByPk(formId);
+  if (!form) throw httpError(404, "NOT_FOUND");
+
+  if (isPublished) {
+    const whereSibling = form.tripId
+      ? { tripId: form.tripId, id: { [db.Sequelize.Op.ne]: form.id } }
+      : { eventId: form.eventId, id: { [db.Sequelize.Op.ne]: form.id } };
+    await db.TripRegistrationForm.update({ isPublished: false }, { where: whereSibling });
+  }
+
+  await form.update({ isPublished: Boolean(isPublished) });
+  return form;
+}
+
 module.exports = {
   listTripFormsForOrganizer,
   getTripFormForOrganizer,
@@ -368,4 +386,5 @@ module.exports = {
   listTripFormResponsesForOrganizer,
   patchTripFormResponseStatus,
   convertResponseToParticipant,
+  setTripRegistrationFormPublished,
 };

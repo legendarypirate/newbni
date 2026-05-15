@@ -207,8 +207,8 @@ function initModels(sequelize) {
       // resolve to the snake_case columns. Without these, Sequelize's
       // `createdAt: "created_at"` model option renames the attribute itself
       // and any camelCase reference fails with `column "createdAt" does not exist`.
-      createdAt: { type: DataTypes.DATE, field: "created_at", allowNull: false },
-      updatedAt: { type: DataTypes.DATE, field: "updated_at", allowNull: false },
+      createdAt: { type: DataTypes.DATE, field: "created_at", allowNull: false, defaultValue: DataTypes.NOW },
+      updatedAt: { type: DataTypes.DATE, field: "updated_at", allowNull: false, defaultValue: DataTypes.NOW },
     },
     { tableName: "news", timestamps: true, createdAt: "created_at", updatedAt: "updated_at", indexes: [{ fields: ["status"] }] },
   );

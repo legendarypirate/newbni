@@ -87,12 +87,11 @@ async function syncTripRegistrationFormFromLegacyJson(tripId, registration) {
         tripId,
         title: trip.destination?.trim() || "Бүртгэлийн хураангуй",
         publicSlug,
-        isPublished: true,
+        isPublished: false,
         settings: { thankYouMn: "Таны бүртгэл амжилттай илгээгдлээ." },
       }, { transaction });
     } else {
       await form.update({
-        isPublished: true,
         title: trip.destination?.trim() || form.title,
       }, { transaction });
     }
@@ -242,7 +241,7 @@ async function syncEventRegistrationFormFromLegacyJson(eventId, registration) {
           title: ev.title?.trim() || "Эвентийн бүртгэл",
           description: null,
           publicSlug,
-          isPublished: true,
+          isPublished: false,
           settings: {
             thankYouMn: "Таны бүртгэл амжилттай илгээгдлээ. Зохион байгуулагч таны мэдээллийг шалгаж баталгаажуулна.",
           },
@@ -252,7 +251,6 @@ async function syncEventRegistrationFormFromLegacyJson(eventId, registration) {
     } else {
       await form.update(
         {
-          isPublished: true,
           title: ev.title?.trim() || form.title,
         },
         { transaction },

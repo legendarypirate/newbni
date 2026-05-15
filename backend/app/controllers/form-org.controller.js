@@ -2,6 +2,7 @@
 
 const forms = require("../services/trip-registration-forms");
 const { statusFromError } = require("../utils/http-status");
+const { isAdminUser } = require("../lib/content-approval");
 
 function serializeForm(form) {
   const trip = form.trip
@@ -131,6 +132,25 @@ exports.patchResponseStatus = async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     res.status(statusFromError(e)).json({ error: "failed" });
+  }
+};
+
+exports.publish = async (req, res) => {
+  const { formId } = req.params;
+  const isPublished = Boolean(req.body?.isPublished);
+  try {
+    const admin =
+      isAdminUser(req.user) || req.platformUser?.legacyRole === "admin";
+    if (isPublished && !admin) {
+      res.status(403).json({ ok: false, error: "admin_only" });
+      return;
+    }
+    await forms.setTripRegistrationFormPublished(formId, req.platformUser.id, isPublished, {
+      adminBypass: admin,
+    });
+    res.json({ ok: true, isPublished });
+  } catch (e) {
+    res.status(statusFromError(e)).json({ ok: false, error: "failed" });
   }
 };
 

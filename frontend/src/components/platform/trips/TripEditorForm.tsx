@@ -7,6 +7,7 @@ import Link from "next/link";
 import { mediaUrl } from "@/lib/media-url";
 import PlatformTripRegistrationJsonBuilder from "@/components/platform/forms/PlatformTripRegistrationJsonBuilder";
 import TripFormUploadPendingOverlay from "@/components/platform/forms/TripFormUploadPendingOverlay";
+import ApprovalStatusBadge from "@/components/platform/ApprovalStatusBadge";
 import TripEditorRegistrationQrAside from "@/components/platform/trips/TripEditorRegistrationQrAside";
 import TripCoverHero from "@/components/platform/forms/TripCoverHero";
 import TripDateDuration from "@/components/platform/forms/TripDateDuration";
@@ -72,7 +73,7 @@ export default function TripEditorForm({
   const coverPreview = editTrip?.coverImageUrl?.trim() || "";
   const daysLen = editTrip ? tripDaySpan(editTrip.startDate, editTrip.endDate) : 0;
   const durationLabel = daysLen > 0 ? `${daysLen} өдөр` : "—";
-  const statusBadge = editTrip?.statusLabel?.trim() === "Нийтлэгдсэн" ? "Нийтлэгдсэн" : "Ноорог";
+  const statusLabel = editTrip?.statusLabel?.trim() || "Ноорог";
 
   // React 19 sets `method` and `encType` automatically when the `action`
   // is a function (server action). Specifying them produces a console
@@ -96,7 +97,11 @@ export default function TripEditorForm({
           </ol>
         </nav>
         <h1 className="tps-greeting">Сайн байна уу, {greetingName}</h1>
-        <p className="text-muted small mb-0">Бизнес аяллаа үүсгээд гишүүдтэйгээ хуваалцаарай</p>
+        <p className="text-muted small mb-2">Бизнес аяллаа үүсгээд админы зөвшөөрөл хүлээнэ.</p>
+        <div className="alert alert-info py-2 small mb-0">
+          Хадгалсны дараа төлөв <strong>Хүлээгдэж байна</strong> болно. Админ <strong>Зөвшөөрсөн</strong> болгосны
+          дараа л нүүр болон <Link href="/trips">/trips</Link> хуудсанд харагдана.
+        </div>
       </div>
 
       <div className="tps-grid">
@@ -122,11 +127,11 @@ export default function TripEditorForm({
                   />
                 </div>
                 <div className="mb-3">
-                  <label className="pm-label">Аяллын статус</label>
-                  <select className="pm-select" name="trip_status_label" defaultValue={editTrip?.statusLabel ?? "Ноорог"}>
-                    <option value="Ноорог">Ноорог</option>
-                    <option value="Нийтлэгдсэн">Нийтлэгдсэн</option>
-                  </select>
+                  <label className="pm-label">Админы зөвшөөрөл</label>
+                  <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <ApprovalStatusBadge statusLabel={statusLabel} />
+                    <span className="small text-muted">Хадгалахад автоматаар шалгагдана</span>
+                  </div>
                 </div>
                 <div>
                   <label className="pm-label">Товч тайлбар</label>
@@ -480,7 +485,7 @@ export default function TripEditorForm({
           <div className="tps-sidebar-widget">
             <div className="d-flex justify-content-between align-items-center mb-3">
               <div className="fw-bold text-muted small text-uppercase">Аяллын тойм</div>
-              <span className="badge bg-primary bg-opacity-10 text-primary px-2 py-1">{statusBadge}</span>
+              <span className="badge bg-primary bg-opacity-10 text-primary px-2 py-1">{statusLabel}</span>
             </div>
             <div className="tps-summary-item">
               <i className="fa-solid fa-chair tps-summary-icon" />
@@ -544,7 +549,7 @@ export default function TripEditorForm({
                   <span className="fw-bold text-truncate" style={{ maxWidth: 180 }}>
                     {editTrip?.destination ?? "Аяллын нэр"}
                   </span>
-                  <span className="badge bg-light text-muted small">{statusBadge}</span>
+                  <span className="badge bg-light text-muted small">{statusLabel}</span>
                 </div>
                 <p className="small text-muted mb-2 text-truncate">
                   {extras.short_description || "Аяллын товч тайлбар харагдана..."}

@@ -6,6 +6,8 @@ import EventHeroImageField from "@/components/platform/forms/EventHeroImageField
 import PlatformTripRegistrationJsonBuilder from "@/components/platform/forms/PlatformTripRegistrationJsonBuilder";
 import EventItineraryBuilder from "@/components/platform/forms/EventItineraryBuilder";
 import SpeakerPhotoUrlField from "@/components/platform/forms/SpeakerPhotoUrlField";
+import { eventApprovalBadgeProps } from "@/components/platform/ApprovalStatusBadge";
+import ContentApprovalButtons from "@/components/platform/admin/ContentApprovalButtons";
 import EventManageForm from "@/components/platform/panels/EventManageForm";
 import { deleteEventAction } from "@/app/platform/events-actions";
 import { parseBniEventDetailEnvelope } from "@/lib/bni-event-detail";
@@ -120,6 +122,7 @@ export default async function EventsPanel({ searchParams, venue = "platform" }: 
     curriculumId: number | null;
     priceMnt: unknown;
     advanceOrderMnt: unknown;
+    approvalStatus?: string;
     curriculumOverrideJson?: unknown;
     registrationFormJson?: unknown;
   };
@@ -159,6 +162,7 @@ export default async function EventsPanel({ searchParams, venue = "platform" }: 
         curriculumId: number | null;
         priceMnt: unknown;
         advanceOrderMnt: unknown;
+        approvalStatus?: string;
       }>;
       existing?: {
         id: string;
@@ -203,6 +207,7 @@ export default async function EventsPanel({ searchParams, venue = "platform" }: 
         curriculumId: ev.curriculumId,
         priceMnt: ev.priceMnt,
         advanceOrderMnt: ev.advanceOrderMnt,
+        approvalStatus: ev.approvalStatus,
       }));
       existing = data.existing
         ? {
@@ -321,13 +326,14 @@ export default async function EventsPanel({ searchParams, venue = "platform" }: 
                 <th>Бүлэг / Төрөл</th>
                 <th>Хугацаа</th>
                 <th>Үнэ</th>
+                <th>Зөвшөөрөл</th>
                 <th className="text-end">Үйлдэл</th>
               </tr>
             </thead>
             <tbody>
               {managedEvents.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-4 text-muted">
+                  <td colSpan={6} className="text-center py-4 text-muted">
                     Эвент олдсонгүй.
                   </td>
                 </tr>
@@ -344,8 +350,16 @@ export default async function EventsPanel({ searchParams, venue = "platform" }: 
                     </td>
                     <td className="small text-muted">{formatEventDisplayUb(new Date(ev.startsAt))}</td>
                     <td>{fmtMoney(ev.priceMnt)}</td>
+                    <td>
+                      {(() => {
+                        const badge = eventApprovalBadgeProps(ev.approvalStatus);
+                        return <span className={`badge ${badge.className}`}>{badge.text}</span>;
+                      })()}
+                    </td>
                     <td className="text-end text-nowrap">
                       {venue === "admin" ? (
+                        <div className="d-flex flex-column align-items-end gap-2">
+                          <ContentApprovalButtons kind="event" id={ev.id.toString()} />
                         <div
                           className="d-inline-flex align-items-stretch border rounded-2 overflow-hidden shadow-sm"
                           role="group"
@@ -395,6 +409,7 @@ export default async function EventsPanel({ searchParams, venue = "platform" }: 
                               <i className="fa-solid fa-trash" style={{ fontSize: "0.85rem" }} />
                             </button>
                           </form>
+                        </div>
                         </div>
                       ) : (
                         <div className="d-inline-flex flex-wrap gap-2 justify-content-end">
