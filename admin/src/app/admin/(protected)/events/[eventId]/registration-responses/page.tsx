@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import TripResponsesClient from "@/components/trip-registration/TripResponsesClient";
+import TripResponsesClient, { type TripFormResponseRow } from "@/components/trip-registration/TripResponsesClient";
 import { serverAuthedFetch } from "@admin/lib/server-authed-fetch";
 import { marketingSiteOrigin } from "@/lib/marketing-site-origin";
 
@@ -71,6 +71,12 @@ export default async function AdminEventRegistrationResponsesPage({ params, sear
     notFound();
   }
 
+  const responsesRes = await serverAuthedFetch(`/forms/${encodeURIComponent(formId)}/responses`);
+  const responsesJson = responsesRes.ok
+    ? ((await responsesRes.json().catch(() => ({}))) as { responses?: TripFormResponseRow[] })
+    : null;
+  const initialRows = Array.isArray(responsesJson?.responses) ? responsesJson.responses : undefined;
+
   return (
     <div>
       <nav className="mb-3 d-flex flex-wrap align-items-center gap-2">
@@ -86,6 +92,8 @@ export default async function AdminEventRegistrationResponsesPage({ params, sear
       <TripResponsesClient
         tripId={0}
         formId={formId}
+        useAdminProxy
+        initialRows={initialRows}
         exportCsvHref={`/api/admin/events/${eventId}/registration-responses/export`}
         formEditorHref={`${marketingSiteOrigin()}/platform/events?edit_event=${eventId}`}
       />

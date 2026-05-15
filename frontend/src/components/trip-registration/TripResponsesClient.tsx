@@ -18,7 +18,7 @@ function loadErrorMessage(code: string | undefined): string {
   return code ?? "Ачаалахад алдаа";
 }
 
-type Row = {
+export type TripFormResponseRow = {
   id: string;
   submittedAt: string;
   status: TripFormResponseWorkflowStatus;
@@ -65,36 +65,44 @@ export default function TripResponsesClient({
   formId,
   exportCsvHref,
   formEditorHref,
+  useAdminProxy = false,
+  initialRows,
 }: {
   tripId: number;
   formId: string;
   /** When set (e.g. admin `/api/admin/trips/:id/.../export`), used instead of per-form export. */
   exportCsvHref?: string;
   formEditorHref?: string;
+  /** Load/mutate via same-origin `/api/admin/*` (forwards httpOnly session server-side). */
+  useAdminProxy?: boolean;
+  initialRows?: TripFormResponseRow[];
 }) {
-  const [rows, setRows] = useState<Row[] | null>(null);
+  const [rows, setRows] = useState<TripFormResponseRow[] | null>(initialRows ?? null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [drawerRow, setDrawerRow] = useState<Row | null>(null);
-  const [convertRow, setConvertRow] = useState<Row | null>(null);
+  const [drawerRow, setDrawerRow] = useState<TripFormResponseRow | null>(null);
+  const [convertRow, setConvertRow] = useState<TripFormResponseRow | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
-    const res = await apiFetch(`/forms/${encodeURIComponent(formId)}/responses`, { cache: "no-store" });
-    const data = (await res.json().catch(() => ({}))) as { responses?: Row[]; error?: string };
+    const res = useAdminProxy
+      ? await fetch(`/api/admin/forms/${encodeURIComponent(formId)}/responses`, { cache: "no-store" })
+      : await apiFetch(`/forms/${encodeURIComponent(formId)}/responses`, { cache: "no-store" });
+    const data = (await res.json().catch(() => ({}))) as { responses?: TripFormResponseRow[]; error?: string };
     if (!res.ok) {
       setError(loadErrorMessage(data.error));
       return;
     }
     setRows(data.responses ?? []);
-  }, [formId]);
+  }, [formId, useAdminProxy]);
 
   useEffect(() => {
+    if (initialRows !== undefined) return;
     startTransition(() => {
       void load();
     });
-  }, [load]);
+  }, [load, initialRows]);
 
   useEffect(() => {
     if (!rows) return;
@@ -126,10 +134,16 @@ export default function TripResponsesClient({
   async function patchRow(id: string, body: { status?: TripFormResponseWorkflowStatus; paymentStatus?: TripFormMoneyStatus }) {
     setBusyId(id);
     try {
-      const res = await apiFetch(`/responses/${encodeURIComponent(id)}/status`, {
-        method: "PATCH",
-        body: JSON.stringify(body),
-      });
+      const res = useAdminProxy
+        ? await fetch(`/api/admin/responses/${encodeURIComponent(id)}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          })
+        : await apiFetch(`/responses/${encodeURIComponent(id)}/status`, {
+            method: "PATCH",
+            body: JSON.stringify(body),
+          });
       if (!res.ok) throw new Error("patch");
       await load();
     } finally {
@@ -140,9 +154,13 @@ export default function TripResponsesClient({
   async function convert(id: string): Promise<boolean> {
     setBusyId(id);
     try {
-      const res = await apiFetch(`/responses/${encodeURIComponent(id)}/convert-to-participant`, {
-        method: "POST",
-      });
+      const res = useAdminProxy
+        ? await fetch(`/api/admin/responses/${encodeURIComponent(id)}/convert-to-participant`, {
+            method: "POST",
+          })
+        : await apiFetch(`/responses/${encodeURIComponent(id)}/convert-to-participant`, {
+            method: "POST",
+          });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         alert(j.error === "ALREADY_CONVERTED" ? "Аль хэдийн оролцогч болсон." : "Алдаа гарлаа.");
@@ -359,7 +377,7 @@ function ResponseDetailDrawer({
   onPatch,
   onConvert,
 }: {
-  row: Row;
+  row: TripFormResponseRow;
   busy: boolean;
   onClose: () => void;
   onPatch: (body: { status?: TripFormResponseWorkflowStatus; paymentStatus?: TripFormMoneyStatus }) => void;
@@ -464,7 +482,7 @@ function ParticipantConversionModal({
   onClose,
   onConfirm,
 }: {
-  row: Row;
+  row: TripFormResponseRow;
   busy: boolean;
   onClose: () => void;
   onConfirm: () => void | Promise<void>;
