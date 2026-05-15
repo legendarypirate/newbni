@@ -29,6 +29,15 @@ export const catalogEn: MessageTree = {
     usefulLinks: "Useful links",
     platform: "Platform",
     rights: "All rights reserved.",
+    tagline: "A platform built for creating business trips, meetings, and events",
+    platformBlurb: "Manage registrations and operations for trips, meetings, and events in one place.",
+    links: {
+      privacy: "Privacy policy",
+      terms: "Terms & conditions",
+      help: "Help & support",
+      partner: "Partner with us",
+      fallback: "Link",
+    },
   },
   common: {
     loading: "Loading…",

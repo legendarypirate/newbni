@@ -29,6 +29,15 @@ export const catalogJp: MessageTree = {
     usefulLinks: "便利なリンク",
     platform: "プラットフォーム",
     rights: "無断転載を禁じます。",
+    tagline: "ビジネス旅行・会議・イベントの作成に特化したプラットフォーム",
+    platformBlurb: "旅行・会議・イベントの登録と運営を一括管理。",
+    links: {
+      privacy: "プライバシーポリシー",
+      terms: "利用規約",
+      help: "ヘルプ・サポート",
+      partner: "パートナー募集",
+      fallback: "リンク",
+    },
   },
   common: {
     loading: "読み込み中…",

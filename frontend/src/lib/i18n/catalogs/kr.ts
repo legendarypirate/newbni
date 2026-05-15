@@ -29,6 +29,15 @@ export const catalogKr: MessageTree = {
     usefulLinks: "유용한 링크",
     platform: "플랫폼",
     rights: "모든 권리 보유.",
+    tagline: "비즈니스 여행, 회의, 이벤트 생성을 위한 플랫폼",
+    platformBlurb: "여행, 회의, 이벤트 등록 및 운영을 한곳에서 관리하세요.",
+    links: {
+      privacy: "개인정보 처리방침",
+      terms: "이용 약관",
+      help: "도움말 및 지원",
+      partner: "제휴 문의",
+      fallback: "링크",
+    },
   },
   common: {
     loading: "로딩 중…",

@@ -29,6 +29,15 @@ export const catalogCn: MessageTree = {
     usefulLinks: "实用链接",
     platform: "平台",
     rights: "版权所有。",
+    tagline: "专为创建商务旅行、会议与活动而打造的平台",
+    platformBlurb: "在一处管理旅行、会议与活动的报名与运营。",
+    links: {
+      privacy: "隐私政策",
+      terms: "条款与条件",
+      help: "帮助与支持",
+      partner: "合作洽谈",
+      fallback: "链接",
+    },
   },
   common: {
     loading: "加载中…",

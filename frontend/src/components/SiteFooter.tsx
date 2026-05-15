@@ -3,11 +3,16 @@ import { FooterContactList } from "@/components/FooterContactList";
 import { FooterRichLink } from "@/components/FooterRichLink";
 import { FooterSocialLinks } from "@/components/FooterSocialLinks";
 import { BUSY_ARCHITECTURE_RULE, BUSY_MISSION_LINES, BUSY_PLATFORM_GOAL } from "@/lib/busy-platform-vision";
+import { cookies } from "next/headers";
 import { getFooterPublicConfig } from "@/lib/footer-public-config";
+import { localizeFooterPublicConfig } from "@/lib/i18n/footer-localize";
+import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
 
 export async function SiteFooter() {
+  const lang = getLangFromCookies(await cookies());
+  const t = createServerT(lang);
   const year = new Date().getFullYear();
-  const cfg = await getFooterPublicConfig();
+  const cfg = localizeFooterPublicConfig(await getFooterPublicConfig(), lang);
 
   return (
     <footer className="footer-v3 mt-auto">
@@ -54,7 +59,7 @@ export async function SiteFooter() {
         </div>
         <div className="pt-4 border-top">
           <p className="small text-muted m-0">
-            © {year} {cfg.copyrightName}. Бүх эрх хуулиар хамгаалагдсан.
+            © {year} {cfg.copyrightName}. {t("footer.rights")}
           </p>
         </div>
       </div>

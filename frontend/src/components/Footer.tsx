@@ -4,13 +4,14 @@ import { FooterContactList } from "@/components/FooterContactList";
 import { FooterRichLink } from "@/components/FooterRichLink";
 import { FooterSocialLinks } from "@/components/FooterSocialLinks";
 import { getFooterPublicConfig } from "@/lib/footer-public-config";
+import { localizeFooterPublicConfig } from "@/lib/i18n/footer-localize";
 import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
 
 export default async function Footer() {
   const lang = getLangFromCookies(await cookies());
   const t = createServerT(lang);
   const currentYear = new Date().getFullYear();
-  const cfg = await getFooterPublicConfig();
+  const cfg = localizeFooterPublicConfig(await getFooterPublicConfig(), lang);
 
   return (
     <footer className="footer-v3">
