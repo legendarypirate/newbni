@@ -10,12 +10,12 @@ import {
   type ReactNode,
 } from "react";
 import { isBniLang, type BniLangCode } from "@/lib/nav-php-parity";
-import { translateUi, type MessageKey } from "./messages";
+import { translate } from "./translate";
 
 type I18nContextValue = {
   lang: BniLangCode;
   setLang: (lang: BniLangCode) => void;
-  t: (key: MessageKey) => string;
+  t: (key: string) => string;
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);
@@ -38,7 +38,7 @@ export function I18nProvider({ initialLang, children }: { initialLang: BniLangCo
     setLangState(next);
   }, []);
 
-  const t = useCallback((key: MessageKey) => translateUi(lang, key), [lang]);
+  const t = useCallback((key: string) => translate(lang, key), [lang]);
 
   const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
 
@@ -51,12 +51,12 @@ export function useI18n(): I18nContextValue {
     return {
       lang: "mn",
       setLang: () => undefined,
-      t: (key) => translateUi("mn", key),
+      t: (key) => translate("mn", key),
     };
   }
   return ctx;
 }
 
-export function useT(): (key: MessageKey) => string {
+export function useT(): (key: string) => string {
   return useI18n().t;
 }

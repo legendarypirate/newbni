@@ -1,10 +1,14 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { FooterContactList } from "@/components/FooterContactList";
 import { FooterRichLink } from "@/components/FooterRichLink";
 import { FooterSocialLinks } from "@/components/FooterSocialLinks";
 import { getFooterPublicConfig } from "@/lib/footer-public-config";
+import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
 
 export default async function Footer() {
+  const lang = getLangFromCookies(await cookies());
+  const t = createServerT(lang);
   const currentYear = new Date().getFullYear();
   const cfg = await getFooterPublicConfig();
 
@@ -43,7 +47,7 @@ export default async function Footer() {
         </div>
         <div className="pt-4 border-top">
           <p className="small text-muted m-0">
-            © {currentYear} {cfg.copyrightName}. Бүх эрх хуулиар хамгаалагдсан.
+            © {currentYear} {cfg.copyrightName}. {t("footer.rights")}
           </p>
         </div>
       </div>

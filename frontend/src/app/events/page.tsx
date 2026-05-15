@@ -87,7 +87,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
       : [];
 
   const getEventTitle = (ev: EventListRow) => {
-    return ev.title ? ev.title : (ev.chapter?.name ? `${ev.chapter.name}` : 'Хурал / эвент');
+    return ev.title ? ev.title : (ev.chapter?.name ? `${ev.chapter.name}` : t('events.defaultTitle'));
   };
 
   const getEventTypeBadge = (type: string) => {
@@ -95,13 +95,13 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
       case "visitor_day":
         return "Visitor day";
       case "training":
-        return "Сургалт";
+        return t("events.typeTraining");
       case "social":
         return "Social";
       case "event":
         return "Event";
       default:
-        return "7 хоногийн хурал";
+        return t("events.typeWeekly");
     }
   };
 
@@ -125,10 +125,10 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
     <main className="page-content" style={{ backgroundColor: "var(--bg-page)" }}>
       <MarketingListingHero slides={heroSlides} fallbackImageUrl={heroFallback}>
         <h1 className="fw-bold" style={{ fontSize: "2.25rem", color: "var(--text-main)", marginBottom: "0.5rem" }}>
-          Хурал / Эвент
+          {t("events.title")}
         </h1>
         <p style={{ color: "var(--text-muted)", fontSize: "1.1rem" }}>
-          BNI болон платформын хурал, уулзалт, сургалтын хуваарь
+          {t("events.subtitle")}
         </p>
       </MarketingListingHero>
 
@@ -137,18 +137,18 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         {/* Left Sidebar: Filter */}
         <aside className="trips-sidebar-left">
           <div className="sidebar-widget">
-            <h3 className="widget-title">Хурал хайх</h3>
+            <h3 className="widget-title">{t("events.searchTitle")}</h3>
             <form method="get" action="/events">
               {chapterFilter > 0 && <input type="hidden" name="chapter" value={chapterFilter} />}
               <input type="hidden" name="status" value={status} />
               
               <div className="filter-group">
-                <label className="filter-label">Түлхүүр үг</label>
-                <input type="text" className="filter-input" name="q" defaultValue={q} placeholder="Гарчиг, бүлэг, бүс" />
+                <label className="filter-label">{t("events.keyword")}</label>
+                <input type="text" className="filter-input" name="q" defaultValue={q} placeholder={t("events.keywordPh")} />
               </div>
               
               <div className="filter-group">
-                <label className="filter-label">Эхлэх огноо</label>
+                <label className="filter-label">{t("events.startDate")}</label>
                 <div className="position-relative">
                   <input type="date" className="filter-input" name="date_from" defaultValue={dateFrom} />
                   <i className="fa-regular fa-calendar position-absolute" style={{ right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }}></i>
@@ -156,7 +156,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
               </div>
 
               <div className="filter-group">
-                <label className="filter-label">Дуусах огноо</label>
+                <label className="filter-label">{t("events.endDate")}</label>
                 <div className="position-relative">
                   <input type="date" className="filter-input" name="date_to" defaultValue={dateTo} />
                   <i className="fa-regular fa-calendar position-absolute" style={{ right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }}></i>
@@ -164,19 +164,19 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
               </div>
               
               <div className="filter-group">
-                <label className="filter-label">Төрөл</label>
+                <label className="filter-label">{t("events.eventType")}</label>
                 <select className="filter-select" name="event_type" defaultValue={eventType}>
-                  <option value="all">Бүгд</option>
-                  <option value="weekly_meeting">7 хоногийн хурал</option>
+                  <option value="all">{t("common.all")}</option>
+                  <option value="weekly_meeting">{t("events.typeWeekly")}</option>
                   <option value="visitor_day">Visitor day</option>
-                  <option value="training">Сургалт</option>
+                  <option value="training">{t("events.typeTraining")}</option>
                   <option value="social">Social</option>
                   <option value="event">Event</option>
                 </select>
               </div>
 
-              <button type="submit" className="btn-brand w-100 mb-2">Хайх</button>
-              <Link href={chapterFilter > 0 ? `/events?chapter=${chapterFilter}&status=upcoming` : '/events'} className="btn-brand-outline w-100 d-inline-block text-center" style={{ color: "var(--brand-primary)", borderColor: "var(--border-color)" }}>Шүүлтүүр цэвэрлэх</Link>
+              <button type="submit" className="btn-brand w-100 mb-2">{t("common.search")}</button>
+              <Link href={chapterFilter > 0 ? `/events?chapter=${chapterFilter}&status=upcoming` : '/events'} className="btn-brand-outline w-100 d-inline-block text-center" style={{ color: "var(--brand-primary)", borderColor: "var(--border-color)" }}>{t("common.clearFilters")}</Link>
             </form>
           </div>
         </aside>
@@ -184,9 +184,9 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         {/* Main Content Area */}
         <div className="trips-main-content">
           <div className="trips-tabs">
-            <Link className={`trip-tab ${status === 'upcoming' ? 'active' : ''}`} href={queryBase({ status: 'upcoming', event_type: eventType })}>Ирэх арга хэмжээ</Link>
-            <Link className={`trip-tab ${status === 'past' ? 'active' : ''}`} href={queryBase({ status: 'past', event_type: eventType })}>Дууссан</Link>
-            <Link className={`trip-tab ${status === 'all' ? 'active' : ''}`} href={queryBase({ status: 'all', event_type: eventType })}>Бүгд</Link>
+            <Link className={`trip-tab ${status === 'upcoming' ? 'active' : ''}`} href={queryBase({ status: 'upcoming', event_type: eventType })}>{t("events.statusUpcoming")}</Link>
+            <Link className={`trip-tab ${status === 'past' ? 'active' : ''}`} href={queryBase({ status: 'past', event_type: eventType })}>{t("events.statusPast")}</Link>
+            <Link className={`trip-tab ${status === 'all' ? 'active' : ''}`} href={queryBase({ status: 'all', event_type: eventType })}>{t('common.all')}</Link>
             <Link className={`trip-tab ${eventType === 'weekly_meeting' ? 'active' : ''}`} href={queryBase({ status: status, event_type: 'weekly_meeting' })}>7 хоногийн хурал</Link>
             <Link className={`trip-tab ${eventType === 'visitor_day' ? 'active' : ''}`} href={queryBase({ status: status, event_type: 'visitor_day' })}>Visitor</Link>
           </div>
@@ -406,11 +406,11 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           <div className="sidebar-widget">
             <h3 className="widget-title">Тойм</h3>
             <div className="stat-row">
-              <span style={{ color: "var(--text-muted)" }}>Ирэх арга хэмжээ</span>
+              <span style={{ color: "var(--text-muted)" }}>{t("events.tabUpcoming")}</span>
               <span style={{ fontWeight: 600 }}>{totalUpcoming.toLocaleString()}</span>
             </div>
             <div className="stat-row">
-              <span style={{ color: "var(--text-muted)" }}>Дууссан</span>
+              <span style={{ color: "var(--text-muted)" }}>{t("events.tabPast")}</span>
               <span style={{ fontWeight: 600 }}>{totalPast.toLocaleString()}</span>
             </div>
             <div className="stat-row">

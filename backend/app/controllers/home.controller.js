@@ -2,8 +2,9 @@
 
 const { Op } = require("sequelize");
 const db = require("../models");
+const { translateRecords } = require("../lib/content-translations");
 
-exports.getHome = async (_req, res) => {
+exports.getHome = async (req, res) => {
   try {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -105,6 +106,17 @@ exports.getHome = async (_req, res) => {
       }),
     ]);
 
+    const lang = req.bniLang || "mn";
+    const [tripsOut, eventsOut, newsOut] = await Promise.all([
+      translateRecords(businessTrips, "trip", lang),
+      translateRecords(
+        coreEvents.map((e) => ({ ...e, id: String(e.id), bannerImage: e.bannerImage || null })),
+        "event",
+        lang,
+      ),
+      translateRecords(latestNews, "news", lang),
+    ]);
+
     return res.json({
       ok: true,
       data: {
@@ -117,10 +129,10 @@ exports.getHome = async (_req, res) => {
           registrationNew,
           revenueMonth: Number(revenueRows?.[0]?.revenue || 0),
         },
-        heroTrip: businessTrips[0] || null,
-        coreEvents: coreEvents.map((e) => ({ ...e, id: String(e.id), bannerImage: e.bannerImage || null })),
-        businessTrips,
-        latestNews,
+        heroTrip: tripsOut[0] || null,
+        coreEvents: eventsOut,
+        businessTrips: tripsOut,
+        latestNews: newsOut,
         featuredMembers,
         partners: partners
           .filter((p) => String(p.companyName || "").trim() !== "")

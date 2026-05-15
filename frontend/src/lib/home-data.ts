@@ -1,4 +1,6 @@
 import { internalApiUrl } from "@/lib/backend-api";
+import type { BniLangCode } from "@/lib/nav-php-parity";
+import { apiLangHeaders, withLangQuery } from "@/lib/i18n/server";
 
 type RecentOrderRow = { orderRef: string; createdAt: string };
 type BusinessTrip = {
@@ -84,9 +86,10 @@ const empty: HomePayload = {
   recentOrders: [],
 };
 
-export async function loadHomeData(): Promise<HomePayload> {
+export async function loadHomeData(lang: BniLangCode = "mn"): Promise<HomePayload> {
   try {
-    const res = await fetch(internalApiUrl("/api/home"), { cache: "no-store" });
+    const url = withLangQuery(internalApiUrl("/api/home"), lang);
+    const res = await fetch(url, { cache: "no-store", headers: apiLangHeaders(lang) });
     const json = (await res.json().catch(() => null)) as { ok?: boolean; data?: HomePayload } | null;
     if (!res.ok || !json?.ok || !json.data) {
       return empty;

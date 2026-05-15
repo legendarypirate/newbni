@@ -60,11 +60,11 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
   const tripCards = [];
 
   if (tripType === 'all') {
-    for (const t of trips) {
-      if (t.isFeatured === 1 && featuredTrips.length < 3) {
-        featuredTrips.push(t);
+    for (const trip of trips) {
+      if (trip.isFeatured === 1 && featuredTrips.length < 3) {
+        featuredTrips.push(trip);
       } else {
-        tripCards.push(t);
+        tripCards.push(trip);
       }
     }
   } else {
@@ -88,7 +88,7 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
           {t("trips.title")}
         </h1>
         <p style={{ color: "var(--text-muted)", fontSize: "1.1rem" }}>
-          Олон улсын бизнес аялал, үзэсгэлэн, үйлдвэртэй танилцах хөтөлбөрүүд
+          {t("trips.subtitle")}
         </p>
       </MarketingListingHero>
 
@@ -97,15 +97,15 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
         {/* Left Sidebar: Filter */}
         <aside className="trips-sidebar-left">
           <div className="sidebar-widget">
-            <h3 className="widget-title">Аялал хайх</h3>
+            <h3 className="widget-title">{t("trips.searchTitle")}</h3>
             <form method="get" action="/trips">
               <div className="filter-group">
-                <label className="filter-label">Улс</label>
-                <input type="text" className="filter-input" name="country" defaultValue={country} placeholder="Ж: Сингапур, БНСУ" />
+                <label className="filter-label">{t("trips.country")}</label>
+                <input type="text" className="filter-input" name="country" defaultValue={country} placeholder={t("trips.countryPh")} />
               </div>
               
               <div className="filter-group">
-                <label className="filter-label">Эхлэх огноо</label>
+                <label className="filter-label">{t("trips.startDate")}</label>
                 <div className="position-relative">
                   <input type="date" className="filter-input" name="date_from" defaultValue={dateFrom} />
                   <i className="fa-regular fa-calendar position-absolute" style={{ right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }}></i>
@@ -113,7 +113,7 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
               </div>
 
               <div className="filter-group">
-                <label className="filter-label">Дуусах огноо</label>
+                <label className="filter-label">{t("trips.endDate")}</label>
                 <div className="position-relative">
                   <input type="date" className="filter-input" name="date_to" defaultValue={dateTo} />
                   <i className="fa-regular fa-calendar position-absolute" style={{ right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }}></i>
@@ -121,9 +121,9 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
               </div>
               
               <div className="filter-group">
-                <label className="filter-label">Салбар</label>
+                <label className="filter-label">{t("trips.sector")}</label>
                 <select className="filter-select" name="focus" defaultValue={focus}>
-                  <option value="">Салбар сонгох</option>
+                  <option value="">{t("trips.sectorPh")}</option>
                   <option value="Инноваци">Инноваци, Технологи</option>
                   <option value="Худалдаа">Худалдаа, Ложистик</option>
                   <option value="Үйлдвэр">Үйлдвэрлэл</option>
@@ -131,24 +131,24 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
               </div>
               
               <div className="filter-group">
-                <label className="filter-label">Төсөв (1 хүнд)</label>
+                <label className="filter-label">{t("trips.budget")}</label>
                 <TripsFilterBudgetInputs budgetMaxFromUrl={budgetMax} />
               </div>
               
               <div className="filter-group">
-                <label className="filter-label">Аяллын төрөл</label>
+                <label className="filter-label">{t("trips.tripType")}</label>
                 <select className="filter-select" name="trip_type" defaultValue={tripType}>
-                  <option value="all">Бүгд</option>
-                  <option value="trip">Business Trip</option>
-                  <option value="factory">Үйлдвэр аялал</option>
-                  <option value="expo">Үзэсгэлэн</option>
+                  <option value="all">{t("trips.tabAll")}</option>
+                  <option value="trip">{t("trips.typeBusiness")}</option>
+                  <option value="factory">{t("trips.typeFactory")}</option>
+                  <option value="expo">{t("trips.typeExpo")}</option>
                   <option value="vip">VIP</option>
-                  <option value="near">Ойрын аялал</option>
+                  <option value="near">{t("trips.tabNear")}</option>
                 </select>
               </div>
 
-              <button type="submit" className="btn-brand w-100 mb-2">Хайх</button>
-              <Link href="/trips" className="btn-brand-outline w-100 d-inline-block text-center" style={{ color: "var(--brand-primary)", borderColor: "var(--border-color)" }}>Шүүлтүүр цэвэрлэх</Link>
+              <button type="submit" className="btn-brand w-100 mb-2">{t("common.search")}</button>
+              <Link href="/trips" className="btn-brand-outline w-100 d-inline-block text-center" style={{ color: "var(--brand-primary)", borderColor: "var(--border-color)" }}>{t("common.clearFilters")}</Link>
             </form>
           </div>
         </aside>
@@ -157,11 +157,11 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
         <div className="trips-main-content">
           {/* Tabs */}
           <div className="trips-tabs">
-            <Link className={`trip-tab ${tripType === 'all' ? 'active' : ''}`} href="/trips?trip_type=all">Бүгд</Link>
-            <Link className={`trip-tab ${tripType === 'near' ? 'active' : ''}`} href="/trips?trip_type=near">Ойрын аялал</Link>
+            <Link className={`trip-tab ${tripType === 'all' ? 'active' : ''}`} href="/trips?trip_type=all">{t("trips.tabAll")}</Link>
+            <Link className={`trip-tab ${tripType === 'near' ? 'active' : ''}`} href="/trips?trip_type=near">{t("trips.tabNear")}</Link>
             <Link className={`trip-tab ${tripType === 'vip' ? 'active' : ''}`} href="/trips?trip_type=vip">VIP</Link>
-            <Link className={`trip-tab ${tripType === 'factory' ? 'active' : ''}`} href="/trips?trip_type=factory">Үйлдвэр аялал</Link>
-            <Link className={`trip-tab ${tripType === 'expo' ? 'active' : ''}`} href="/trips?trip_type=expo">Үзэсгэлэн</Link>
+            <Link className={`trip-tab ${tripType === 'factory' ? 'active' : ''}`} href="/trips?trip_type=factory">{t("trips.tabFactory")}</Link>
+            <Link className={`trip-tab ${tripType === 'expo' ? 'active' : ''}`} href="/trips?trip_type=expo">{t("trips.tabExpo")}</Link>
           </div>
 
           {/* Featured Large Card(s) */}
@@ -184,19 +184,19 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
               <div className="featured-trip-content">
                 <div className="featured-trip-header">
                   <div>
-                    <span className="featured-badge mb-2 d-inline-block">ОНЦЛОХ АЯЛАЛ</span>
+                    <span className="featured-badge mb-2 d-inline-block">{t("trips.featuredBadge")}</span>
                     <h2 className="featured-trip-title">{ftrip.destination}</h2>
                     <div className="featured-trip-meta">
                       <span><i className="fa-regular fa-calendar me-1"></i> {formatMnDate(ftrip.startDate)} - {formatMnDate(ftrip.endDate)}</span>
                     </div>
                     <div className="mb-3">
-                      <span className="trip-card-badge me-2" style={{ background: "#f3f4f6" }}>Аяллын төрөл</span>
+                      <span className="trip-card-badge me-2" style={{ background: "#f3f4f6" }}>{t("trips.tripTypeLabel")}</span>
                       <span className="trip-card-badge">{ftrip.focus || 'Business Trip'}</span>
                     </div>
                   </div>
                 </div>
                 
-                <div style={{ fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem" }}>Хөтөлбөрийн товч</div>
+                <div style={{ fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem" }}>{t("trips.programBrief")}</div>
                 <ul className="featured-trip-features">
                   <li><i className="fa-solid fa-check"></i> {(ftrip.description || 'Бизнесийн уулзалт, танилцах хөтөлбөр.').slice(0, 120)}</li>
                   <li><i className="fa-solid fa-check"></i> B2B уулзалт, сүлжээ тогтоох боломж</li>

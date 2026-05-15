@@ -1,6 +1,6 @@
 import type { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies";
 import { isBniLang, type BniLangCode } from "@/lib/nav-php-parity";
-import { translateUi, type MessageKey } from "./messages";
+import { translate } from "./translate";
 
 export function getLangFromCookies(jar: Pick<ReadonlyRequestCookies, "get">): BniLangCode {
   const raw = jar.get("bni_lang")?.value ?? "mn";
@@ -25,5 +25,5 @@ export function apiLangHeaders(lang: BniLangCode): HeadersInit {
 }
 
 export function createServerT(lang: BniLangCode) {
-  return (key: MessageKey) => translateUi(lang, key);
+  return (key: string) => translate(lang, key);
 }

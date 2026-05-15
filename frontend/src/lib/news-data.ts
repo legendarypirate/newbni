@@ -1,4 +1,6 @@
 import { internalApiUrl } from "@/lib/backend-api";
+import type { BniLangCode } from "@/lib/nav-php-parity";
+import { apiLangHeaders, withLangQuery } from "@/lib/i18n/server";
 
 /**
  * Public byline data joined from `bni_platform_profiles` (and the underlying
@@ -56,6 +58,7 @@ export async function loadNewsList(opts?: {
   offset?: number;
   /** Platform account id (`news.author_id`) — filters to that author's articles. */
   authorId?: number;
+  lang?: BniLangCode;
 }): Promise<NewsListPayload> {
   try {
     const limit = Math.max(1, Math.min(100, opts?.limit ?? 24));
@@ -69,8 +72,10 @@ export async function loadNewsList(opts?: {
     if (aid !== undefined && Number.isFinite(aid) && aid > 0) {
       params.authorId = String(Math.floor(aid));
     }
+    const lang = opts?.lang ?? "mn";
     const qs = new URLSearchParams(params).toString();
-    const res = await fetch(internalApiUrl(`/api/news?${qs}`), { cache: "no-store" });
+    const url = withLangQuery(internalApiUrl(`/api/news?${qs}`), lang);
+    const res = await fetch(url, { cache: "no-store", headers: apiLangHeaders(lang) });
     const json = (await res.json().catch(() => null)) as
       | { ok?: boolean; data?: { news?: NewsArticleRow[]; total?: number } }
       | null;
@@ -86,10 +91,11 @@ export async function loadNewsList(opts?: {
 /** Fetch a single published article by id-or-slug. Returns `null` on any
  *  failure (404, network, malformed JSON) so the detail page can render a
  *  proper "not found" state without throwing. */
-export async function loadNewsArticle(idOrSlug: string): Promise<NewsArticleRow | null> {
+export async function loadNewsArticle(idOrSlug: string, lang: BniLangCode = "mn"): Promise<NewsArticleRow | null> {
   try {
     const safe = encodeURIComponent(idOrSlug);
-    const res = await fetch(internalApiUrl(`/api/news/${safe}`), { cache: "no-store" });
+    const url = withLangQuery(internalApiUrl(`/api/news/${safe}`), lang);
+    const res = await fetch(url, { cache: "no-store", headers: apiLangHeaders(lang) });
     const json = (await res.json().catch(() => null)) as
       | { ok?: boolean; data?: NewsArticleRow }
       | null;

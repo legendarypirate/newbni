@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
 import SafeImage from "@/components/SafeImage";
 import { formatMnDate } from "@/lib/format-date";
 import { mediaUrl } from "@/lib/media-url";
@@ -38,11 +40,13 @@ function stripHtml(raw: string | null | undefined): string {
 type Props = { searchParams: Promise<{ cat?: string }> };
 
 export default async function NewsPage({ searchParams }: Props) {
+  const lang = getLangFromCookies(await cookies());
+  const t = createServerT(lang);
   const sp = await searchParams;
   const catRaw = (sp.cat ?? "all").trim();
   const newsCat: CatSlug = isCatSlug(catRaw) ? catRaw : "all";
 
-  const { rows: allRows } = await loadNewsList({ limit: 50 });
+  const { rows: allRows } = await loadNewsList({ limit: 50, lang });
 
   const filtered =
     newsCat === "all"
@@ -71,10 +75,10 @@ export default async function NewsPage({ searchParams }: Props) {
         {/* Header */}
         <div className="mb-4">
           <h1 className="fw-bold" style={{ fontSize: "2.25rem", color: "var(--text-main)", marginBottom: "0.5rem" }}>
-            Мэдлэг ба Мэдээ
+            {t("news.title")}
           </h1>
           <p style={{ color: "var(--text-muted)", fontSize: "1.1rem" }}>
-            Зах зээл, экспорт, аялал, хөрөнгө оруулалт болон үйлдвэрийн мэдээллийг нэг дор.
+            {t("news.subtitle")}
           </p>
         </div>
       </div>

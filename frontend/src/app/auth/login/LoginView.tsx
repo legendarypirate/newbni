@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
 import { PLATFORM_ACCOUNT_REF_COOKIE } from "@/lib/platform-session-cookies";
 import { BUSY_ARCHITECTURE_RULE, BUSY_MISSION_LINES, BUSY_PLATFORM_GOAL } from "@/lib/busy-platform-vision";
 import LoginForm from "./LoginForm";
@@ -41,6 +42,8 @@ export default async function LoginView({ searchParams }: { searchParams: Search
   const defaultEmail = firstString(sp.email);
 
   const jar = await cookies();
+  const lang = getLangFromCookies(jar);
+  const t = createServerT(lang);
   const hasPhpSession = Boolean(jar.get("PHPSESSID")?.value);
   const hasNextPlatform = Boolean(
     jar.get("bni_platform_account_id")?.value || jar.get(PLATFORM_ACCOUNT_REF_COOKIE)?.value,
@@ -67,8 +70,8 @@ export default async function LoginView({ searchParams }: { searchParams: Search
               <div className="bni-auth-icon-wrap" aria-hidden="true">
                 <i className="fa-solid fa-right-to-bracket" />
               </div>
-              <h1 className="bni-auth-title">Платформд нэвтрэх</h1>
-              <p className="bni-auth-lead text-muted mb-1">Имэйл, нууц үг эсвэл Google ашиглан нэвтэрнэ үү.</p>
+              <h1 className="bni-auth-title">{t("auth.loginTitle")}</h1>
+              <p className="bni-auth-lead text-muted mb-1">{t("auth.loginLead")}</p>
               <div className="small text-muted text-center mb-0 px-1" style={{ lineHeight: 1.55 }}>
                 <p className="mb-2 fw-semibold text-body-secondary" style={{ marginBottom: "0.5rem" }}>
                   {BUSY_MISSION_LINES.join(" ")}
