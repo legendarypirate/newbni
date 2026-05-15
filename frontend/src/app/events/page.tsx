@@ -107,7 +107,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
     const params = new URLSearchParams();
     if (chapterFilter > 0 && !extra.chapter) params.set('chapter', chapterFilter.toString());
     Object.entries(extra).forEach(([k, v]) => {
-      if (v) params.set(k, v);
+      if (v != null && v !== false && v !== "") params.set(k, String(v));
     });
     return `/events?${params.toString()}`;
   };
