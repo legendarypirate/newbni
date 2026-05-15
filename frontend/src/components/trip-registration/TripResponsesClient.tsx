@@ -53,7 +53,18 @@ const PAY_LABELS: Record<TripFormMoneyStatus, string> = {
 const selectSm =
   "h-8 min-w-[8.5rem] rounded-md border border-input bg-background px-2 text-xs shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50";
 
-export default function TripResponsesClient({ tripId, formId }: { tripId: number; formId: string }) {
+export default function TripResponsesClient({
+  tripId,
+  formId,
+  exportCsvHref,
+  formEditorHref,
+}: {
+  tripId: number;
+  formId: string;
+  /** When set (e.g. admin `/api/admin/trips/:id/.../export`), used instead of per-form export. */
+  exportCsvHref?: string;
+  formEditorHref?: string;
+}) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -190,11 +201,26 @@ export default function TripResponsesClient({ tripId, formId }: { tripId: number
             </div>
             <div className="flex flex-wrap gap-2">
               <Button asChild size="sm">
-                <a href={`/api/forms/${encodeURIComponent(formId)}/responses/export`}>Excel татах</a>
+                <a
+                  href={
+                    exportCsvHref ??
+                    `/api/forms/${encodeURIComponent(formId)}/responses/export`
+                  }
+                >
+                  Excel татах
+                </a>
               </Button>
-              <Button asChild variant="outline" size="sm">
-                <a href={`/dashboard/trips/${tripId}/form-builder`}>Бүртгэлийн форм</a>
-              </Button>
+              {formEditorHref ? (
+                <Button asChild variant="outline" size="sm">
+                  <a href={formEditorHref} target="_blank" rel="noopener noreferrer">
+                    Бүртгэлийн форм
+                  </a>
+                </Button>
+              ) : (
+                <Button asChild variant="outline" size="sm">
+                  <a href={`/dashboard/trips/${tripId}/form-builder`}>Бүртгэлийн форм</a>
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
