@@ -18,6 +18,7 @@ const ENTITY_FIELDS = {
   trip: ["destination", "focus", "description", "seatsLabel", "statusLabel", "shortDescription"],
   event: ["title", "location", "summary"],
   news: ["title", "excerpt", "body", "content"],
+  investment: ["title", "excerpt", "description", "sector", "statusLabel", "location"],
 };
 
 function normalizeLang(raw) {

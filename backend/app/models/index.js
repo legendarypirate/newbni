@@ -36,6 +36,9 @@ module.exports = {
   // Trips (`business_trips`) — see `business-trip.model.js`
   BusinessTrip: m.BusinessTrip,
 
+  // Investments (`investment_projects`) — see `investment-project.model.js`
+  InvestmentProject: m.InvestmentProject,
+
   // Trip / event registration — see `trip-registration.model.js`
   TripRegistrationForm: m.TripRegistrationForm,
   TripFormQuestion: m.TripFormQuestion,

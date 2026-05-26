@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import SafeImage from "@/components/SafeImage";
+import { getLangFromCookies } from "@/lib/i18n/server";
 import {
   formatMntCompact,
   loadInvestmentsData,
@@ -17,7 +18,8 @@ export default async function InvestmentsPage({ searchParams }: Props) {
   const sp = await searchParams;
   const tab = (sp.tab ?? "").trim();
 
-  const { projects, investors, featuredProject, facets } = await loadInvestmentsData();
+  const lang = await getLangFromCookies();
+  const { projects, investors, featuredProject, facets } = await loadInvestmentsData(lang);
   const featuredIcon = projectIconForSector(featuredProject?.sector ?? null);
 
   return (
@@ -392,7 +394,7 @@ export default async function InvestmentsPage({ searchParams }: Props) {
             </div>
           </aside>
 
-          {/* Main Content Area — projects grid backed by trips. */}
+          {/* Main Content Area — projects from investment_projects API. */}
           <div className="invest-main-content">
             {featuredProject ? (
               <div className="featured-project-card">
@@ -447,12 +449,12 @@ export default async function InvestmentsPage({ searchParams }: Props) {
                   ) : null}
 
                   <div className="featured-actions mt-3">
-                    <Link
-                      href={`/trip-details/${featuredProject.id}`}
+                    <a
+                      href={`mailto:info@busy.mn?subject=${encodeURIComponent(featuredProject.title)}`}
                       className="btn-brand-outline px-4 py-1 text-decoration-none"
                     >
                       Төсөл үзэх
-                    </Link>
+                    </a>
                     <a href="mailto:info@busy.mn" className="btn-brand px-4 py-1 text-decoration-none">
                       Уулзалт товлох
                     </a>
@@ -464,7 +466,12 @@ export default async function InvestmentsPage({ searchParams }: Props) {
                 <div className="featured-content text-center py-5">
                   <i className="fa-solid fa-folder-open text-muted fs-1 mb-3"></i>
                   <h3 className="h6 fw-bold">Одоогоор онцлох төсөл алга</h3>
-                  <p className="small text-muted mb-0">Бүртгэлтэй төсөл нэмэгдсэн үед эндээс харагдана.</p>
+                  <p className="small text-muted mb-3">
+                    Энд зөвхөн хөрөнгө оруулалтын төсөл харагдана. Аяллын хуудас (/trips) болон өөр.
+                  </p>
+                  <Link href="/auth/login?next=/platform" className="btn-brand-outline btn-sm text-decoration-none">
+                    Төсөл нийтлэх
+                  </Link>
                 </div>
               </div>
             )}
@@ -489,12 +496,21 @@ export default async function InvestmentsPage({ searchParams }: Props) {
 
             <div className="projects-grid">
               {projects.length === 0 ? (
-                <div className="text-muted small">Бүртгэлтэй төсөл олдсонгүй.</div>
+                <div className="inv-featured-card text-center py-5 w-100">
+                  <i className="fa-solid fa-folder-open text-muted fs-1 mb-3"></i>
+                  <h3 className="h6 fw-bold">Бүртгэлтэй хөрөнгө оруулалтын төсөл алга</h3>
+                  <p className="small text-muted mb-3">
+                    BNI Korea зэрэг аяллын мэдээлэл энд харагдахгүй. Төсөл нийтлэхийн тулд нэвтэрнэ үү.
+                  </p>
+                  <Link href="/auth/login?next=/platform" className="btn-brand px-4 py-1 text-decoration-none">
+                    Төсөл нийтлэх
+                  </Link>
+                </div>
               ) : (
                 projects.map((p) => (
-                  <Link
+                  <a
                     key={p.id}
-                    href={`/trip-details/${p.id}`}
+                    href={`mailto:info@busy.mn?subject=${encodeURIComponent(p.title)}`}
                     className="project-card text-decoration-none text-dark"
                   >
                     <div className="p-card-header">
@@ -532,22 +548,10 @@ export default async function InvestmentsPage({ searchParams }: Props) {
                         {new Date(p.startDate).toLocaleDateString("mn-MN")}
                       </div>
                     ) : null}
-                  </Link>
+                  </a>
                 ))
               )}
             </div>
-
-            {projects.length > 0 ? (
-              <div className="text-center mb-5 mt-4">
-                <Link
-                  href="/dashboard/trips"
-                  className="btn-brand-outline px-4 py-1 text-decoration-none"
-                  style={{ fontSize: "0.85rem", borderColor: "var(--border-color)", color: "var(--text-main)" }}
-                >
-                  Бүх төсөл харах
-                </Link>
-              </div>
-            ) : null}
 
             <h3 className="section-title">Pitch Deck Preview <i className="fa-regular fa-circle-question text-muted" style={{ fontSize: "0.9rem" }}></i></h3>
             <div className="deck-gallery">
