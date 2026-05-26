@@ -20,21 +20,6 @@ type Metrics = {
   pendingApprovals: number;
 };
 
-type EventTableRow = {
-  kind: "event" | "trip";
-  id: string;
-  title: string;
-  eventType: string;
-  startsAt: string;
-  endsAt: string;
-  location: string;
-  isOnline: boolean;
-  registeredCount: number;
-  capacity: number | null;
-  statusLabel: string | null;
-  coverUrl: string | null;
-};
-
 type RecentAttendee = {
   id: string;
   fullName: string;
@@ -47,7 +32,6 @@ type RecentAttendee = {
 type DashboardPayload = {
   scope: "user" | "admin";
   metrics: Metrics;
-  events: EventTableRow[];
   funnel: { interested: number; registered: number; paid: number; attended: number };
   statusBreakdown: {
     confirmed: number;
@@ -90,25 +74,6 @@ function formatMoney(n: number): string {
 function formatPct(numerator: number, denominator: number): string {
   if (denominator <= 0) return "0%";
   return `${Math.round((numerator / denominator) * 100)}%`;
-}
-
-function formatEventDate(iso: string): { date: string; time: string } {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return { date: "—", time: "" };
-  const date = d.toLocaleDateString("mn-MN", { year: "numeric", month: "2-digit", day: "2-digit" });
-  const time = d.toLocaleTimeString("mn-MN", { hour: "2-digit", minute: "2-digit" });
-  return { date, time };
-}
-
-function eventTypeBadge(kind: EventTableRow["kind"], type: string) {
-  if (kind === "trip") {
-    return { label: "Аялал", bg: "#f0fdf4", color: "#15803d" };
-  }
-  if (type === "weekly_meeting") return { label: "BNI", bg: "#eff6ff", color: "#2563eb" };
-  if (type === "visitor_day") return { label: "MEGA Visitor", bg: "#f5f3ff", color: "#7c3aed" };
-  if (type === "training") return { label: "Сургалт", bg: "#fffbeb", color: "#b45309" };
-  if (type === "social") return { label: "Social", bg: "#fef2f2", color: "#dc2626" };
-  return { label: "Event", bg: "#f1f5f9", color: "#475569" };
 }
 
 function GrowthMeta({ hint }: { hint: GrowthHint }) {
@@ -200,7 +165,6 @@ function Sparkline({ values }: { values: number[] }) {
 
 export default function DashboardPanel() {
   const [data, setData] = useState<DashboardPayload | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -209,23 +173,16 @@ export default function DashboardPanel() {
       try {
         const res = await apiFetch("/platform/dashboard");
         if (!res.ok) {
-          if (!cancelled) {
-            setError("Хяналтын самбарын мэдээлэл татаж чадсангүй.");
-            setLoading(false);
-          }
+          if (!cancelled) setError("Хяналтын самбарын мэдээлэл татаж чадсангүй.");
           return;
         }
         const json = (await res.json()) as { ok?: boolean; data?: DashboardPayload };
         if (!cancelled) {
           if (json.ok && json.data) setData(json.data);
           else setError("Хяналтын самбарын мэдээлэл татаж чадсангүй.");
-          setLoading(false);
         }
       } catch {
-        if (!cancelled) {
-          setError("Сүлжээний алдаа.");
-          setLoading(false);
-        }
+        if (!cancelled) setError("Сүлжээний алдаа.");
       }
     })();
     return () => {
@@ -234,7 +191,6 @@ export default function DashboardPanel() {
   }, []);
 
   const metrics = data?.metrics ?? EMPTY_METRICS;
-  const events = data?.events ?? [];
   const funnel = data?.funnel ?? { interested: 0, registered: 0, paid: 0, attended: 0 };
   const statusBreakdown = data?.statusBreakdown ?? { confirmed: 0, pending: 0, attended: 0, cancelled: 0, total: 0 };
   const recentAttendees = data?.recentAttendees ?? [];
@@ -325,105 +281,6 @@ export default function DashboardPanel() {
           <Link href="/platform/trips" className="btn-pl text-decoration-none">
             <i className="fa-solid fa-plane-up" /> Аялал нэмэх
           </Link>
-        </div>
-
-        <div className="pl-table-card">
-          <div className="pl-table-header">
-            <div className="pl-table-title">Арга хэмжээний удирдлага</div>
-          </div>
-          <table className="pl-table">
-            <thead>
-              <tr>
-                <th>Арга хэмжээ</th>
-                <th>Төрөл</th>
-                <th>Огноо</th>
-                <th>Байршил</th>
-                <th>Бүртгэл</th>
-                <th>Статус</th>
-                <th className="text-end">Үйлдэл</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="text-center text-muted py-4">
-                    Уншиж байна…
-                  </td>
-                </tr>
-              ) : events.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center text-muted py-4">
-                    Арга хэмжээ бүртгэгдээгүй байна.
-                  </td>
-                </tr>
-              ) : (
-                events.map((e) => {
-                  const badge = eventTypeBadge(e.kind, e.eventType);
-                  const start = formatEventDate(e.startsAt);
-                  const end = formatEventDate(e.endsAt);
-                  const editHref =
-                    e.kind === "trip"
-                      ? `/platform/trips?edit_trip=${e.id}`
-                      : `/platform/events?edit_event=${e.id}`;
-                  return (
-                    <tr key={`${e.kind}-${e.id}`}>
-                      <td>
-                        <div className="pl-event-item">
-                          {e.coverUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={e.coverUrl} alt="" width={56} height={56} className="pl-event-img" />
-                          ) : (
-                            <div
-                              className="pl-event-img d-flex align-items-center justify-content-center bg-light text-muted"
-                              style={{ width: 56, height: 56, borderRadius: 8 }}
-                            >
-                              <i className={`fa-solid ${e.kind === "trip" ? "fa-plane-up" : "fa-calendar"}`} />
-                            </div>
-                          )}
-                          <div>
-                            <div className="fw-bold">{e.title}</div>
-                            <div className="smaller text-muted">#{e.kind === "trip" ? "TRIP" : "EVT"}-{e.id}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="pl-badge" style={{ background: badge.bg, color: badge.color }}>
-                          {badge.label}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="fw-bold">{start.date}</div>
-                        <div className="smaller text-muted">
-                          {start.time}{end.time ? `–${end.time}` : ""}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="fw-bold">{e.location || (e.isOnline ? "Онлайн" : "—")}</div>
-                      </td>
-                      <td>
-                        <div className="smaller fw-bold mb-1">{formatInteger(e.registeredCount)}</div>
-                      </td>
-                      <td>
-                        <span className="pl-badge" style={{ background: "#ecfdf5", color: "#10b981" }}>
-                          {e.statusLabel?.trim() || "Идэвхтэй"}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="d-flex justify-content-end gap-2">
-                          <Link href={editHref} className="pl-act-btn" aria-label="Засах">
-                            <i className="fa-solid fa-pen" />
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-          <div className="p-3 border-top d-flex justify-content-between align-items-center">
-            <div className="smaller text-muted">Нийт {formatInteger(events.length)} арга хэмжээ</div>
-          </div>
         </div>
 
         <div className="pl-analytics-grid">
