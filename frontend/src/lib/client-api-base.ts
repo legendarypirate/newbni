@@ -41,9 +41,28 @@ function isLocalHostUrl(u: string): boolean {
   return /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?(\/|$)/i.test(u);
 }
 
+/** First hostname from `Host` / `X-Forwarded-Host` (no port). */
+export function normalizeRequestHost(hostRaw: string | null | undefined): string {
+  const first = String(hostRaw || "")
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+  if (!first) return "";
+  return first.split(":")[0];
+}
+
+/** Infer API base from marketing site URL when request host is missing (SSR behind proxy). */
+function apiBaseFromAppUrl(): string {
+  const app = String(process.env.NEXT_PUBLIC_APP_URL || "").trim().toLowerCase();
+  if (!app) return "";
+  if (app.includes("test.busy.mn")) return "https://testapi.busy.mn/api";
+  if (app.includes("busy.mn")) return "https://api.busy.mn/api";
+  return "";
+}
+
 /** Map a browser hostname to a hard-coded backend base. Returns "" when unknown. */
 export function mapBrowserHostToApiBase(hostRaw: string | null | undefined): string {
-  const host = String(hostRaw || "").toLowerCase().trim();
+  const host = normalizeRequestHost(hostRaw);
   if (!host) return "";
   // Frontend public hosts
   if (host === "test.busy.mn") return "https://testapi.busy.mn/api";
@@ -62,6 +81,12 @@ export function apiBaseForServer(hostHint?: string | null): string {
   const mapped = mapBrowserHostToApiBase(hostHint);
   if (mapped) return mapped;
 
+  const fromApp = apiBaseFromAppUrl();
+  if (fromApp) return fromApp;
+
+  const explicit = withApiSuffix(process.env.BACKEND_API_URL || process.env.API_BASE_URL || "");
+  if (explicit && !isLocalHostUrl(explicit)) return explicit;
+
   const internal = withApiSuffix(process.env.API_INTERNAL_URL || "");
   const pub = withApiSuffix(process.env.NEXT_PUBLIC_API_URL || "");
 
@@ -69,6 +94,10 @@ export function apiBaseForServer(hostHint?: string | null): string {
   if (pub && !isLocalHostUrl(pub)) return pub;
   if (internal) return internal;
   if (pub) return pub;
+
+  if (process.env.NODE_ENV === "production") {
+    return "https://api.busy.mn/api";
+  }
   return "http://127.0.0.1:3001/api";
 }
 

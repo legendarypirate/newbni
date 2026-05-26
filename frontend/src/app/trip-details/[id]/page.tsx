@@ -46,7 +46,7 @@ type TripDetailPayload = {
 };
 
 async function loadTripDetail(tripId: number, lang: BniLangCode): Promise<TripDetailPayload["trip"] | null> {
-  const res = await serverAuthedFetch(withLangQuery(`/api/public/trips/${tripId}`, lang), {
+  const res = await serverAuthedFetch(withLangQuery(`/public/trips/${tripId}`, lang), {
     headers: apiLangHeaders(lang),
   });
   if (!res.ok) return null;

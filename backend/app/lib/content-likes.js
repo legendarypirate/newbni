@@ -19,24 +19,33 @@ function normalizeTargetIds(raw) {
   return [...new Set(text.split(",").map((s) => s.trim()).filter(Boolean))];
 }
 
+function isMissingLikesTableError(err) {
+  const msg = String(err?.message || err || "").toLowerCase();
+  return msg.includes("content_likes") && (msg.includes("does not exist") || msg.includes("relation"));
+}
+
 async function fetchLikeCounts(targetType, targetIds) {
   const ids = normalizeTargetIds(targetIds);
   const map = new Map();
   if (!ids.length) return map;
 
-  const rows = await db.sequelize.query(
-    `SELECT target_id AS "targetId", COUNT(*)::int AS cnt
-     FROM content_likes
-     WHERE target_type = :targetType AND target_id IN (:ids)
-     GROUP BY target_id`,
-    {
-      replacements: { targetType, ids },
-      type: db.Sequelize.QueryTypes.SELECT,
-    },
-  );
+  try {
+    const rows = await db.sequelize.query(
+      `SELECT target_id AS "targetId", COUNT(*)::int AS cnt
+       FROM content_likes
+       WHERE target_type = :targetType AND target_id IN (:ids)
+       GROUP BY target_id`,
+      {
+        replacements: { targetType, ids },
+        type: db.Sequelize.QueryTypes.SELECT,
+      },
+    );
 
-  for (const row of rows) {
-    map.set(String(row.targetId), Number(row.cnt) || 0);
+    for (const row of rows) {
+      map.set(String(row.targetId), Number(row.cnt) || 0);
+    }
+  } catch (err) {
+    if (!isMissingLikesTableError(err)) throw err;
   }
   return map;
 }
@@ -46,18 +55,22 @@ async function fetchLikedTargetIds(accountId, targetType, targetIds) {
   const liked = new Set();
   if (!accountId || !ids.length) return liked;
 
-  const rows = await db.ContentLike.findAll({
-    where: {
-      accountId,
-      targetType,
-      targetId: { [Op.in]: ids },
-    },
-    attributes: ["targetId"],
-    raw: true,
-  });
+  try {
+    const rows = await db.ContentLike.findAll({
+      where: {
+        accountId,
+        targetType,
+        targetId: { [Op.in]: ids },
+      },
+      attributes: ["targetId"],
+      raw: true,
+    });
 
-  for (const row of rows) {
-    liked.add(String(row.targetId ?? row.target_id));
+    for (const row of rows) {
+      liked.add(String(row.targetId ?? row.target_id));
+    }
+  } catch (err) {
+    if (!isMissingLikesTableError(err)) throw err;
   }
   return liked;
 }

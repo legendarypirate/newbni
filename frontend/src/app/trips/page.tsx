@@ -42,7 +42,7 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
   urlParams.set("trip_type", tripType);
   if (budgetMax > 0) urlParams.set("budget_max", budgetMax.toString());
 
-  const apiPath = withLangQuery(`/api/platform/trips?${urlParams.toString()}`, lang);
+  const apiPath = withLangQuery(`/platform/trips?${urlParams.toString()}`, lang);
   const res = await serverAuthedFetch(apiPath, {
     headers: apiLangHeaders(lang),
   })

@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { readBniTokenFromCookieHeader } from "./auth-cookie-token";
-import { resolveServerApiBase } from "./resolve-api-base";
+import { buildBackendUrl, resolveServerApiBase } from "./resolve-api-base";
 
 /** Authenticated fetch from Server Components / Server Actions using incoming cookies. */
 export async function serverAuthedFetch(pathWithLeadingSlash: string, init?: RequestInit): Promise<Response> {
@@ -12,6 +12,6 @@ export async function serverAuthedFetch(pathWithLeadingSlash: string, init?: Req
   if (token) hdrs.set("Authorization", `Bearer ${token}`);
   const hostHint = h.get("x-forwarded-host") || h.get("host");
   const base = resolveServerApiBase(hostHint);
-  const p = pathWithLeadingSlash.startsWith("/") ? pathWithLeadingSlash : `/${pathWithLeadingSlash}`;
-  return fetch(`${base}${p}`, { ...init, headers: hdrs, cache: "no-store" });
+  const url = buildBackendUrl(base, pathWithLeadingSlash);
+  return fetch(url, { ...init, headers: hdrs, cache: "no-store" });
 }

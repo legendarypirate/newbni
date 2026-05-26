@@ -65,7 +65,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EventDetailPage({ params }: Props) {
   const { id } = await params;
-  const res = await serverAuthedFetch(`/api/events/${id}`)
+  const res = await serverAuthedFetch(`/events/${id}`)
     .then((r) => r.json())
     .catch(() => ({ ok: false }));
   if (!res.ok) notFound();

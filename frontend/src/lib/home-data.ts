@@ -93,7 +93,7 @@ const empty: HomePayload = {
 
 export async function loadHomeData(lang: BniLangCode = "mn"): Promise<HomePayload> {
   try {
-    const path = withLangQuery("/api/home", lang);
+    const path = withLangQuery("/home", lang);
     const res = await serverAuthedFetch(path, { headers: apiLangHeaders(lang) });
     const json = (await res.json().catch(() => null)) as { ok?: boolean; data?: HomePayload } | null;
     if (!res.ok || !json?.ok || !json.data) {

@@ -75,28 +75,36 @@ exports.getHome = async (req, res) => {
         attributes: ["id", "title", "startsAt", "endsAt", "location", "bannerImage"],
         raw: true,
       }),
-      db.sequelize.query(
-        `SELECT
-           id,
-           title,
-           image,
-           slug,
-           excerpt,
-           content,
-           body,
-           created_at AS "createdAt"
-         FROM news
-         WHERE status = 'published'
-         ORDER BY created_at DESC, id DESC
-         LIMIT 6`,
-        {
-          type: db.Sequelize.QueryTypes.SELECT,
-        },
-      ),
+      db.sequelize
+        .query(
+          `SELECT
+             id,
+             title,
+             image,
+             slug,
+             excerpt,
+             content,
+             body,
+             created_at AS "createdAt"
+           FROM news
+           WHERE status = 'published'
+           ORDER BY created_at DESC, id DESC
+           LIMIT 6`,
+          {
+            type: db.Sequelize.QueryTypes.SELECT,
+          },
+        )
+        .catch((err) => {
+          console.error("home latestNews failed:", err);
+          return [];
+        }),
       db.LegacyMember.findAll({
         where: { featured: 1, status: "active" },
         limit: 12,
         raw: true,
+      }).catch((err) => {
+        console.error("home featuredMembers failed:", err);
+        return [];
       }),
       db.PlatformProfile.findAll({
         where: { companyName: { [Op.ne]: null } },
@@ -104,6 +112,9 @@ exports.getHome = async (req, res) => {
         limit: 20,
         order: [["updatedAt", "DESC"]],
         raw: true,
+      }).catch((err) => {
+        console.error("home partners failed:", err);
+        return [];
       }),
     ]);
 
@@ -120,10 +131,16 @@ exports.getHome = async (req, res) => {
       translateRecords(latestNews, "news", lang),
     ]);
 
-    const [tripsWithLikes, eventsWithLikes] = await Promise.all([
-      attachLikeMeta(tripsTranslated, "trip", accountId),
-      attachLikeMeta(eventsTranslated, "event", accountId),
-    ]);
+    let tripsWithLikes = tripsTranslated;
+    let eventsWithLikes = eventsTranslated;
+    try {
+      [tripsWithLikes, eventsWithLikes] = await Promise.all([
+        attachLikeMeta(tripsTranslated, "trip", accountId),
+        attachLikeMeta(eventsTranslated, "event", accountId),
+      ]);
+    } catch (likeErr) {
+      console.error("home attachLikeMeta failed:", likeErr);
+    }
 
     const tripsOut = sortByLikeCountDesc(tripsWithLikes, (a, b) => {
       const da = new Date(a.startDate).getTime();
