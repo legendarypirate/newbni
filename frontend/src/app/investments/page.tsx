@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 
 import SafeImage from "@/components/SafeImage";
 import { getLangFromCookies } from "@/lib/i18n/server";
@@ -18,7 +19,7 @@ export default async function InvestmentsPage({ searchParams }: Props) {
   const sp = await searchParams;
   const tab = (sp.tab ?? "").trim();
 
-  const lang = await getLangFromCookies();
+  const lang = getLangFromCookies(await cookies());
   const { projects, investors, featuredProject, facets } = await loadInvestmentsData(lang);
   const featuredIcon = projectIconForSector(featuredProject?.sector ?? null);
 
