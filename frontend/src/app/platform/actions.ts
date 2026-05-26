@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { mongoliaBankByCode } from "@/lib/mongolia-banks";
+import { resolvePlatformAuthToken } from "@/lib/resolve-platform-auth-token";
 import { getPlatformSession } from "@/lib/platform-session";
-import { setPlatformSessionCookies } from "@/lib/platform-session-cookies";
+import { setPlatformNavDisplayCookie, setPlatformSessionCookies } from "@/lib/platform-session-cookies";
 import { destroyCloudinaryBySecureUrl, writePlatformUploadImage } from "@/lib/platform-write-image";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
@@ -31,11 +32,13 @@ function asRecord(json: unknown): Record<string, unknown> {
 }
 
 export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, formData: FormData): Promise<ProfileSaveState> {
-  const session = await getPlatformSession();
+  const authToken = await resolvePlatformAuthToken(formData);
+  const session = await getPlatformSession({ bearerToken: authToken });
   if (!session) {
     return { ok: false, message: "Нэвтэрнэ үү." };
   }
   const accountId = BigInt(session.id);
+  const authed = { bearerToken: authToken };
 
   const displayName = String(formData.get("display_name") ?? "").trim();
   const companyName = String(formData.get("company_name") ?? "").trim();
@@ -85,7 +88,9 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
   }
 
   // We need current profile to know previous image URLs for destruction
-  const currentRes = await serverAuthedFetch(`/profiles/${accountId}`).then(r => r.json()).catch(() => ({ ok: false }));
+  const currentRes = await serverAuthedFetch(`/profiles/${accountId}`, undefined, authed)
+    .then((r) => r.json())
+    .catch(() => ({ ok: false }));
   const existing = currentRes.ok ? currentRes.data : null;
   const existingBiz = asRecord(existing?.businessJson);
   const previousPhotoUrl = existing?.photoUrl?.trim() ?? "";
@@ -167,16 +172,25 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
     }
   }
 
-  const res = await serverAuthedFetch("/profiles/me", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  const res = await serverAuthedFetch(
+    "/profiles/me",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    authed,
+  );
   const json = await res.json();
   if (!res.ok) {
     return { ok: false, message: json.message || "Хадгалахад алдаа гарлаа." };
   }
 
-  await setPlatformSessionCookies(accountId.toString(), json.displayName);
+  const navDisplay = String(json.displayName ?? displayName).trim() || session.displayName;
+  if (authToken) {
+    await setPlatformSessionCookies(authToken, navDisplay);
+  } else {
+    await setPlatformNavDisplayCookie(navDisplay);
+  }
 
   revalidatePath("/platform/profile");
 
@@ -185,13 +199,17 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
 }
 
 export async function saveHeroSlidesAction(_prev: ProfileSaveState | null, formData: FormData): Promise<ProfileSaveState> {
-  const session = await getPlatformSession();
+  const authToken = await resolvePlatformAuthToken(formData);
+  const session = await getPlatformSession({ bearerToken: authToken });
   if (!session) {
     return { ok: false, message: "Нэвтэрнэ үү." };
   }
   const accountId = BigInt(session.id);
+  const authed = { bearerToken: authToken };
 
-  const currentRes = await serverAuthedFetch(`/profiles/${accountId}`).then(r => r.json()).catch(() => ({ ok: false }));
+  const currentRes = await serverAuthedFetch(`/profiles/${accountId}`, undefined, authed)
+    .then((r) => r.json())
+    .catch(() => ({ ok: false }));
   const existing = currentRes.ok ? currentRes.data : null;
   const biz = asRecord(existing?.businessJson);
   let slides: string[] = Array.isArray(biz.hero_slides)
@@ -220,10 +238,14 @@ export async function saveHeroSlidesAction(_prev: ProfileSaveState | null, formD
     }
   }
 
-  const res = await serverAuthedFetch("/profiles/me/hero-slides", {
-    method: "POST",
-    body: JSON.stringify({ slides }),
-  });
+  const res = await serverAuthedFetch(
+    "/profiles/me/hero-slides",
+    {
+      method: "POST",
+      body: JSON.stringify({ slides }),
+    },
+    authed,
+  );
   if (!res.ok) {
     return { ok: false, message: "Хадгалахад алдаа гарлаа." };
   }

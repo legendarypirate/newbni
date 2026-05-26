@@ -13,7 +13,7 @@ export default function TokenHandler() {
     const nextPath = searchParams.get("next");
     const oauthError = searchParams.get("error");
     if (token) {
-      setAuthToken(token);
+      setAuthToken(token); // also syncs httpOnly cookies via /api/auth/establish-session
       // After storing token, continue to requested path (default platform).
       const safeNext =
         nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/platform";

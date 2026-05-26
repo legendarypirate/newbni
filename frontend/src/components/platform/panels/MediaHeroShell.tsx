@@ -3,6 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import { saveHeroSlidesAction, type ProfileSaveState } from "@/app/platform/actions";
 import { FormPendingBackdrop, PendingSubmitButton } from "@/components/platform/FormPendingControls";
+import PlatformAuthTokenField from "@/components/platform/PlatformAuthTokenField";
 
 type Props = {
   slides: string[];
@@ -36,6 +37,7 @@ export default function MediaHeroShell({ slides: initialSlides }: Props) {
         React picks multipart automatically when the form contains files.
       */}
       <form action={formAction}>
+        <PlatformAuthTokenField />
         <FormPendingBackdrop />
         <div className="med-grid">
           <div className="med-main">

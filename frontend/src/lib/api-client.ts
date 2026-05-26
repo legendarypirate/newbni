@@ -23,7 +23,16 @@ export function getAuthToken(cookieHeader?: string) {
 export function setAuthToken(token: string) {
   if (typeof window === "undefined") return;
   localStorage.setItem("bni_token", token);
-  document.cookie = `bni_token=${token}; path=/; max-age=2592000; SameSite=Lax`;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `bni_token=${encodeURIComponent(token)}; path=/; max-age=2592000; SameSite=Lax${secure}`;
+  void fetch("/api/auth/establish-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+    credentials: "same-origin",
+  }).catch(() => {
+    /* non-blocking; Server Actions also accept `_platform_auth_token` */
+  });
 }
 
 export function removeAuthToken() {

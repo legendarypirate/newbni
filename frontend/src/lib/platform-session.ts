@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { apiFetch } from "./api-client";
+import { readBniTokenFromCookieHeader } from "@/lib/auth-cookie-token";
+import { buildBackendUrl, resolveServerApiBase } from "@/lib/resolve-api-base";
 
 export type PlatformUser = {
   id: string;
@@ -13,12 +14,27 @@ export type PlatformUser = {
   businessEmail: string | null;
 };
 
-export async function getPlatformSession(): Promise<PlatformUser | null> {
+type PlatformSessionOpts = {
+  bearerToken?: string | null;
+};
+
+export async function getPlatformSession(opts?: PlatformSessionOpts): Promise<PlatformUser | null> {
   try {
     const h = await headers();
-    const res = await apiFetch("/auth/me", {}, h.get("cookie") ?? undefined);
+    const cookieHeader = h.get("cookie");
+    const hostHint = h.get("x-forwarded-host") || h.get("host");
+    const token = opts?.bearerToken ?? readBniTokenFromCookieHeader(cookieHeader);
+    if (!token) return null;
+
+    const hdrs = new Headers();
+    if (cookieHeader) hdrs.set("cookie", cookieHeader);
+    hdrs.set("Authorization", `Bearer ${token}`);
+
+    const base = resolveServerApiBase(hostHint);
+    const url = buildBackendUrl(base, "/auth/me");
+    const res = await fetch(url, { headers: hdrs, cache: "no-store" });
     if (!res.ok) return null;
-    const data = await res.json();
+    const data = (await res.json()) as { user?: PlatformUser | null };
     return data.user || null;
   } catch {
     return null;

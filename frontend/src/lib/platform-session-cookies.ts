@@ -59,6 +59,12 @@ export async function setPlatformSessionCookies(token: string, display: string):
   jar.set("bni_platform_nav_display", display, { ...so, httpOnly: false });
 }
 
+export async function setPlatformNavDisplayCookie(display: string): Promise<void> {
+  const jar = await cookies();
+  const so = sessionCookieOpts();
+  jar.set("bni_platform_nav_display", display, { ...so, httpOnly: false });
+}
+
 export function attachPlatformSessionToResponse(res: NextResponse, token: string, display: string): void {
   const so = sessionCookieOpts();
   res.cookies.set("bni_token", token, { ...so, httpOnly: true });

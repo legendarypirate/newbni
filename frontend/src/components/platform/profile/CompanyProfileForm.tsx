@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { saveCompanyProfileAction, type ProfileSaveState } from "@/app/platform/actions";
 import { FormPendingBackdrop, PendingSubmitButton } from "@/components/platform/FormPendingControls";
+import PlatformAuthTokenField from "@/components/platform/PlatformAuthTokenField";
 import BankSelectClient from "@/components/platform/profile/BankSelectClient";
 import { mediaUrl } from "@/lib/media-url";
 import { MONGOLIA_BANKS_CATALOG, PROFILE_INDUSTRY_OPTIONS } from "@/lib/mongolia-banks";
@@ -88,6 +89,7 @@ export default function CompanyProfileForm({
       ) : null}
 
       <form action={formAction}>
+        <PlatformAuthTokenField />
         <FormPendingBackdrop />
         <div className="pm-layout">
           <div className="pm-main">
