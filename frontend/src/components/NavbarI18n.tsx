@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { removeAuthToken } from "@/lib/api-client";
 import { useT } from "@/lib/i18n/client";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { NavbarUserMenu } from "@/components/NavbarUserMenu";
 import {
   SHOW_PUBLIC_HEADER_LOGIN_REGISTER,
   SHOW_PUBLIC_NAV_BUSY_AI,
@@ -19,36 +19,7 @@ import {
 export default function NavbarI18n() {
   const pathname = usePathname() ?? "/";
   const t = useT();
-  const [session, setSession] = useState<{ displayName: string; role: string | null } | null>(null);
-  const [sessionReady, setSessionReady] = useState(false);
-
-  useEffect(() => {
-    const display = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("bni_platform_nav_display="))
-      ?.split("=")[1];
-    const token = localStorage.getItem("bni_token");
-    if (!token) {
-      setSession(null);
-      setSessionReady(true);
-      return;
-    }
-    try {
-      const payloadSeg = token.split(".")[1];
-      const payload = JSON.parse(atob(payloadSeg.replace(/-/g, "+").replace(/_/g, "/")));
-      setSession({
-        displayName: display ? decodeURIComponent(display) : payload.displayName || payload.email || "User",
-        role: typeof payload.role === "string" ? payload.role : null,
-      });
-    } catch {
-      setSession({
-        displayName: display ? decodeURIComponent(display) : "User",
-        role: null,
-      });
-    } finally {
-      setSessionReady(true);
-    }
-  }, []);
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   useEffect(() => {
@@ -148,64 +119,17 @@ export default function NavbarI18n() {
             <LanguageSwitcher />
             {SHOW_PUBLIC_HEADER_LOGIN_REGISTER ? (
               <>
-                {sessionReady && session ? (
-                  <div className="dropdown">
-                    <button
-                      className="btn btn-light btn-sm rounded-circle border d-flex align-items-center justify-content-center"
-                      type="button"
-                      data-bs-toggle="dropdown"
-                      aria-expanded="false"
-                      aria-label={t("nav.accountMenu")}
-                      style={{ width: 36, height: 36 }}
-                    >
-                      <i className="fa-solid fa-user" aria-hidden />
-                    </button>
-                    <ul
-                      className="dropdown-menu dropdown-menu-end shadow border-0 py-2"
-                      style={{ borderRadius: 12, minWidth: "14rem" }}
-                    >
-                      <li className="px-3 pb-2 border-bottom border-light">
-                        <div className="small text-muted">{t("auth.greeting")}</div>
-                        <div className="fw-semibold text-truncate">{session.displayName}</div>
-                      </li>
-                      <li>
-                        {session.role === "admin" ? (
-                          <a
-                            className="dropdown-item py-2"
-                            href={`${(process.env.NEXT_PUBLIC_ADMIN_URL || "http://localhost:3002").replace(/\/$/, "")}/admin`}
-                          >
-                            <i className="fa-solid fa-shield-halved me-2 text-muted" aria-hidden />
-                            {t("auth.admin")}
-                          </a>
-                        ) : (
-                          <Link className="dropdown-item py-2" href="/platform">
-                            <i className="fa-solid fa-gauge-high me-2 text-muted" aria-hidden />
-                            {t("nav.myDashboard")}
-                          </Link>
-                        )}
-                      </li>
-                      <li>
-                        <a
-                          className="dropdown-item py-2 text-danger"
-                          href="/auth/logout"
-                          onClick={() => removeAuthToken()}
-                        >
-                          <i className="fa-solid fa-right-from-bracket me-2" aria-hidden />
-                          {t("auth.logout")}
-                        </a>
-                      </li>
-                    </ul>
-                  </div>
-                ) : (
+                <NavbarUserMenu onResolved={setLoggedIn} />
+                {loggedIn === false ? (
                   <>
-                    <Link href="/auth/login" className="btn btn-light px-4 fw-medium rounded-pill border">
+                    <Link href="/auth/login" className="btn btn-light btn-sm px-3 fw-medium rounded-pill border">
                       {t("auth.login")}
                     </Link>
-                    <Link href="/auth/register" className="btn btn-brand px-4 fw-medium rounded-pill">
+                    <Link href="/auth/register" className="btn btn-brand btn-sm px-3 fw-medium rounded-pill">
                       {t("auth.register")}
                     </Link>
                   </>
-                )}
+                ) : null}
               </>
             ) : null}
           </div>

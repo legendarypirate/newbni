@@ -7,6 +7,7 @@ import type { BniLangCode } from "@/lib/nav-php-parity";
 import { isBniLang } from "@/lib/nav-php-parity";
 import { useT } from "@/lib/i18n/client";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { NavbarUserMenu } from "@/components/NavbarUserMenu";
 import {
   SHOW_PUBLIC_HEADER_LOGIN_REGISTER,
   SHOW_PUBLIC_NAV_BUSY_AI,
@@ -88,6 +89,7 @@ export function SiteHeaderNav({
   const navLang: BniLangCode = isBniLang(initialLang) ? initialLang : "mn";
   const t = useT();
 
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(platformUser ? true : null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   useEffect(() => {
     setMobileNavOpen(false);
@@ -105,10 +107,6 @@ export function SiteHeaderNav({
     headerAuthUseNext || !legacySiteUrl ? "/auth/login" : `${legacySiteUrl}/auth/login.php`;
   const registerHref =
     headerAuthUseNext || !legacySiteUrl ? "/auth/register" : `${legacySiteUrl}/auth/register.php`;
-  const dashboardHref =
-    headerAuthUseNext || !legacySiteUrl ? "/platform" : `${legacySiteUrl}/platform-home.php`;
-  const logoutHref =
-    headerAuthUseNext || !legacySiteUrl ? "/auth/logout" : `${legacySiteUrl}/auth/platform-logout.php`;
 
   return (
     <nav className="navbar navbar-expand-lg navbar-light navbar-custom">
@@ -147,47 +145,19 @@ export function SiteHeaderNav({
           </ul>
           <div className="d-flex align-items-center gap-2 ms-lg-auto flex-wrap mt-3 mt-lg-0">
             <LanguageSwitcher legacySiteUrl={legacySiteUrl} headerAuthUseNext={headerAuthUseNext} />
-            {platformUser ? (
-              <div className="dropdown">
-                <button
-                  className="btn btn-light btn-sm rounded-circle border d-flex align-items-center justify-content-center"
-                  type="button"
-                  data-bs-toggle="dropdown"
-                  aria-expanded="false"
-                  aria-label={t("nav.accountMenu")}
-                  style={{ width: 36, height: 36 }}
-                >
-                  <i className="fa-solid fa-user" aria-hidden />
-                </button>
-                <ul
-                  className="dropdown-menu dropdown-menu-end shadow border-0"
-                  style={{ borderRadius: 12, minWidth: "15rem" }}
-                >
-                  <li className="px-3 pt-3 pb-2 border-bottom border-light">
-                    <div className="fw-semibold text-truncate">{platformUser.displayName}</div>
-                  </li>
-                  <li>
-                    <Link className="dropdown-item py-2" href={dashboardHref}>
-                      <i className="fa-solid fa-gauge-high me-2 text-muted" aria-hidden />
-                      {t("nav.myDashboard")}
-                    </Link>
-                  </li>
-                  <li>
-                    <a className="dropdown-item py-2 text-danger" href={logoutHref}>
-                      <i className="fa-solid fa-right-from-bracket me-2" aria-hidden />
-                      {t("auth.logout")}
-                    </a>
-                  </li>
-                </ul>
-              </div>
-            ) : SHOW_PUBLIC_HEADER_LOGIN_REGISTER ? (
+            {SHOW_PUBLIC_HEADER_LOGIN_REGISTER ? (
               <>
-                <Link href={loginHref} className="btn btn-light px-4 fw-medium rounded-pill border">
-                  Нэвтрэх
-                </Link>
-                <Link href={registerHref} className="btn btn-brand px-4 fw-medium rounded-pill">
-                  Бүртгүүлэх
-                </Link>
+                <NavbarUserMenu onResolved={setLoggedIn} />
+                {loggedIn === false ? (
+                  <>
+                    <Link href={loginHref} className="btn btn-light btn-sm px-3 fw-medium rounded-pill border">
+                      {t("auth.login")}
+                    </Link>
+                    <Link href={registerHref} className="btn btn-brand btn-sm px-3 fw-medium rounded-pill">
+                      {t("auth.register")}
+                    </Link>
+                  </>
+                ) : null}
               </>
             ) : null}
           </div>
