@@ -225,6 +225,35 @@
     gap: 0.5rem;
     flex-wrap: wrap;
 }
+.featured-trip-cta.trip-list-actions {
+    flex-wrap: nowrap;
+    align-items: stretch;
+}
+.featured-trip-cta.trip-list-actions .btn-brand,
+.featured-trip-cta.trip-list-actions .btn-brand-outline {
+    flex: 1 1 0;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.trip-card-footer .trip-list-actions {
+    flex-wrap: nowrap;
+    align-items: stretch;
+}
+.trip-card-footer .trip-list-actions .btn-brand,
+.trip-card-footer .trip-list-actions .btn-brand-outline {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border-radius: 6px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
 .featured-trip-cta .btn-brand-outline,
 .featured-trip-cta .btn-brand {
     white-space: nowrap;

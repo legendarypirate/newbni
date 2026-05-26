@@ -224,14 +224,6 @@ function TripsSection({ data, t }: { data: HomePayload; t: TFn }) {
                   <div className="trip-exact-img-wrap">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={mediaUrl(trip.coverImageUrl) || PLACEHOLDER_TRIP} className="trip-exact-img" alt={title} />
-                    <ContentLikeButton
-                      targetType="trip"
-                      targetId={trip.id}
-                      initialCount={trip.likeCount ?? 0}
-                      initialLiked={Boolean(trip.likedByMe)}
-                      className="trip-bookmark"
-                      size="sm"
-                    />
                     <span className={`trip-status-tag ${status !== t("home.mockup.active") ? "inactive" : ""}`}>{status}</span>
                   </div>
                   <div className="trip-exact-body">
@@ -241,6 +233,14 @@ function TripsSection({ data, t }: { data: HomePayload; t: TFn }) {
                     <div className="trip-exact-btns">
                       <button type="button" className="btn-qpay js-trip-register-btn" data-trip-title={title} data-trip-id={String(trip.id)}>{t("common.register")}</button>
                       <Link href={`/trip-details/${trip.id}`} className="btn-exact-outline text-center">{t("common.details")}</Link>
+                      <ContentLikeButton
+                        targetType="trip"
+                        targetId={trip.id}
+                        initialCount={trip.likeCount ?? 0}
+                        initialLiked={Boolean(trip.likedByMe)}
+                        layout="inline"
+                        size="sm"
+                      />
                     </div>
                   </div>
                 </div>

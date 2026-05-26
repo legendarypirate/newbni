@@ -771,7 +771,8 @@
 
 .trip-exact-btns {
     display: flex;
-    gap: 0.75rem;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
     align-items: stretch;
     margin-top: auto;
     padding-top: 1.25rem;

@@ -12,6 +12,8 @@ type Props = {
   initialLiked?: boolean;
   className?: string;
   size?: "sm" | "md";
+  /** `overlay` = top-right on image; `inline` = sits in a button row with CTA links */
+  layout?: "overlay" | "inline";
 };
 
 export function ContentLikeButton({
@@ -21,6 +23,7 @@ export function ContentLikeButton({
   initialLiked = false,
   className = "",
   size = "md",
+  layout = "overlay",
 }: Props) {
   const t = useT();
   const pathname = usePathname() ?? "/";
@@ -66,13 +69,13 @@ export function ContentLikeButton({
   return (
     <button
       type="button"
-      className={`content-like-btn content-like-btn--${size}${liked ? " is-liked" : ""}${className ? ` ${className}` : ""}`}
+      className={`content-like-btn content-like-btn--${size} content-like-btn--${layout}${liked ? " is-liked" : ""}${className ? ` ${className}` : ""}`}
       onClick={onClick}
       aria-pressed={liked}
       aria-label={liked ? t("common.unlike") : t("common.like")}
       disabled={busy}
     >
-      <i className={liked ? "fa-solid fa-heart" : "fa-regular fa-heart"} aria-hidden />
+      <i className={liked ? "fa-solid fa-thumbs-up" : "fa-regular fa-thumbs-up"} aria-hidden />
       {count > 0 ? <span className="content-like-count">{count}</span> : null}
     </button>
   );

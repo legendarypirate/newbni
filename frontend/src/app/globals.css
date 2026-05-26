@@ -192,14 +192,14 @@ img::after {
 }
 
 .content-like-btn:hover:not(:disabled) {
-  color: #e11d48;
-  border-color: #fecdd3;
+  color: var(--brand-primary, #2563eb);
+  border-color: #bfdbfe;
 }
 
 .content-like-btn.is-liked {
-  color: #e11d48;
-  border-color: #fecdd3;
-  background: #fff1f2;
+  color: var(--brand-primary, #2563eb);
+  border-color: #bfdbfe;
+  background: #eff6ff;
 }
 
 .content-like-btn:disabled {
@@ -212,22 +212,58 @@ img::after {
   font-size: 0.7rem;
 }
 
-.content-like-btn.trip-bookmark {
+.content-like-btn--overlay.trip-bookmark,
+.content-like-btn--overlay {
   position: absolute;
   top: 10px;
   right: 10px;
   z-index: 2;
 }
 
-.upcoming-meeting-card > .content-like-btn,
-.event-mini-item-wrap > .content-like-btn {
+.content-like-btn--inline {
+  position: static;
+  flex-shrink: 0;
+  align-self: stretch;
+  min-height: 2.5rem;
+  border-radius: 6px;
+  padding: 0.5rem 0.65rem;
+}
+
+.trip-exact-btns .content-like-btn--inline {
+  flex: 0 0 auto;
+}
+
+.trip-list-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.trip-list-actions > .btn-brand,
+.trip-list-actions > .btn-brand-outline,
+.trip-list-actions > .btn-qpay,
+.trip-list-actions > .btn-exact-outline {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+  text-decoration: none;
+}
+
+.trip-list-actions > .content-like-btn--inline {
+  flex: 0 0 auto;
+}
+
+.upcoming-meeting-card > .content-like-btn--overlay,
+.event-mini-item-wrap > .content-like-btn--overlay {
   position: absolute;
   top: 10px;
   right: 10px;
   z-index: 2;
 }
 
-.event-mini-item-wrap > .content-like-btn {
+.event-mini-item-wrap > .content-like-btn--overlay {
   top: 8px;
   right: 4px;
 }

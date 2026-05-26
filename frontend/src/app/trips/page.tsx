@@ -178,14 +178,6 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
                     </div>
                   }
                 />
-                <ContentLikeButton
-                  targetType="trip"
-                  targetId={ftrip.id}
-                  initialCount={Number((ftrip as { likeCount?: number }).likeCount ?? 0)}
-                  initialLiked={Boolean((ftrip as { likedByMe?: boolean }).likedByMe)}
-                  className="trip-bookmark"
-                  size="sm"
-                />
               </div>
               <div className="featured-trip-content">
                 <div className="featured-trip-header">
@@ -222,9 +214,17 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
                       <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Үлдсэн суудал</div>
                       <div className="seats-count">{ftrip.seatsLabel || 'Мэдээлэл шинэчлэгдэнэ'}</div>
                     </div>
-                    <div className="featured-trip-cta">
-                      <Link href={`/trip-details/${ftrip.id}`} className="btn-brand-outline">Дэлгэрэнгүй</Link>
+                    <div className="featured-trip-cta trip-list-actions">
                       <Link href={`/trip-details/${ftrip.id}`} className="btn-brand">Бүртгүүлэх</Link>
+                      <Link href={`/trip-details/${ftrip.id}`} className="btn-brand-outline">Дэлгэрэнгүй</Link>
+                      <ContentLikeButton
+                        targetType="trip"
+                        targetId={ftrip.id}
+                        initialCount={Number((ftrip as { likeCount?: number }).likeCount ?? 0)}
+                        initialLiked={Boolean((ftrip as { likedByMe?: boolean }).likedByMe)}
+                        layout="inline"
+                        size="sm"
+                      />
                     </div>
                   </div>
                 </div>
@@ -251,14 +251,6 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
                         </div>
                       }
                     />
-                    <ContentLikeButton
-                      targetType="trip"
-                      targetId={trip.id}
-                      initialCount={Number((trip as { likeCount?: number }).likeCount ?? 0)}
-                      initialLiked={Boolean((trip as { likedByMe?: boolean }).likedByMe)}
-                      className="trip-bookmark"
-                      size="sm"
-                    />
                     <div className="trip-date-overlay"><i className="fa-regular fa-calendar me-1"></i> {formatMnDate(trip.startDate)} - {formatMnDate(trip.endDate)}</div>
                   </div>
                   <div className="trip-card-body">
@@ -277,7 +269,18 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
                           </div>
                         </div>
                       ) : null}
-                      <Link href={`/trip-details/${trip.id}`} className="btn-brand-outline w-100 text-center py-1 mt-1" style={{ color: "var(--brand-primary)", borderColor: "#bfdbfe" }}>Дэлгэрэнгүй</Link>
+                      <div className="trip-list-actions">
+                        <Link href={`/trip-details/${trip.id}`} className="btn-brand py-1">Бүртгүүлэх</Link>
+                        <Link href={`/trip-details/${trip.id}`} className="btn-brand-outline py-1">Дэлгэрэнгүй</Link>
+                        <ContentLikeButton
+                          targetType="trip"
+                          targetId={trip.id}
+                          initialCount={Number((trip as { likeCount?: number }).likeCount ?? 0)}
+                          initialLiked={Boolean((trip as { likedByMe?: boolean }).likedByMe)}
+                          layout="inline"
+                          size="sm"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
