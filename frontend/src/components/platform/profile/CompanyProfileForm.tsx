@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { saveCompanyProfileAction, type ProfileSaveState } from "@/app/platform/actions";
 import { FormPendingBackdrop, PendingSubmitButton } from "@/components/platform/FormPendingControls";
 import PlatformAuthTokenField from "@/components/platform/PlatformAuthTokenField";
@@ -25,6 +25,7 @@ export type CompanyProfileFormProps = {
   };
   businessJson: Record<string, unknown>;
   savedBankCode: string;
+  onSaved?: () => void | Promise<void>;
 };
 
 function str(v: unknown): string {
@@ -38,8 +39,17 @@ export default function CompanyProfileForm({
   profile,
   businessJson,
   savedBankCode,
+  onSaved,
 }: CompanyProfileFormProps) {
   const [state, formAction] = useActionState(saveCompanyProfileAction, null as ProfileSaveState | null);
+  const lastSavedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!state?.ok || !state.message) return;
+    if (lastSavedRef.current === state.message) return;
+    lastSavedRef.current = state.message;
+    void onSaved?.();
+  }, [state, onSaved]);
 
   const pPct = Math.max(0, Math.min(100, completionPct));
   const biz = businessJson;

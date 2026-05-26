@@ -18,6 +18,10 @@ export async function serverAuthedFetch(
   if (cookieHeader) hdrs.set("cookie", cookieHeader);
   const token = opts?.bearerToken ?? readBniTokenFromCookieHeader(cookieHeader);
   if (token) hdrs.set("Authorization", `Bearer ${token}`);
+  const body = init?.body;
+  if (body && !(body instanceof FormData) && !hdrs.has("Content-Type")) {
+    hdrs.set("Content-Type", "application/json");
+  }
   const hostHint = h.get("x-forwarded-host") || h.get("host");
   const base = resolveServerApiBase(hostHint);
   const url = buildBackendUrl(base, pathWithLeadingSlash);

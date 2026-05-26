@@ -164,6 +164,10 @@ body.platform-route > footer {
     z-index: 90;
 }
 
+.pl-top-nav--user-only {
+    justify-content: flex-end;
+}
+
 .pl-top-links {
     display: flex;
     gap: 24px;

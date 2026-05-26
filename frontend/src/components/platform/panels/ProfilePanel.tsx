@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import CompanyProfileForm from "@/components/platform/profile/CompanyProfileForm";
 import { MONGOLIA_BANKS_CATALOG } from "@/lib/mongolia-banks";
 import { computeProfileCompletionPct } from "@/lib/platform-profile-completion";
@@ -45,37 +45,48 @@ export default function ProfilePanel() {
   const session = usePlatformSession();
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [formKey, setFormKey] = useState(0);
+
+  const loadProfile = useCallback(async () => {
+    const res = await apiFetch(`/profiles/${encodeURIComponent(session.id)}`);
+    if (!res.ok) {
+      setProfile(null);
+      return;
+    }
+    const json = (await res.json().catch(() => null)) as
+      | { ok?: boolean; data?: Record<string, unknown> }
+      | null;
+    setProfile(readProfile(json?.data ?? null));
+  }, [session.id]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setLoading(true);
       try {
-        const res = await apiFetch(`/profiles/${encodeURIComponent(session.id)}`);
-        if (!res.ok) {
-          if (!cancelled) {
-            setProfile(null);
-            setLoading(false);
-          }
-          return;
-        }
-        const json = (await res.json().catch(() => null)) as
-          | { ok?: boolean; data?: Record<string, unknown> }
-          | null;
-        if (!cancelled) {
-          setProfile(readProfile(json?.data ?? null));
-          setLoading(false);
-        }
+        await loadProfile();
       } catch {
-        if (!cancelled) {
-          setProfile(null);
-          setLoading(false);
-        }
+        if (!cancelled) setProfile(null);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [session.id]);
+  }, [loadProfile]);
+
+  const handleProfileSaved = useCallback(async () => {
+    setLoading(true);
+    try {
+      await loadProfile();
+      setFormKey((k) => k + 1);
+    } catch {
+      /* keep current form values */
+    } finally {
+      setLoading(false);
+    }
+  }, [loadProfile]);
 
   if (loading) {
     return (
@@ -100,6 +111,8 @@ export default function ProfilePanel() {
 
   return (
     <CompanyProfileForm
+      key={formKey}
+      onSaved={handleProfileSaved}
       accountIdStr={session.id}
       email={session.email}
       completionPct={pct}

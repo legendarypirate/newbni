@@ -12,6 +12,13 @@ export const PLATFORM_SIDEBAR_NAV: PlatformNavItem[] = [
   { key: "dashboard", href: "/platform", label: "Хянах самбар", iconClass: "fa-solid fa-table-cells-large", group: "Үндсэн" },
   { key: "profile", href: "/platform/profile", label: "Бизнес Профайл", iconClass: "fa-regular fa-user", group: "Үндсэн" },
   { key: "media", href: "/platform/media", label: "Медиа сан", iconClass: "fa-regular fa-image", group: "Үндсэн" },
+  {
+    key: "investments",
+    href: "/platform/investments",
+    label: "Хөрөнгө оруулалт",
+    iconClass: "fa-solid fa-chart-line",
+    group: "Менежмент",
+  },
   { key: "trips", href: "/platform/trips", label: "Аялал", iconClass: "fa-solid fa-plane-departure", group: "Менежмент" },
   { key: "jobs", href: "/platform/jobs", label: "Ажлын зар", iconClass: "fa-solid fa-briefcase", group: "Менежмент" },
   { key: "shop", href: "/platform/shop", label: "Дэлгүүр", iconClass: "fa-solid fa-cart-shopping", group: "Менежмент" },

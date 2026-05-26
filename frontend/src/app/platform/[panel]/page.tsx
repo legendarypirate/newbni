@@ -11,6 +11,7 @@ import ShopOrdersInPanel from "@/components/platform/panels/ShopOrdersInPanel";
 import ShopOrdersOutPanel from "@/components/platform/panels/ShopOrdersOutPanel";
 import ShopPlatformPanel from "@/components/platform/panels/ShopPlatformPanel";
 import EventsPanel from "@/components/platform/panels/EventsPanel";
+import InvestmentsPlatformPanel from "@/components/platform/panels/InvestmentsPlatformPanel";
 import TripsPanel from "@/components/platform/panels/TripsPanel";
 
 type Props = {
@@ -45,6 +46,8 @@ export default async function PlatformPanelRoute({ params, searchParams }: Props
       return <NewsPlatformPanel />;
     case "jobs":
       return <JobsPlatformPanel />;
+    case "investments":
+      return <InvestmentsPlatformPanel />;
     case "opportunities":
       return <OpportunitiesPlatformPanel />;
     case "events":
