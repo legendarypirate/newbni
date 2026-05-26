@@ -1,11 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
+import { createServerT, getServerLang } from "@/lib/i18n/server";
 import RegisterForm from "./RegisterForm";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const lang = getLangFromCookies(await cookies());
+  const lang = await getServerLang();
   const t = createServerT(lang);
   return {
     title: `${t("auth.registerTitle")} | BUSY.mn`,
@@ -24,7 +23,7 @@ function firstString(v: string | string[] | undefined): string {
 }
 
 export default async function RegisterPage({ searchParams }: { searchParams: SearchParams }) {
-  const lang = getLangFromCookies(await cookies());
+  const lang = await getServerLang();
   const t = createServerT(lang);
   const sp = await searchParams;
   const rawNext = firstString(sp.next);

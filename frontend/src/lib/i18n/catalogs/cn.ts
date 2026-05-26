@@ -128,6 +128,8 @@ export const catalogCn: MessageTree = {
     details: "详情",
     backHome: "返回首页",
     viewAllAlt: "查看全部",
+    like: "点赞",
+    unlike: "取消点赞",
   },
   home: {
     hero: {

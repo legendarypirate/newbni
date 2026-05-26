@@ -1,8 +1,13 @@
-import { internalApiUrl } from "@/lib/backend-api";
 import type { BniLangCode } from "@/lib/nav-php-parity";
 import { apiLangHeaders, withLangQuery } from "@/lib/i18n/server";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 type RecentOrderRow = { orderRef: string; createdAt: string };
+type LikeMeta = {
+  likeCount?: number;
+  likedByMe?: boolean;
+};
+
 type BusinessTrip = {
   id: number;
   destination: string;
@@ -12,7 +17,7 @@ type BusinessTrip = {
   description: string | null;
   statusLabel: string | null;
   priceMnt: number | null;
-};
+} & LikeMeta;
 type LegacyMember = {
   id: number;
   name: string;
@@ -45,7 +50,7 @@ export type HomeCoreEvent = {
   endsAt?: string | null;
   location: string | null;
   bannerImage: string | null;
-};
+} & LikeMeta;
 
 export type HomePayload = {
   stats: {
@@ -88,8 +93,8 @@ const empty: HomePayload = {
 
 export async function loadHomeData(lang: BniLangCode = "mn"): Promise<HomePayload> {
   try {
-    const url = withLangQuery(internalApiUrl("/api/home"), lang);
-    const res = await fetch(url, { cache: "no-store", headers: apiLangHeaders(lang) });
+    const path = withLangQuery("/api/home", lang);
+    const res = await serverAuthedFetch(path, { headers: apiLangHeaders(lang) });
     const json = (await res.json().catch(() => null)) as { ok?: boolean; data?: HomePayload } | null;
     if (!res.ok || !json?.ok || !json.data) {
       return empty;

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { cookies } from "next/headers";
 import "./globals.css";
 import { Suspense } from "react";
 import BackendApiFetchPatch from "@/components/BackendApiFetchPatch";
@@ -9,7 +8,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { marketingSiteOrigin } from "@/lib/marketing-site-origin";
 import { I18nProvider } from "@/lib/i18n/client";
-import { getLangFromCookies, htmlLangAttr } from "@/lib/i18n/server";
+import { getServerLang, htmlLangAttr } from "@/lib/i18n/server";
 import TokenHandler from "./TokenHandler";
 
 function rootMetadataBase(): URL {
@@ -34,7 +33,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const lang = getLangFromCookies(await cookies());
+  const lang = await getServerLang();
 
   return (
     <html lang={htmlLangAttr(lang)}>

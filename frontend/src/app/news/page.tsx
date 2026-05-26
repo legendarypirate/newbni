@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
-import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
+import { createServerT, getServerLang } from "@/lib/i18n/server";
 import SafeImage from "@/components/SafeImage";
 import { formatMnDate } from "@/lib/format-date";
 import { mediaUrl } from "@/lib/media-url";
@@ -40,7 +39,7 @@ function stripHtml(raw: string | null | undefined): string {
 type Props = { searchParams: Promise<{ cat?: string }> };
 
 export default async function NewsPage({ searchParams }: Props) {
-  const lang = getLangFromCookies(await cookies());
+  const lang = await getServerLang();
   const t = createServerT(lang);
   const sp = await searchParams;
   const catRaw = (sp.cat ?? "all").trim();

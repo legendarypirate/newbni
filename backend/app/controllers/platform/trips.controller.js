@@ -13,6 +13,8 @@ const {
 } = require("../../lib/content-approval");
 const tripForms = require("../../services/trip-registration-forms");
 const { translateRecords, translateOne } = require("../../lib/content-translations");
+const { attachLikeMeta } = require("../../lib/content-likes");
+const { resolvePlatformUser } = require("../../middleware/require-platform-user");
 
 async function publishTripRegistrationForms(tripId) {
   const forms = await db.TripRegistrationForm.findAll({
@@ -274,6 +276,19 @@ exports.listTrips = async (req, res) => {
     const lang = req.bniLang || "mn";
     let tripsOut = await attachTripFormMeta(rows);
     tripsOut = await translateRecords(tripsOut, "trip", lang);
+
+    const platformUser = await resolvePlatformUser(req);
+    tripsOut = await attachLikeMeta(tripsOut, "trip", platformUser?.id ?? null);
+    tripsOut.sort((a, b) => {
+      const featuredDiff = (b.isFeatured ?? 0) - (a.isFeatured ?? 0);
+      if (featuredDiff !== 0) return featuredDiff;
+      const likeDiff = (b.likeCount ?? 0) - (a.likeCount ?? 0);
+      if (likeDiff !== 0) return likeDiff;
+      const da = new Date(a.startDate).getTime();
+      const db = new Date(b.startDate).getTime();
+      if (da !== db) return da - db;
+      return Number(a.id) - Number(b.id);
+    });
 
     const next90 = new Date(now);
     next90.setDate(next90.getDate() + 90);

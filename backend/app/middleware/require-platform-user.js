@@ -43,10 +43,7 @@ async function platformUserFromJwt(req) {
  */
 async function requirePlatformUser(req, res, next) {
   try {
-    let user = await platformUserFromJwt(req);
-    if (!user) {
-      user = await getApiPlatformUser(req);
-    }
+    const user = await resolvePlatformUser(req);
     if (!user) {
       res.status(401).json({ error: "unauthorized" });
       return;
@@ -65,4 +62,12 @@ async function requirePlatformUser(req, res, next) {
   }
 }
 
-module.exports = { requirePlatformUser, platformUserFromJwt };
+async function resolvePlatformUser(req) {
+  let user = await platformUserFromJwt(req);
+  if (!user) {
+    user = await getApiPlatformUser(req);
+  }
+  return user;
+}
+
+module.exports = { requirePlatformUser, platformUserFromJwt, resolvePlatformUser };

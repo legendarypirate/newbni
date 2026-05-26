@@ -3,6 +3,7 @@
 const { Op } = require("sequelize");
 const db = require("../models");
 const { translateRecords } = require("../lib/content-translations");
+const { attachLikeMeta, sortByLikeCountDesc } = require("../lib/content-likes");
 
 exports.getHome = async (req, res) => {
   try {
@@ -63,15 +64,15 @@ exports.getHome = async (req, res) => {
       ),
       db.BusinessTrip.findAll({
         where: { statusLabel: "Нийтлэгдсэн" },
-        limit: 3,
+        limit: 40,
         order: [["startDate", "ASC"], ["id", "ASC"]],
         raw: true,
       }),
       db.BniEvent.findAll({
         where: { endsAt: { [Op.gte]: now } },
-        limit: 6,
+        limit: 40,
         order: [["startsAt", "ASC"], ["id", "ASC"]],
-        attributes: ["id", "title", "startsAt", "endsAt", "location"],
+        attributes: ["id", "title", "startsAt", "endsAt", "location", "bannerImage"],
         raw: true,
       }),
       db.sequelize.query(
@@ -107,7 +108,9 @@ exports.getHome = async (req, res) => {
     ]);
 
     const lang = req.bniLang || "mn";
-    const [tripsOut, eventsOut, newsOut] = await Promise.all([
+    const accountId = req.platformUser?.id ?? null;
+
+    const [tripsTranslated, eventsTranslated, newsOut] = await Promise.all([
       translateRecords(businessTrips, "trip", lang),
       translateRecords(
         coreEvents.map((e) => ({ ...e, id: String(e.id), bannerImage: e.bannerImage || null })),
@@ -116,6 +119,25 @@ exports.getHome = async (req, res) => {
       ),
       translateRecords(latestNews, "news", lang),
     ]);
+
+    const [tripsWithLikes, eventsWithLikes] = await Promise.all([
+      attachLikeMeta(tripsTranslated, "trip", accountId),
+      attachLikeMeta(eventsTranslated, "event", accountId),
+    ]);
+
+    const tripsOut = sortByLikeCountDesc(tripsWithLikes, (a, b) => {
+      const da = new Date(a.startDate).getTime();
+      const db = new Date(b.startDate).getTime();
+      if (da !== db) return da - db;
+      return Number(a.id) - Number(b.id);
+    }).slice(0, 3);
+
+    const eventsOut = sortByLikeCountDesc(eventsWithLikes, (a, b) => {
+      const da = new Date(a.startsAt).getTime();
+      const db = new Date(b.startsAt).getTime();
+      if (da !== db) return da - db;
+      return String(a.id).localeCompare(String(b.id));
+    }).slice(0, 6);
 
     return res.json({
       ok: true,

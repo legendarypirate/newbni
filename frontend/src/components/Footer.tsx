@@ -1,14 +1,13 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { FooterContactList } from "@/components/FooterContactList";
 import { FooterRichLink } from "@/components/FooterRichLink";
 import { FooterSocialLinks } from "@/components/FooterSocialLinks";
 import { getFooterPublicConfig } from "@/lib/footer-public-config";
 import { localizeFooterPublicConfig } from "@/lib/i18n/footer-localize";
-import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
+import { createServerT, getServerLang } from "@/lib/i18n/server";
 
 export default async function Footer() {
-  const lang = getLangFromCookies(await cookies());
+  const lang = await getServerLang();
   const t = createServerT(lang);
   const currentYear = new Date().getFullYear();
   const cfg = localizeFooterPublicConfig(await getFooterPublicConfig(), lang);

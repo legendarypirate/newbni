@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import PlatformBodyClass from "@/components/platform/PlatformBodyClass";
 import DashboardAuthGate from "@/components/dashboard/DashboardAuthGate";
 import { I18nProvider } from "@/lib/i18n/client";
-import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
+import { createServerT, getServerLang } from "@/lib/i18n/server";
 import DashboardSidebarNav from "./DashboardSidebarNav";
 import DashboardSidebarToggle from "./DashboardSidebarToggle";
 import DashboardTopBar from "./DashboardTopBar";
@@ -17,7 +16,7 @@ import "@/styles/dashboard-shell.css";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const lang = getLangFromCookies(await cookies());
+  const lang = await getServerLang();
   const t = createServerT(lang);
 
   return (

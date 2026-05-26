@@ -5,9 +5,9 @@ import SafeImage from "@/components/SafeImage";
 import { formatMnDate } from "@/lib/format-date";
 import { getMarketingListingHeroSlides } from "@/lib/marketing-listing-hero";
 import { mediaUrl } from "@/lib/media-url";
-import { resolveServerApiBase } from "@/lib/resolve-api-base";
-import { cookies } from "next/headers";
-import { apiLangHeaders, createServerT, getLangFromCookies, withLangQuery } from "@/lib/i18n/server";
+import { ContentLikeButton } from "@/components/ContentLikeButton";
+import { apiLangHeaders, createServerT, getServerLang, withLangQuery } from "@/lib/i18n/server";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,7 @@ type SearchParams = {
 };
 
 export default async function TripsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const lang = getLangFromCookies(await cookies());
+  const lang = await getServerLang();
   const t = createServerT(lang);
   const sp = await searchParams;
   const country = sp.country?.trim() || "";
@@ -42,12 +42,8 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
   urlParams.set("trip_type", tripType);
   if (budgetMax > 0) urlParams.set("budget_max", budgetMax.toString());
 
-  const apiUrl = withLangQuery(
-    `${resolveServerApiBase()}/platform/trips?${urlParams.toString()}`,
-    lang,
-  );
-  const res = await fetch(apiUrl, {
-    cache: "no-store",
+  const apiPath = withLangQuery(`/api/platform/trips?${urlParams.toString()}`, lang);
+  const res = await serverAuthedFetch(apiPath, {
     headers: apiLangHeaders(lang),
   })
     .then((r) => r.json())
@@ -167,20 +163,30 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
           {/* Featured Large Card(s) */}
           {featuredTrips.map((ftrip) => (
             <div className="featured-trip-card featured-trip-card-stack" key={ftrip.id}>
-              <SafeImage
-                src={mediaUrl(ftrip.coverImageUrl) || PLACEHOLDER_TRIP}
-                alt={ftrip.destination}
-                loading="lazy"
-                className="featured-trip-img"
-                fallback={
-                  <div
-                    className="featured-trip-img d-flex align-items-center justify-content-center text-muted"
-                    style={{ background: "#f1f5f9" }}
-                  >
-                    <i className="fa-regular fa-image" style={{ fontSize: "2rem" }} />
-                  </div>
-                }
-              />
+              <div className="position-relative">
+                <SafeImage
+                  src={mediaUrl(ftrip.coverImageUrl) || PLACEHOLDER_TRIP}
+                  alt={ftrip.destination}
+                  loading="lazy"
+                  className="featured-trip-img"
+                  fallback={
+                    <div
+                      className="featured-trip-img d-flex align-items-center justify-content-center text-muted"
+                      style={{ background: "#f1f5f9" }}
+                    >
+                      <i className="fa-regular fa-image" style={{ fontSize: "2rem" }} />
+                    </div>
+                  }
+                />
+                <ContentLikeButton
+                  targetType="trip"
+                  targetId={ftrip.id}
+                  initialCount={Number((ftrip as { likeCount?: number }).likeCount ?? 0)}
+                  initialLiked={Boolean((ftrip as { likedByMe?: boolean }).likedByMe)}
+                  className="trip-bookmark"
+                  size="sm"
+                />
+              </div>
               <div className="featured-trip-content">
                 <div className="featured-trip-header">
                   <div>
@@ -245,7 +251,14 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
                         </div>
                       }
                     />
-                    <button type="button" className="trip-bookmark" aria-label="Хадгалах"><i className="fa-regular fa-bookmark"></i></button>
+                    <ContentLikeButton
+                      targetType="trip"
+                      targetId={trip.id}
+                      initialCount={Number((trip as { likeCount?: number }).likeCount ?? 0)}
+                      initialLiked={Boolean((trip as { likedByMe?: boolean }).likedByMe)}
+                      className="trip-bookmark"
+                      size="sm"
+                    />
                     <div className="trip-date-overlay"><i className="fa-regular fa-calendar me-1"></i> {formatMnDate(trip.startDate)} - {formatMnDate(trip.endDate)}</div>
                   </div>
                   <div className="trip-card-body">

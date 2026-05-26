@@ -11,6 +11,8 @@ const {
   mergeEventApprovalStatus,
 } = require("../lib/content-approval");
 const tripForms = require("../services/trip-registration-forms");
+const { attachLikeMeta } = require("../lib/content-likes");
+const { resolvePlatformUser } = require("../middleware/require-platform-user");
 
 async function publishedEventIdSet() {
   const rows = await db.TripRegistrationForm.findAll({
@@ -100,7 +102,18 @@ exports.listPublic = async (req, res) => {
     const publishedIds = await publishedEventIdSet();
     const rows = rowsRaw.filter((ev) => eventIsPublic(ev, publishedIds)).slice(0, 80);
     const lang = req.bniLang || "mn";
-    const eventsOut = await translateRecords(rows, "event", lang);
+    let eventsOut = await translateRecords(rows, "event", lang);
+
+    const platformUser = await resolvePlatformUser(req);
+    eventsOut = await attachLikeMeta(eventsOut, "event", platformUser?.id ?? null);
+    eventsOut.sort((a, b) => {
+      const likeDiff = (b.likeCount ?? 0) - (a.likeCount ?? 0);
+      if (likeDiff !== 0) return likeDiff;
+      const da = new Date(a.startsAt).getTime();
+      const db = new Date(b.startsAt).getTime();
+      if (status === "past") return db - da;
+      return da - db;
+    });
 
     const [totalUpcoming, totalPast, distinctChapters] = await Promise.all([
       db.BniEvent.count({ where: { endsAt: { [Op.gte]: now } } }),
@@ -171,8 +184,12 @@ exports.getById = async (req, res) => {
     ]);
 
     const lang = req.bniLang || "mn";
-    const eventOut = await translateOne(event, "event", lang, { autoFillMissing: true });
+    let eventOut = await translateOne(event, "event", lang, { autoFillMissing: true });
     const similarOut = await translateRecords(similar, "event", lang);
+
+    const platformUser = await resolvePlatformUser(req);
+    const [eventWithLikes] = await attachLikeMeta([eventOut], "event", platformUser?.id ?? null);
+    eventOut = eventWithLikes;
 
     res.json({
       ok: true,

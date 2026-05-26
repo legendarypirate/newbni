@@ -130,6 +130,8 @@ export const catalogJp: MessageTree = {
     details: "詳細",
     backHome: "ホームへ",
     viewAllAlt: "すべて見る",
+    like: "いいね",
+    unlike: "いいねを取り消す",
   },
   home: {
     hero: {

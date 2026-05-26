@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 
+import { ContentLikeButton } from "@/components/ContentLikeButton";
 import HomeTripRegisterDrawer from "@/components/home/HomeTripRegisterDrawer";
 import SafeImage from "@/components/SafeImage";
 import { formatMnDate } from "@/lib/format-date";
 import type { HomePayload } from "@/lib/home-data";
 import { loadHomeData } from "@/lib/home-data";
-import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
+import { createServerT, getServerLang } from "@/lib/i18n/server";
 import { mediaUrl } from "@/lib/media-url";
 
 type TFn = (key: string) => string;
@@ -224,6 +224,14 @@ function TripsSection({ data, t }: { data: HomePayload; t: TFn }) {
                   <div className="trip-exact-img-wrap">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={mediaUrl(trip.coverImageUrl) || PLACEHOLDER_TRIP} className="trip-exact-img" alt={title} />
+                    <ContentLikeButton
+                      targetType="trip"
+                      targetId={trip.id}
+                      initialCount={trip.likeCount ?? 0}
+                      initialLiked={Boolean(trip.likedByMe)}
+                      className="trip-bookmark"
+                      size="sm"
+                    />
                     <span className={`trip-status-tag ${status !== t("home.mockup.active") ? "inactive" : ""}`}>{status}</span>
                   </div>
                   <div className="trip-exact-body">
@@ -259,9 +267,18 @@ function CoreActivitiesSection({ data, t }: { data: HomePayload; t: TFn }) {
         </div>
         <div className="activity-pane active">
           <div className="activity-main-grid">
-            <div className="upcoming-meeting-card">
+            <div className="upcoming-meeting-card position-relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={eventImage} className="meeting-card-img" alt={event?.title || "Эвент"} />
+              {event ? (
+                <ContentLikeButton
+                  targetType="event"
+                  targetId={event.id}
+                  initialCount={event.likeCount ?? 0}
+                  initialLiked={Boolean(event.likedByMe)}
+                  size="sm"
+                />
+              ) : null}
               <div className="meeting-card-body">
                 <div className="text-muted small mb-2">{t("home.events.upcoming")}</div>
                 <h3 className="meeting-card-title">{event?.title || t("home.events.noTitle")}</h3>
@@ -289,13 +306,22 @@ function CoreActivitiesSection({ data, t }: { data: HomePayload; t: TFn }) {
               <div className="event-mini-list">
                 {data.coreEvents.length > 0 ? (
                   data.coreEvents.map((evt) => (
-                    <Link href={`/events/${evt.id}`} className="event-mini-item text-decoration-none text-reset" key={evt.id}>
-                      <div className="event-mini-title">{evt.title}</div>
-                      <div className="event-mini-meta">
-                        <span><i className="fa-regular fa-calendar me-1" /> {formatMnDate(evt.startsAt)}</span>
-                        <span><i className="fa-solid fa-location-dot me-1" /> {evt.location || "Байршил шинэчлэгдэнэ"}</span>
-                      </div>
-                    </Link>
+                    <div className="event-mini-item-wrap position-relative" key={evt.id}>
+                      <Link href={`/events/${evt.id}`} className="event-mini-item text-decoration-none text-reset">
+                        <div className="event-mini-title">{evt.title}</div>
+                        <div className="event-mini-meta">
+                          <span><i className="fa-regular fa-calendar me-1" /> {formatMnDate(evt.startsAt)}</span>
+                          <span><i className="fa-solid fa-location-dot me-1" /> {evt.location || "Байршил шинэчлэгдэнэ"}</span>
+                        </div>
+                      </Link>
+                      <ContentLikeButton
+                        targetType="event"
+                        targetId={evt.id}
+                        initialCount={evt.likeCount ?? 0}
+                        initialLiked={Boolean(evt.likedByMe)}
+                        size="sm"
+                      />
+                    </div>
                   ))
                 ) : (
                   <div className="event-mini-empty">{t("home.events.empty")}</div>
@@ -396,7 +422,7 @@ function BottomGridSection({ data, t }: { data: HomePayload; t: TFn }) {
 }
 
 export default async function HomePage() {
-  const lang = getLangFromCookies(await cookies());
+  const lang = await getServerLang();
   const t = createServerT(lang);
   const data = await loadHomeData(lang);
   return (

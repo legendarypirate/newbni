@@ -12,6 +12,7 @@ const defineBniEvent = require("./bni-event.model");
 const defineBusinessTrip = require("./business-trip.model");
 const defineInvestmentProject = require("./investment-project.model");
 const defineContentTranslation = require("./content-translation.model");
+const defineContentLike = require("./content-like.model");
 const defineTripRegistrationModels = require("./trip-registration.model");
 
 function initModels(sequelize) {
@@ -189,6 +190,7 @@ function initModels(sequelize) {
   const BusinessTrip = defineBusinessTrip(sequelize, DataTypes);
   const InvestmentProject = defineInvestmentProject(sequelize, DataTypes);
   const ContentTranslation = defineContentTranslation(sequelize, DataTypes);
+  const ContentLike = defineContentLike(sequelize, DataTypes);
 
   const NewsArticle = sequelize.define(
     "NewsArticle",
@@ -494,6 +496,7 @@ function initModels(sequelize) {
     InvestmentProject,
     NewsArticle,
     ContentTranslation,
+    ContentLike,
     LegacyMember,
     PaymentOrder,
     BusyRole,

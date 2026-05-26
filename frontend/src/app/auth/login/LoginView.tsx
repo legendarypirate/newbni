@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
+import { createServerT, getServerLang } from "@/lib/i18n/server";
 import { PLATFORM_ACCOUNT_REF_COOKIE } from "@/lib/platform-session-cookies";
 import LoginForm from "./LoginForm";
 
@@ -39,7 +39,7 @@ export default async function LoginView({ searchParams }: { searchParams: Search
   const defaultEmail = firstString(sp.email);
 
   const jar = await cookies();
-  const lang = getLangFromCookies(jar);
+  const lang = await getServerLang();
   const t = createServerT(lang);
   const hasPhpSession = Boolean(jar.get("PHPSESSID")?.value);
   const hasNextPlatform = Boolean(

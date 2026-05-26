@@ -15,7 +15,9 @@ import {
   speakerPortraitUrl,
 } from "@/lib/bni-event-detail";
 import { formatMnDate } from "@/lib/format-date";
+import { ContentLikeButton } from "@/components/ContentLikeButton";
 import { internalApiUrl } from "@/lib/backend-api";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 import { marketingSiteOrigin } from "@/lib/marketing-site-origin";
 import { getFooterPublicConfig } from "@/lib/footer-public-config";
 import { helpEmailParts, helpPhoneTelParts, normalizeHelpChatHref } from "@/lib/public-help-contact";
@@ -63,9 +65,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EventDetailPage({ params }: Props) {
   const { id } = await params;
-  const res = await fetch(internalApiUrl(`/api/events/${id}`), { cache: "no-store" }).then(r => r.json()).catch(() => ({ ok: false }));
+  const res = await serverAuthedFetch(`/api/events/${id}`)
+    .then((r) => r.json())
+    .catch(() => ({ ok: false }));
   if (!res.ok) notFound();
-  
+
   const { event: ev, registeredTotal, publishedForm, similar } = res.data;
   const similarEvents: SimilarEventSummary[] = (similar as SimilarEventSummary[] | undefined) ?? [];
 
@@ -175,19 +179,22 @@ export default async function EventDetailPage({ params }: Props) {
         </div>
 
         <section className="event-hero-card">
-          <div className="event-hero-image">
+          <div className="event-hero-image position-relative">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={heroSrc} alt="" />
+            <ContentLikeButton
+              targetType="event"
+              targetId={ev.id}
+              initialCount={Number(ev.likeCount ?? 0)}
+              initialLiked={Boolean(ev.likedByMe)}
+              className="trip-bookmark"
+              size="sm"
+            />
             <div className="event-hero-badge">{typeBadge}</div>
           </div>
           <div className="event-hero-content">
             <div className="event-hero-header">
               <h1 className="event-title-main">{hTitle}</h1>
-              <div className="event-action-btns">
-                <button type="button" className="btn-icon-circle" title="Bookmark" aria-label="Bookmark">
-                  <i className="fa-regular fa-bookmark" />
-                </button>
-              </div>
             </div>
             <p className="event-description">{description}</p>
 

@@ -54,6 +54,7 @@ require("./app/routes/region.routes")(app);
 require("./app/routes/admin.routes")(app);
 require("./app/routes/events.routes")(app);
 require("./app/routes/home.routes")(app);
+require("./app/routes/content-likes.routes")(app);
 require("./app/routes/investments.routes")(app);
 require("./app/routes/site-settings.routes")(app);
 require("./app/routes/trip-forms.routes")(app);

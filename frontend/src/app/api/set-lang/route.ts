@@ -8,8 +8,10 @@ import { isBniLang } from "@/lib/nav-php-parity";
  */
 export const dynamic = "force-dynamic";
 
-const COOKIE_NAME = "bni_lang";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
+import { BNI_LANG_COOKIE, BNI_LANG_COOKIE_MAX_AGE } from "@/lib/i18n/geo-lang";
+
+const COOKIE_NAME = BNI_LANG_COOKIE;
+const COOKIE_MAX_AGE = BNI_LANG_COOKIE_MAX_AGE;
 
 function safeNext(raw: string | null): string {
   if (!raw) return "/";

@@ -3,6 +3,8 @@
 const forms = require("../services/trip-registration-forms");
 const db = require("../models");
 const { translateOne } = require("../lib/content-translations");
+const { attachLikeMeta } = require("../lib/content-likes");
+const { resolvePlatformUser } = require("../middleware/require-platform-user");
 const {
   parseLegacyRegistrationArray,
   stableLegacyQuestionId,
@@ -240,7 +242,11 @@ exports.getPublicTripById = async (req, res) => {
   });
 
   const lang = req.bniLang || "mn";
-  const tripOut = await translateOne(trip, "trip", lang, { autoFillMissing: true });
+  let tripOut = await translateOne(trip, "trip", lang, { autoFillMissing: true });
+
+  const platformUser = await resolvePlatformUser(req);
+  const [tripWithLikes] = await attachLikeMeta([tripOut], "trip", platformUser?.id ?? null);
+  tripOut = tripWithLikes;
 
   return res.json({
     success: true,

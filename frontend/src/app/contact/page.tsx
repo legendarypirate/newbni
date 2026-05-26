@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { ContactPageForm } from "@/components/ContactPageForm";
 import { FooterContactList } from "@/components/FooterContactList";
 import { FooterSocialLinks } from "@/components/FooterSocialLinks";
 import { getFooterPublicConfig } from "@/lib/footer-public-config";
 import { localizeFooterPublicConfig } from "@/lib/i18n/footer-localize";
-import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
+import { createServerT, getServerLang } from "@/lib/i18n/server";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const lang = getLangFromCookies(await cookies());
+  const lang = await getServerLang();
   const t = createServerT(lang);
   return {
     title: `${t("contact.title")} | BUSY.mn`,
@@ -17,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ContactPage() {
-  const lang = getLangFromCookies(await cookies());
+  const lang = await getServerLang();
   const t = createServerT(lang);
   const footerCfg = localizeFooterPublicConfig(await getFooterPublicConfig(), lang);
 

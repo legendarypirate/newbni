@@ -16,9 +16,11 @@ import { buildTripItineraryAccordionDays } from "@/lib/trip-itinerary-for-trip-d
 import { mediaUrl } from "@/lib/media-url";
 import { marketingSiteOrigin } from "@/lib/marketing-site-origin";
 import { readExtras } from "@/components/platform/trips/trip-editor-helpers";
+import { ContentLikeButton } from "@/components/ContentLikeButton";
 import { internalApiUrl } from "@/lib/backend-api";
-import { cookies } from "next/headers";
-import { apiLangHeaders, getLangFromCookies, withLangQuery } from "@/lib/i18n/server";
+import type { BniLangCode } from "@/lib/nav-php-parity";
+import { apiLangHeaders, getServerLang, withLangQuery } from "@/lib/i18n/server";
+import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -37,13 +39,14 @@ type TripDetailPayload = {
     extrasJson: unknown;
     itineraryJson: unknown;
     priceMnt: string | number | null;
+    likeCount?: number;
+    likedByMe?: boolean;
   };
   registrationPublicSlug?: string | null;
 };
 
-async function loadTripDetail(tripId: number, lang: ReturnType<typeof getLangFromCookies>): Promise<TripDetailPayload["trip"] | null> {
-  const res = await fetch(withLangQuery(internalApiUrl(`/api/public/trips/${tripId}`), lang), {
-    cache: "no-store",
+async function loadTripDetail(tripId: number, lang: BniLangCode): Promise<TripDetailPayload["trip"] | null> {
+  const res = await serverAuthedFetch(withLangQuery(`/api/public/trips/${tripId}`, lang), {
     headers: apiLangHeaders(lang),
   });
   if (!res.ok) return null;
@@ -61,7 +64,7 @@ async function loadTripRegistrationPublicSlug(tripId: number): Promise<string | 
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const lang = getLangFromCookies(await cookies());
+  const lang = await getServerLang();
   const { id } = await params;
   const tripId = parseInt(id, 10);
   const fallback: Metadata = { title: "Аялал | BUSY.mn" };
@@ -179,7 +182,7 @@ function normalizeTripHelpChatHref(raw: string): string | null {
 }
 
 export default async function TripDetailsPage({ params }: Props) {
-  const lang = getLangFromCookies(await cookies());
+  const lang = await getServerLang();
   const { id } = await params;
   const tripId = parseInt(id, 10);
   if (isNaN(tripId)) {
@@ -342,9 +345,17 @@ export default async function TripDetailsPage({ params }: Props) {
     <div className="trd-body">
       <TripDetailsEffects />
       {/* Hero Section */}
-      <div className="trd-hero">
+      <div className="trd-hero position-relative">
         <div className="trd-hero-img" style={{ backgroundImage: `url('${tripHeroBg}')` }}></div>
         <div className="trd-hero-overlay"></div>
+        <div className="position-absolute" style={{ top: 20, right: 20, zIndex: 5 }}>
+          <ContentLikeButton
+            targetType="trip"
+            targetId={tripId}
+            initialCount={Number(trip.likeCount ?? 0)}
+            initialLiked={Boolean(trip.likedByMe)}
+          />
+        </div>
         <div className="container trd-hero-content">
           <div className="row">
             <div className="col-lg-8">

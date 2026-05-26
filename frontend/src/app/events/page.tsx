@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ContentLikeButton } from "@/components/ContentLikeButton";
 import { MarketingListingHero } from "@/components/marketing/MarketingListingHero";
 import {
   buildAgendaDisplayRows,
@@ -10,8 +11,7 @@ import { formatMnDate } from "@/lib/format-date";
 import { getMarketingListingHeroSlides } from "@/lib/marketing-listing-hero";
 import { mediaUrl } from "@/lib/media-url";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
-import { cookies } from "next/headers";
-import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
+import { createServerT, getServerLang } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +38,8 @@ type EventListRow = {
   isOnline?: boolean | number | null;
   eventType: string;
   priceMnt?: unknown;
+  likeCount?: number;
+  likedByMe?: boolean;
 };
 
 type EventsListingData = {
@@ -48,7 +50,7 @@ type EventsListingData = {
 };
 
 export default async function EventsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const lang = getLangFromCookies(await cookies());
+  const lang = await getServerLang();
   const t = createServerT(lang);
   const sp = await searchParams;
   const chapterFilter = parseInt(sp.chapter || "0", 10);
@@ -252,6 +254,14 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
                   <div className="trip-img-wrap">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={eventListingCardImageUrl(evRow.curriculumOverrideJson ?? undefined)} alt="" />
+                    <ContentLikeButton
+                      targetType="event"
+                      targetId={evRow.id}
+                      initialCount={Number(evRow.likeCount ?? 0)}
+                      initialLiked={Boolean(evRow.likedByMe)}
+                      className="trip-bookmark"
+                      size="sm"
+                    />
                     <div className="trip-date-overlay"><i className="fa-regular fa-calendar me-1"></i> {formatMnDate(evRow.startsAt).slice(0, 10)}</div>
                   </div>
                   <div className="trip-card-body">

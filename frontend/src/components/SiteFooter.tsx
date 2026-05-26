@@ -3,13 +3,12 @@ import { FooterContactList } from "@/components/FooterContactList";
 import { FooterRichLink } from "@/components/FooterRichLink";
 import { FooterSocialLinks } from "@/components/FooterSocialLinks";
 import { BUSY_ARCHITECTURE_RULE, BUSY_MISSION_LINES, BUSY_PLATFORM_GOAL } from "@/lib/busy-platform-vision";
-import { cookies } from "next/headers";
 import { getFooterPublicConfig } from "@/lib/footer-public-config";
 import { localizeFooterPublicConfig } from "@/lib/i18n/footer-localize";
-import { createServerT, getLangFromCookies } from "@/lib/i18n/server";
+import { createServerT, getServerLang } from "@/lib/i18n/server";
 
 export async function SiteFooter() {
-  const lang = getLangFromCookies(await cookies());
+  const lang = await getServerLang();
   const t = createServerT(lang);
   const year = new Date().getFullYear();
   const cfg = localizeFooterPublicConfig(await getFooterPublicConfig(), lang);

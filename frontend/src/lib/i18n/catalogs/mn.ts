@@ -132,6 +132,8 @@ export const catalogMn: MessageTree = {
     register: "Бүртгүүлэх",
     details: "Дэлгэрэнгүй",
     backHome: "Нүүр руу буцах",
+    like: "Таалагдсан",
+    unlike: "Таалагдсаныг болиулах",
   },
   home: {
     hero: {

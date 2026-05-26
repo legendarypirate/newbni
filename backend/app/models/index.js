@@ -66,6 +66,7 @@ module.exports = {
   LegacyMeeting: m.LegacyMeeting,
   NewsArticle: m.NewsArticle,
   ContentTranslation: m.ContentTranslation,
+  ContentLike: m.ContentLike,
   LegacyMember: m.LegacyMember,
   PaymentOrder: m.PaymentOrder,
 };

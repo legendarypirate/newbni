@@ -130,6 +130,8 @@ export const catalogKr: MessageTree = {
     details: "상세",
     backHome: "홈으로",
     viewAllAlt: "전체 보기",
+    like: "좋아요",
+    unlike: "좋아요 취소",
   },
   home: {
     hero: {

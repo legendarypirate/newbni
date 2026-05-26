@@ -127,6 +127,8 @@ export const catalogEn: MessageTree = {
     details: "Details",
     backHome: "Back to home",
     viewAllAlt: "View all",
+    like: "Like",
+    unlike: "Unlike",
   },
   home: {
     hero: {
