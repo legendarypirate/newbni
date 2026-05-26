@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import SafeImage from "@/components/SafeImage";
 import { getServerLang } from "@/lib/i18n/server";
 import {
@@ -301,7 +302,13 @@ export default async function InvestmentsPage({ searchParams }: Props) {
           </aside>
         </div>
       ) : tab === "pitchdeck" ? (
-        <PitchDeckEditor />
+        <Suspense
+          fallback={
+            <div className="container py-5 text-center text-muted">Pitch Deck ачаалж байна…</div>
+          }
+        >
+          <PitchDeckEditor />
+        </Suspense>
       ) : tab === "dealroom" ? (
         <DealRoomTab />
       ) : (
