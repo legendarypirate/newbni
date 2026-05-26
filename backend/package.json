@@ -12,7 +12,8 @@
     "db:import-members": "node scripts/import-members.js",
     "db:import-members:reset": "node scripts/import-members.js --reset",
     "db:import-profiles": "node scripts/import-platform-profiles.js",
-    "db:import-profiles:reset": "node scripts/import-platform-profiles.js --reset"
+    "db:import-profiles:reset": "node scripts/import-platform-profiles.js --reset",
+    "db:copy-news": "node scripts/copy-news-table.js"
   },
   "engines": {
     "node": ">=20"
