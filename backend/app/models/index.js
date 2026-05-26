@@ -67,6 +67,8 @@ module.exports = {
   NewsArticle: m.NewsArticle,
   ContentTranslation: m.ContentTranslation,
   ContentLike: m.ContentLike,
+  BusinessOpportunity: m.BusinessOpportunity,
+  BusinessOpportunityApplication: m.BusinessOpportunityApplication,
   LegacyMember: m.LegacyMember,
   PaymentOrder: m.PaymentOrder,
 };

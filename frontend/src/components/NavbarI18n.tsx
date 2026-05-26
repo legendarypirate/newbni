@@ -12,6 +12,7 @@ import {
   SHOW_PUBLIC_NAV_COMPANIES,
   SHOW_PUBLIC_NAV_INVESTMENTS,
   SHOW_PUBLIC_NAV_MEMBERS,
+  SHOW_PUBLIC_NAV_OPPORTUNITIES,
 } from "@/lib/public-marketing-flags";
 
 /** Marketing top bar with i18n nav labels. */
@@ -96,6 +97,16 @@ export default function NavbarI18n() {
                 {t("nav.events")}
               </Link>
             </li>
+            {SHOW_PUBLIC_NAV_OPPORTUNITIES ? (
+              <li className="nav-item">
+                <Link
+                  className={`nav-link${pathname.startsWith("/opportunities") ? " active" : ""}`}
+                  href="/opportunities"
+                >
+                  {t("nav.opportunities")}
+                </Link>
+              </li>
+            ) : null}
             {SHOW_PUBLIC_NAV_COMPANIES ? (
               <li className="nav-item">
                 <Link className={`nav-link${pathname.startsWith("/companies") ? " active" : ""}`} href="/companies">
@@ -138,30 +149,53 @@ export default function NavbarI18n() {
             {SHOW_PUBLIC_HEADER_LOGIN_REGISTER ? (
               <>
                 {sessionReady && session ? (
-                  <>
-                    <span className="small text-muted fw-semibold px-2">
-                      {t("auth.greeting")}, {session.displayName}
-                    </span>
-                    {session.role === "admin" ? (
-                      <a
-                        href={`${(process.env.NEXT_PUBLIC_ADMIN_URL || "http://localhost:3002").replace(/\/$/, "")}/admin`}
-                        className="btn btn-light px-3 fw-medium rounded-pill border"
-                      >
-                        {t("auth.admin")}
-                      </a>
-                    ) : (
-                      <Link href="/platform" className="btn btn-light px-3 fw-medium rounded-pill border">
-                        {t("auth.platform")}
-                      </Link>
-                    )}
-                    <a
-                      href="/auth/logout"
-                      onClick={() => removeAuthToken()}
-                      className="btn btn-brand px-3 fw-medium rounded-pill"
+                  <div className="dropdown">
+                    <button
+                      className="btn btn-light btn-sm rounded-circle border d-flex align-items-center justify-content-center"
+                      type="button"
+                      data-bs-toggle="dropdown"
+                      aria-expanded="false"
+                      aria-label={t("nav.accountMenu")}
+                      style={{ width: 36, height: 36 }}
                     >
-                      {t("auth.logout")}
-                    </a>
-                  </>
+                      <i className="fa-solid fa-user" aria-hidden />
+                    </button>
+                    <ul
+                      className="dropdown-menu dropdown-menu-end shadow border-0 py-2"
+                      style={{ borderRadius: 12, minWidth: "14rem" }}
+                    >
+                      <li className="px-3 pb-2 border-bottom border-light">
+                        <div className="small text-muted">{t("auth.greeting")}</div>
+                        <div className="fw-semibold text-truncate">{session.displayName}</div>
+                      </li>
+                      <li>
+                        {session.role === "admin" ? (
+                          <a
+                            className="dropdown-item py-2"
+                            href={`${(process.env.NEXT_PUBLIC_ADMIN_URL || "http://localhost:3002").replace(/\/$/, "")}/admin`}
+                          >
+                            <i className="fa-solid fa-shield-halved me-2 text-muted" aria-hidden />
+                            {t("auth.admin")}
+                          </a>
+                        ) : (
+                          <Link className="dropdown-item py-2" href="/platform">
+                            <i className="fa-solid fa-gauge-high me-2 text-muted" aria-hidden />
+                            {t("nav.myDashboard")}
+                          </Link>
+                        )}
+                      </li>
+                      <li>
+                        <a
+                          className="dropdown-item py-2 text-danger"
+                          href="/auth/logout"
+                          onClick={() => removeAuthToken()}
+                        >
+                          <i className="fa-solid fa-right-from-bracket me-2" aria-hidden />
+                          {t("auth.logout")}
+                        </a>
+                      </li>
+                    </ul>
+                  </div>
                 ) : (
                   <>
                     <Link href="/auth/login" className="btn btn-light px-4 fw-medium rounded-pill border">

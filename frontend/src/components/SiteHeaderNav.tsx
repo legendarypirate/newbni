@@ -13,12 +13,14 @@ import {
   SHOW_PUBLIC_NAV_COMPANIES,
   SHOW_PUBLIC_NAV_INVESTMENTS,
   SHOW_PUBLIC_NAV_MEMBERS,
+  SHOW_PUBLIC_NAV_OPPORTUNITIES,
 } from "@/lib/public-marketing-flags";
 
 /** Matches `includes/header.php` `<nav>` children (paths adapted for Next App Router). */
 const NAV = [
   { href: "/trips", labelKey: "nav.trips" as const, id: "trips" },
   { href: "/events", labelKey: "nav.events" as const, id: "events" },
+  { href: "/opportunities", labelKey: "nav.opportunities" as const, id: "opportunities" },
   { href: "/companies", labelKey: "nav.companies" as const, id: "companies" },
   { href: "/investments", labelKey: "nav.investments" as const, id: "investments" },
   { href: "/members", labelKey: "nav.members" as const, id: "members" },
@@ -31,6 +33,7 @@ function isNavItemVisible(pageId: (typeof NAV)[number]["id"]): boolean {
   if (pageId === "investments") return SHOW_PUBLIC_NAV_INVESTMENTS;
   if (pageId === "members") return SHOW_PUBLIC_NAV_MEMBERS;
   if (pageId === "busy_ai") return SHOW_PUBLIC_NAV_BUSY_AI;
+  if (pageId === "opportunities") return SHOW_PUBLIC_NAV_OPPORTUNITIES;
   return true;
 }
 
@@ -39,6 +42,9 @@ function navActive(pathname: string, href: string, pageId: string): boolean {
     return pathname === "/";
   }
   if (pageId === "events" && pathname.startsWith("/events")) {
+    return true;
+  }
+  if (pageId === "opportunities" && pathname.startsWith("/opportunities")) {
     return true;
   }
   if (pageId === "trips" && pathname.startsWith("/trips")) {
@@ -144,11 +150,12 @@ export function SiteHeaderNav({
             {platformUser ? (
               <div className="dropdown">
                 <button
-                  className="btn btn-light rounded-circle p-2"
+                  className="btn btn-light btn-sm rounded-circle border d-flex align-items-center justify-content-center"
                   type="button"
                   data-bs-toggle="dropdown"
                   aria-expanded="false"
-                  aria-label="Профайлын цэс"
+                  aria-label={t("nav.accountMenu")}
+                  style={{ width: 36, height: 36 }}
                 >
                   <i className="fa-solid fa-user" aria-hidden />
                 </button>
@@ -162,13 +169,13 @@ export function SiteHeaderNav({
                   <li>
                     <Link className="dropdown-item py-2" href={dashboardHref}>
                       <i className="fa-solid fa-gauge-high me-2 text-muted" aria-hidden />
-                      Миний самбар
+                      {t("nav.myDashboard")}
                     </Link>
                   </li>
                   <li>
                     <a className="dropdown-item py-2 text-danger" href={logoutHref}>
                       <i className="fa-solid fa-right-from-bracket me-2" aria-hidden />
-                      Гарах
+                      {t("auth.logout")}
                     </a>
                   </li>
                 </ul>

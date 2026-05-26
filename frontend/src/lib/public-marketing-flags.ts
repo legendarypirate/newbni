@@ -24,3 +24,4 @@ export const SHOW_PUBLIC_NAV_INVESTMENTS = true;
 export const SHOW_PUBLIC_NAV_MEMBERS = true;
 export const SHOW_PUBLIC_NAV_NEWS = true;
 export const SHOW_PUBLIC_NAV_BUSY_AI = true;
+export const SHOW_PUBLIC_NAV_OPPORTUNITIES = true;
