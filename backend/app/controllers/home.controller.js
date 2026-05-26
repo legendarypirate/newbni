@@ -15,6 +15,34 @@ async function safe(label, fn, fallback) {
   }
 }
 
+/** «Гишүүн байгууллагууд» — prefer BNI `members.company`, then platform profile company names. */
+function buildHomePartners(legacyMembers, platformProfiles, limit = 20) {
+  const seen = new Set();
+  const out = [];
+
+  const push = (name, logo, href) => {
+    const label = String(name || "").trim();
+    if (!label) return;
+    const key = label.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({
+      name: label,
+      logo: String(logo || "").trim(),
+      href: String(href || "/members"),
+    });
+  };
+
+  for (const m of legacyMembers) {
+    push(m.company, m.photo, `/member/${m.id}`);
+  }
+  for (const p of platformProfiles) {
+    push(p.companyName, p.photoUrl, `/member/${String(p.accountId)}`);
+  }
+
+  return out.slice(0, limit);
+}
+
 function sortTripsForHome(trips) {
   const copy = [...trips];
   copy.sort((a, b) => {
@@ -52,7 +80,8 @@ exports.getHome = async (req, res) => {
       coreEvents,
       latestNews,
       featuredMembers,
-      partners,
+      platformPartnerProfiles,
+      memberOrgs,
     ] = await Promise.all([
       safe("tripTotal", () => db.BusinessTrip.count(), 0),
       safe("tripActive", () => db.BusinessTrip.count({ where: { startDate: { [Op.gte]: now } } }), 0),
@@ -166,10 +195,14 @@ exports.getHome = async (req, res) => {
         [],
       ),
       safe(
-        "partners",
+        "platformPartners",
         () =>
           db.PlatformProfile.findAll({
-            where: { companyName: { [Op.ne]: null } },
+            where: {
+              companyName: {
+                [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: "" }],
+              },
+            },
             attributes: ["accountId", "companyName", "photoUrl"],
             limit: 20,
             order: [["updatedAt", "DESC"]],
@@ -177,7 +210,25 @@ exports.getHome = async (req, res) => {
           }),
         [],
       ),
+      safe(
+        "memberOrgs",
+        () =>
+          db.LegacyMember.findAll({
+            where: { status: "active" },
+            attributes: ["id", "company", "photo", "featured"],
+            order: [
+              ["featured", "DESC"],
+              ["updatedAt", "DESC"],
+              ["name", "ASC"],
+            ],
+            limit: 40,
+            raw: true,
+          }),
+        [],
+      ),
     ]);
+
+    const partners = buildHomePartners(memberOrgs, platformPartnerProfiles);
 
     const [tripsTranslated, eventsTranslated, newsOut] = await Promise.all([
       safe("translateTrips", () => translateRecords(businessTrips, "trip", lang), businessTrips),
@@ -231,13 +282,7 @@ exports.getHome = async (req, res) => {
         businessTrips: tripsOut,
         latestNews: newsOut,
         featuredMembers,
-        partners: partners
-          .filter((p) => String(p.companyName || "").trim() !== "")
-          .map((p) => ({
-            name: String(p.companyName || "").trim(),
-            logo: p.photoUrl || "",
-            href: `/member/${String(p.accountId)}`,
-          })),
+        partners,
         recentOrders: (recentOrders || []).map((o) => ({
           orderRef: o.orderRef,
           createdAt: o.createdAt instanceof Date ? o.createdAt.toISOString() : String(o.createdAt),

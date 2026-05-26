@@ -50,12 +50,12 @@ export default async function RegisterPage({ searchParams }: { searchParams: Sea
   const googleHref = nextGoogleHref ?? legacyGoogleHref;
 
   return (
-    <section className="bni-auth-shell">
+    <section className="bni-auth-shell bni-auth-shell--register">
       <div className="container">
-        <div className="bni-auth-card">
+        <div className="bni-auth-card bni-auth-card--register">
           <div className="bni-auth-card-accent" aria-hidden="true" />
           <div className="bni-auth-card-inner">
-            <div className="text-center mb-4">
+            <div className="text-center bni-auth-register-head">
               <div className="bni-auth-icon-wrap" aria-hidden="true">
                 <i className="fa-solid fa-user-plus" />
               </div>
@@ -69,11 +69,11 @@ export default async function RegisterPage({ searchParams }: { searchParams: Sea
               googleUsesNextPlatformOAuth={Boolean(nextGoogleHref?.startsWith("/api"))}
             />
 
-            <p className="small text-muted text-center mt-4 mb-0 px-1" style={{ lineHeight: 1.45 }}>
+            <p className="bni-auth-register-vision small text-muted text-center mb-0 px-1">
               {t("vision.goal")}
             </p>
 
-            <div className="text-center mt-3">
+            <div className="text-center bni-auth-register-back">
               <Link href="/" className="small text-decoration-none text-muted">
                 <i className="fas fa-arrow-left me-1" aria-hidden="true" />
                 {t("auth.backHome")}

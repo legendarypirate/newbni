@@ -7,6 +7,7 @@ import {
   projectIconForSector,
 } from "@/lib/investments-data";
 
+import InvestmentPublishLink from "@/components/investments/InvestmentPublishLink";
 import PitchDeckEditor from "./PitchDeckEditor";
 
 export const dynamic = "force-dynamic";
@@ -468,9 +469,7 @@ export default async function InvestmentsPage({ searchParams }: Props) {
                   <p className="small text-muted mb-3">
                     Энд зөвхөн хөрөнгө оруулалтын төсөл харагдана. Аяллын хуудас (/trips) болон өөр.
                   </p>
-                  <Link href="/auth/login?next=/platform" className="btn-brand-outline btn-sm text-decoration-none">
-                    Төсөл нийтлэх
-                  </Link>
+                  <InvestmentPublishLink className="btn-brand-outline btn-sm text-decoration-none" />
                 </div>
               </div>
             )}
@@ -501,9 +500,7 @@ export default async function InvestmentsPage({ searchParams }: Props) {
                   <p className="small text-muted mb-3">
                     BNI Korea зэрэг аяллын мэдээлэл энд харагдахгүй. Төсөл нийтлэхийн тулд нэвтэрнэ үү.
                   </p>
-                  <Link href="/auth/login?next=/platform" className="btn-brand px-4 py-1 text-decoration-none">
-                    Төсөл нийтлэх
-                  </Link>
+                  <InvestmentPublishLink className="btn-brand px-4 py-1 text-decoration-none" />
                 </div>
               ) : (
                 projects.map((p) => (
@@ -655,7 +652,7 @@ export default async function InvestmentsPage({ searchParams }: Props) {
                 </div>
               </div>
 
-              <button className="btn-brand w-100 py-2 mb-2">Төсөл нийтлэх</button>
+              <InvestmentPublishLink as="button" className="btn-brand w-100 py-2 mb-2" />
               <button className="btn-brand-outline w-100 py-2" style={{ borderColor: "var(--border-color)", color: "var(--text-main)" }}>Төслийн профайл</button>
             </div>
           </aside>

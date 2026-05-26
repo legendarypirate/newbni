@@ -266,3 +266,135 @@
 .bni-auth-input-icon:focus-within .bni-auth-input-ico {
   color: #c5a059;
 }
+
+/* Register — wider card, tighter vertical rhythm, fit above the fold */
+.bni-auth-shell--register {
+  min-height: calc(100dvh - 5.5rem);
+  padding: 0.75rem 0 1rem;
+  display: flex;
+  align-items: center;
+}
+
+.bni-auth-shell--register > .container {
+  width: 100%;
+  max-width: 40rem;
+}
+
+.bni-auth-card--register {
+  max-width: 34rem;
+  width: 100%;
+}
+
+.bni-auth-card--register .bni-auth-card-inner {
+  padding: 1.35rem 1.5rem 1.15rem;
+}
+
+@media (min-width: 576px) {
+  .bni-auth-card--register .bni-auth-card-inner {
+    padding: 1.5rem 1.75rem 1.25rem;
+  }
+}
+
+.bni-auth-shell--register .bni-auth-register-head {
+  margin-bottom: 0.85rem;
+}
+
+.bni-auth-shell--register .bni-auth-icon-wrap {
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+  border-radius: 0.85rem;
+}
+
+.bni-auth-shell--register .bni-auth-title {
+  font-size: 1.2rem;
+  margin-bottom: 0.2rem;
+}
+
+.bni-auth-shell--register .bni-auth-lead {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  max-width: none;
+}
+
+.bni-auth-card--register .form-label {
+  margin-bottom: 0.3rem;
+  font-size: 0.72rem;
+}
+
+.bni-auth-card--register .form-control {
+  padding: 0.55rem 0.85rem;
+  font-size: 0.9rem;
+}
+
+.bni-auth-card--register .form-text {
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.bni-auth-register-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+
+@media (min-width: 520px) {
+  .bni-auth-register-fields {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 0.85rem;
+    row-gap: 0.65rem;
+  }
+}
+
+.bni-auth-register-fields .bni-auth-field {
+  min-width: 0;
+}
+
+.bni-auth-register-terms {
+  margin-top: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.bni-auth-register-terms .form-check-label {
+  line-height: 1.4;
+}
+
+.bni-auth-card--register .bni-auth-btn-primary {
+  padding: 0.65rem 1rem;
+}
+
+.bni-auth-register-divider {
+  margin: 0.75rem 0;
+}
+
+.bni-auth-register-footer {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+}
+
+.bni-auth-register-alert {
+  margin-bottom: 0.75rem !important;
+}
+
+.bni-auth-register-vision {
+  margin-top: 0.75rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.bni-auth-register-back {
+  margin-top: 0.5rem;
+}
+
+@media (max-height: 780px) {
+  .bni-auth-shell--register {
+    align-items: flex-start;
+    padding-top: 0.5rem;
+  }
+
+  .bni-auth-shell--register .bni-auth-register-vision {
+    display: none;
+  }
+}

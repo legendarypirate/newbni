@@ -42,6 +42,30 @@ type NewsArticle = {
 
 export type HomePartner = { name: string; logo: string; href: string };
 
+/** Backfill partners from `members` when API only had empty platform profiles. */
+export function normalizeHomePartners(data: HomePayload): HomePayload {
+  if (data.partners.length > 0) return data;
+
+  const seen = new Set<string>();
+  const partners: HomePartner[] = [];
+
+  for (const m of data.featuredMembers) {
+    const name = (m.company || "").trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    partners.push({
+      name,
+      logo: m.photo || "",
+      href: `/member/${m.id}`,
+    });
+  }
+
+  if (partners.length === 0) return data;
+  return { ...data, partners };
+}
+
 /** Upcoming BNI events for home «Танд санал болгох» (from `bni_events`). */
 export type HomeCoreEvent = {
   id: string;
@@ -133,12 +157,45 @@ export async function loadHomeData(lang: BniLangCode = "mn"): Promise<HomePayloa
     const res = await serverAuthedFetch(path, { headers: apiLangHeaders(lang) });
     const json = (await res.json().catch(() => null)) as { ok?: boolean; data?: HomePayload } | null;
     if (res.ok && json?.ok && json.data) {
-      return json.data;
+      return normalizeHomePartners(json.data);
     }
   } catch {
     // fall through to trips list
   }
 
   const fallback = await loadHomeTripsFallback(lang);
-  return fallback ?? empty;
+  if (fallback) return fallback;
+
+  const partnersFallback = await loadHomePartnersFallback(lang);
+  if (partnersFallback) {
+    return { ...empty, partners: partnersFallback };
+  }
+
+  return empty;
+}
+
+async function loadHomePartnersFallback(lang: BniLangCode): Promise<HomePartner[] | null> {
+  try {
+    const res = await serverAuthedFetch("/members", { headers: apiLangHeaders(lang) });
+    const json = (await res.json().catch(() => null)) as {
+      ok?: boolean;
+      data?: { members?: LegacyMember[] };
+    } | null;
+    if (!res.ok || !json?.ok || !json.data?.members) return null;
+
+    const seen = new Set<string>();
+    const partners: HomePartner[] = [];
+    for (const m of json.data.members) {
+      const name = (m.company || "").trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      partners.push({ name, logo: m.photo || "", href: `/member/${m.id}` });
+      if (partners.length >= 20) break;
+    }
+    return partners.length > 0 ? partners : null;
+  } catch {
+    return null;
+  }
 }

@@ -65,94 +65,96 @@ export default function RegisterForm({
     <form action={formAction} className="mb-0">
       <input type="hidden" name="next" value={nextPath} />
       {errMsg ? (
-        <div className="alert alert-danger bni-auth-alert mb-4" role="alert">
+        <div className="alert alert-danger bni-auth-alert bni-auth-register-alert" role="alert">
           {errMsg}
         </div>
       ) : null}
-      <div className="mb-3">
-        <label className="form-label" htmlFor="displayName">
-          {t("auth.displayName")}
-        </label>
-        <div className="bni-auth-input-icon">
-          <span className="bni-auth-input-ico">
-            <i className="fa-solid fa-user" aria-hidden="true" />
-          </span>
-          <input
-            type="text"
-            className="form-control"
-            id="displayName"
-            name="displayName"
-            required
-            autoComplete="name"
-            maxLength={255}
-            placeholder={t("auth.placeholderName")}
-            defaultValue={state.displayName || defaultDisplayName}
-          />
+      <div className="bni-auth-register-fields">
+        <div className="bni-auth-field">
+          <label className="form-label" htmlFor="displayName">
+            {t("auth.displayName")}
+          </label>
+          <div className="bni-auth-input-icon">
+            <span className="bni-auth-input-ico">
+              <i className="fa-solid fa-user" aria-hidden="true" />
+            </span>
+            <input
+              type="text"
+              className="form-control"
+              id="displayName"
+              name="displayName"
+              required
+              autoComplete="name"
+              maxLength={255}
+              placeholder={t("auth.placeholderName")}
+              defaultValue={state.displayName || defaultDisplayName}
+            />
+          </div>
+        </div>
+        <div className="bni-auth-field">
+          <label className="form-label" htmlFor="email">
+            {t("auth.email")}
+          </label>
+          <div className="bni-auth-input-icon">
+            <span className="bni-auth-input-ico">
+              <i className="fa-solid fa-envelope" aria-hidden="true" />
+            </span>
+            <input
+              type="email"
+              className="form-control"
+              id="email"
+              name="email"
+              required
+              autoComplete="email"
+              placeholder="name@company.com"
+              defaultValue={state.email || defaultEmail}
+            />
+          </div>
+        </div>
+        <div className="bni-auth-field">
+          <label className="form-label" htmlFor="password">
+            {t("auth.password")}
+          </label>
+          <div className="bni-auth-input-icon">
+            <span className="bni-auth-input-ico">
+              <i className="fa-solid fa-lock" aria-hidden="true" />
+            </span>
+            <input
+              type="password"
+              className="form-control"
+              id="password"
+              name="password"
+              required
+              autoComplete="new-password"
+              minLength={8}
+              aria-describedby="passwordHelp"
+            />
+          </div>
+          <div id="passwordHelp" className="form-text">
+            {t("auth.passwordHint")}
+          </div>
+        </div>
+        <div className="bni-auth-field">
+          <label className="form-label" htmlFor="passwordConfirm">
+            {t("auth.passwordConfirm")}
+          </label>
+          <div className="bni-auth-input-icon">
+            <span className="bni-auth-input-ico">
+              <i className="fa-solid fa-lock" aria-hidden="true" />
+            </span>
+            <input
+              type="password"
+              className="form-control"
+              id="passwordConfirm"
+              name="passwordConfirm"
+              required
+              autoComplete="new-password"
+              minLength={8}
+            />
+          </div>
         </div>
       </div>
-      <div className="mb-3">
-        <label className="form-label" htmlFor="email">
-          {t("auth.email")}
-        </label>
-        <div className="bni-auth-input-icon">
-          <span className="bni-auth-input-ico">
-            <i className="fa-solid fa-envelope" aria-hidden="true" />
-          </span>
-          <input
-            type="email"
-            className="form-control"
-            id="email"
-            name="email"
-            required
-            autoComplete="email"
-            placeholder="name@company.com"
-            defaultValue={state.email || defaultEmail}
-          />
-        </div>
-      </div>
-      <div className="mb-3">
-        <label className="form-label" htmlFor="password">
-          {t("auth.password")}
-        </label>
-        <div className="bni-auth-input-icon">
-          <span className="bni-auth-input-ico">
-            <i className="fa-solid fa-lock" aria-hidden="true" />
-          </span>
-          <input
-            type="password"
-            className="form-control"
-            id="password"
-            name="password"
-            required
-            autoComplete="new-password"
-            minLength={8}
-            aria-describedby="passwordHelp"
-          />
-        </div>
-        <div id="passwordHelp" className="form-text">
-          {t("auth.passwordHint")}
-        </div>
-      </div>
-      <div className="mb-3">
-        <label className="form-label" htmlFor="passwordConfirm">
-          {t("auth.passwordConfirm")}
-        </label>
-        <div className="bni-auth-input-icon">
-          <span className="bni-auth-input-ico">
-            <i className="fa-solid fa-lock" aria-hidden="true" />
-          </span>
-          <input
-            type="password"
-            className="form-control"
-            id="passwordConfirm"
-            name="passwordConfirm"
-            required
-            autoComplete="new-password"
-            minLength={8}
-          />
-        </div>
-      </div>
-      <div className="mb-4">
+      <div className="bni-auth-register-terms">
         <div className="form-check">
           <input className="form-check-input" type="checkbox" name="terms" id="terms" value="on" required />
           <label className="form-check-label small" htmlFor="terms">
@@ -171,7 +173,7 @@ export default function RegisterForm({
       <SubmitButton label={t("auth.register")} />
       {googleHref ? (
         <>
-          <div className="bni-auth-divider">
+          <div className="bni-auth-divider bni-auth-register-divider">
             <span>{t("auth.or")}</span>
           </div>
           <a href={googleHref} className="bni-auth-btn-google">
@@ -180,7 +182,7 @@ export default function RegisterForm({
           </a>
         </>
       ) : null}
-      <div className="bni-auth-footer">
+      <div className="bni-auth-footer bni-auth-register-footer">
         <span>{t("auth.hasAccount")}</span> <Link href={loginHref}>{t("auth.login")}</Link>
       </div>
     </form>
