@@ -91,16 +91,54 @@ const empty: HomePayload = {
   recentOrders: [],
 };
 
+type TripsListPayload = {
+  trips?: BusinessTrip[];
+  totalTrips?: number;
+  nearTrips?: number;
+  registeredMembers?: number;
+};
+
+/** When `/api/home` fails, reuse the same public trips feed as `/trips`. */
+async function loadHomeTripsFallback(lang: BniLangCode): Promise<HomePayload | null> {
+  try {
+    const path = withLangQuery("/platform/trips?trip_type=all", lang);
+    const res = await serverAuthedFetch(path, { headers: apiLangHeaders(lang) });
+    const json = (await res.json().catch(() => null)) as {
+      ok?: boolean;
+      data?: TripsListPayload;
+    } | null;
+    if (!res.ok || !json?.ok || !json.data?.trips) {
+      return null;
+    }
+    const trips = json.data.trips.slice(0, 3);
+    return {
+      ...empty,
+      stats: {
+        ...empty.stats,
+        tripTotal: json.data.totalTrips ?? trips.length,
+        tripActive: json.data.nearTrips ?? trips.length,
+        registrationTotal: json.data.registeredMembers ?? 0,
+      },
+      heroTrip: trips[0] ?? null,
+      businessTrips: trips,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function loadHomeData(lang: BniLangCode = "mn"): Promise<HomePayload> {
   try {
     const path = withLangQuery("/home", lang);
     const res = await serverAuthedFetch(path, { headers: apiLangHeaders(lang) });
     const json = (await res.json().catch(() => null)) as { ok?: boolean; data?: HomePayload } | null;
-    if (!res.ok || !json?.ok || !json.data) {
-      return empty;
+    if (res.ok && json?.ok && json.data) {
+      return json.data;
     }
-    return json.data;
   } catch {
-    return empty;
+    // fall through to trips list
   }
+
+  const fallback = await loadHomeTripsFallback(lang);
+  return fallback ?? empty;
 }
