@@ -269,16 +269,26 @@ export default function DashboardPanel() {
         </div>
 
         <div className="pl-btn-row">
-          <Link href="/platform/events" className="btn-pl btn-pl-primary text-decoration-none">
+          <Link href="/platform/events" className="btn-pl text-decoration-none">
             <i className="fa-solid fa-plus" /> Шинэ арга хэмжээ үүсгэх
           </Link>
-          <Link href="/platform/events" className="btn-pl text-decoration-none">
+          <a
+            href="#"
+            className="btn-pl btn-pl-placeholder text-decoration-none"
+            aria-disabled="true"
+            onClick={(e) => e.preventDefault()}
+          >
             <i className="fa-solid fa-b" style={{ color: "#e63946" }} /> BNI хурал үүсгэх
-          </Link>
-          <Link href="/platform/events" className="btn-pl text-decoration-none">
+          </a>
+          <a
+            href="#"
+            className="btn-pl btn-pl-placeholder text-decoration-none"
+            aria-disabled="true"
+            onClick={(e) => e.preventDefault()}
+          >
             <i className="fa-solid fa-m" style={{ color: "#7c3aed" }} /> MEGA Visitor үүсгэх
-          </Link>
-          <Link href="/platform/trips" className="btn-pl text-decoration-none">
+          </a>
+          <Link href="/platform/trips" className="btn-pl btn-pl-trip text-decoration-none">
             <i className="fa-solid fa-plane-up" /> Аялал нэмэх
           </Link>
         </div>

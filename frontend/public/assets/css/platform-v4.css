@@ -289,6 +289,25 @@ body.platform-route > footer {
     border-color: var(--pl-primary);
 }
 
+.btn-pl-trip {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: #fff;
+    border-color: #047857;
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
+}
+
+.btn-pl-trip:hover {
+    background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+    color: #fff;
+    border-color: #065f46;
+}
+
+.btn-pl-placeholder {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--pl-bg, #f8fafc);
+}
+
 /* Event Table Card */
 .pl-table-card {
     background: var(--pl-surface);
