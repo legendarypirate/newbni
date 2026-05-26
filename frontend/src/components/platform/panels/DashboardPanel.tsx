@@ -269,8 +269,11 @@ export default function DashboardPanel() {
         </div>
 
         <div className="pl-btn-row">
-          <Link href="/platform/events" className="btn-pl text-decoration-none">
-            <i className="fa-solid fa-plus" /> Шинэ арга хэмжээ үүсгэх
+          <Link href="/platform/events" className="btn-pl btn-pl-event text-decoration-none">
+            <i className="fa-solid fa-plus" /> Шинэ хурал / эвэнт үүсгэх
+          </Link>
+          <Link href="/platform/trips" className="btn-pl btn-pl-trip text-decoration-none">
+            <i className="fa-solid fa-plane-departure" /> Бизнес аялал үүсгэх
           </Link>
           <a
             href="#"
@@ -288,9 +291,6 @@ export default function DashboardPanel() {
           >
             <i className="fa-solid fa-m" style={{ color: "#7c3aed" }} /> MEGA Visitor үүсгэх
           </a>
-          <Link href="/platform/trips" className="btn-pl btn-pl-trip text-decoration-none">
-            <i className="fa-solid fa-plane-up" /> Аялал нэмэх
-          </Link>
         </div>
 
         <div className="pl-analytics-grid">

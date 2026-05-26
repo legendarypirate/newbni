@@ -5,7 +5,8 @@ import { mongoliaBankByCode } from "@/lib/mongolia-banks";
 import { resolvePlatformAuthToken } from "@/lib/resolve-platform-auth-token";
 import { getPlatformSession } from "@/lib/platform-session";
 import { setPlatformNavDisplayCookie, setPlatformSessionCookies } from "@/lib/platform-session-cookies";
-import { destroyCloudinaryBySecureUrl, writePlatformUploadImage } from "@/lib/platform-write-image";
+import { destroyCloudinaryBySecureUrl } from "@/lib/platform-write-image";
+import { isFormUploadFile, uploadPlatformProfileImage } from "@/lib/platform-profile-upload";
 import { serverAuthedFetch } from "@/lib/server-authed-fetch";
 
 export type ProfileSaveState = {
@@ -134,8 +135,8 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
   const msgs: string[] = [];
 
   const memberFile = formData.get("profile_photo_file");
-  if (memberFile instanceof File && memberFile.size > 0) {
-    const up = await writePlatformUploadImage(accountId, memberFile, 5 * 1024 * 1024);
+  if (isFormUploadFile(memberFile) && memberFile.size > 0) {
+    const up = await uploadPlatformProfileImage(accountId, memberFile, 5 * 1024 * 1024, authed);
     if (up.ok) {
       if (previousMemberPhoto && previousMemberPhoto !== up.url) {
         await destroyCloudinaryBySecureUrl(previousMemberPhoto);
@@ -147,8 +148,8 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
   }
 
   const coverFile = formData.get("cover_photo_file");
-  if (coverFile instanceof File && coverFile.size > 0) {
-    const up = await writePlatformUploadImage(accountId, coverFile, 10 * 1024 * 1024);
+  if (isFormUploadFile(coverFile) && coverFile.size > 0) {
+    const up = await uploadPlatformProfileImage(accountId, coverFile, 10 * 1024 * 1024, authed);
     if (up.ok) {
       if (previousProfileCover && previousProfileCover !== up.url) {
         await destroyCloudinaryBySecureUrl(previousProfileCover);
@@ -160,8 +161,8 @@ export async function saveCompanyProfileAction(_prev: ProfileSaveState | null, f
   }
 
   const logoFile = formData.get("photo_file");
-  if (logoFile instanceof File && logoFile.size > 0) {
-    const up = await writePlatformUploadImage(accountId, logoFile, 10 * 1024 * 1024);
+  if (isFormUploadFile(logoFile) && logoFile.size > 0) {
+    const up = await uploadPlatformProfileImage(accountId, logoFile, 10 * 1024 * 1024, authed);
     if (up.ok) {
       if (previousPhotoUrl && previousPhotoUrl !== up.url) {
         await destroyCloudinaryBySecureUrl(previousPhotoUrl);
@@ -226,13 +227,13 @@ export async function saveHeroSlidesAction(_prev: ProfileSaveState | null, formD
 
   const files = formData.getAll("hero_files");
   for (const f of files) {
-    if (!(f instanceof File) || f.size === 0) {
+    if (!isFormUploadFile(f) || f.size === 0) {
       continue;
     }
     if (slides.length >= 10) {
       break;
     }
-    const up = await writePlatformUploadImage(accountId, f, 10 * 1024 * 1024);
+    const up = await uploadPlatformProfileImage(accountId, f, 10 * 1024 * 1024, authed);
     if (up.ok) {
       slides.push(up.url);
     }

@@ -8,6 +8,18 @@ import {
 
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
+export function resolveImageMime(mime: string, fileName?: string): string {
+  const m = mime.trim().toLowerCase();
+  if (ALLOWED.has(m)) return m;
+  if (m === "image/jpg") return "image/jpeg";
+  const ext = (fileName ?? "").toLowerCase().match(/\.[a-z0-9]+$/)?.[0] ?? "";
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".png") return "image/png";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".gif") return "image/gif";
+  return m;
+}
+
 function extForMime(mime: string): string {
   if (mime === "image/jpeg") {
     return ".jpg";
@@ -39,7 +51,7 @@ export async function writePlatformUploadImage(
   if (file.size > maxBytes) {
     return { ok: false, error: "Файл хэт том байна." };
   }
-  const mime = file.type;
+  const mime = resolveImageMime(file.type || "", file.name);
   if (!ALLOWED.has(mime)) {
     return { ok: false, error: "Зөвхөн JPG, PNG, WebP, GIF зөвшөөрнө." };
   }
@@ -80,7 +92,7 @@ export async function writeAdminMarketingListingHeroUpload(
   if (file.size > maxBytes) {
     return { ok: false, error: "Файл хэт том байна." };
   }
-  const mime = file.type;
+  const mime = resolveImageMime(file.type || "", file.name);
   if (!ALLOWED.has(mime)) {
     return { ok: false, error: "Зөвхөн JPG, PNG, WebP, GIF зөвшөөрнө." };
   }
@@ -118,7 +130,7 @@ export async function writeAdminEventDetailHeroUpload(
   if (file.size > maxBytes) {
     return { ok: false, error: "Файл хэт том байна." };
   }
-  const mime = file.type;
+  const mime = resolveImageMime(file.type || "", file.name);
   if (!ALLOWED.has(mime)) {
     return { ok: false, error: "Зөвхөн JPG, PNG, WebP, GIF зөвшөөрнө." };
   }

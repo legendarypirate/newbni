@@ -13,6 +13,7 @@ module.exports = (app) => {
   router.post("/event-speaker-photo", authMiddleware, upload.single("file"), ctrl.uploadEventSpeakerPhoto);
   router.post("/trip-itinerary-day-banner-upload", authMiddleware, upload.single("file"), ctrl.uploadTripItineraryDayBanner);
   router.post("/news-cover-upload", authMiddleware, upload.single("file"), ctrl.uploadNewsCover);
+  router.post("/profile-image-upload", authMiddleware, upload.single("file"), ctrl.uploadProfileImage);
 
   app.use("/api/platform", router);
 };

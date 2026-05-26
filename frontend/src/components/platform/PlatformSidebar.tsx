@@ -12,16 +12,44 @@ function isActive(pathname: string, itemKey: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export default function PlatformSidebar() {
+type Props = {
+  collapsed: boolean;
+  onToggle: () => void;
+};
+
+export default function PlatformSidebar({ collapsed, onToggle }: Props) {
   const pathname = usePathname() ?? "";
 
   let lastGroup: string | null = null;
 
   return (
-    <aside className="pl-sidebar">
-      <Link href="/platform" prefetch={false} className="pl-logo text-decoration-none d-block">
-        BUSY<span>.mn</span>
-      </Link>
+    <aside className="pl-sidebar" aria-label="Платформын цэс">
+      <div className="pl-sidebar-head">
+        <Link
+          href="/platform"
+          prefetch={false}
+          className="pl-logo text-decoration-none"
+          title="BUSY.mn"
+        >
+          <span className="pl-logo-mark" aria-hidden="true">
+            B
+          </span>
+          <span className="pl-logo-text">
+            <span className="pl-logo-busy">USY</span>
+            <span className="pl-logo-dot">.mn</span>
+          </span>
+        </Link>
+        <button
+          type="button"
+          className="pl-sidebar-toggle"
+          onClick={onToggle}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? "Цэсийг өргөтгөх" : "Цэсийг хураах"}
+          title={collapsed ? "Цэсийг өргөтгөх" : "Цэсийг хураах"}
+        >
+          <i className={`fa-solid ${collapsed ? "fa-angles-right" : "fa-angles-left"}`} aria-hidden="true" />
+        </button>
+      </div>
 
       <nav className="pl-nav">
         {PLATFORM_SIDEBAR_NAV.map((item) => {
@@ -30,14 +58,19 @@ export default function PlatformSidebar() {
           const active = isActive(pathname, item.key, item.href);
           return (
             <div key={item.key}>
-              {showLabel ? <div className="pl-nav-label">{item.group}</div> : null}
+              {showLabel ? (
+                <div className="pl-nav-label" title={item.group}>
+                  {item.group}
+                </div>
+              ) : null}
               <Link
                 href={item.href}
                 prefetch={false}
                 className={`pl-nav-item${active ? " active" : ""}`}
+                title={item.label}
               >
                 <i className={item.iconClass} aria-hidden="true" />
-                <span>{item.label}</span>
+                <span className="pl-nav-item-label">{item.label}</span>
               </Link>
             </div>
           );

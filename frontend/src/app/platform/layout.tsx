@@ -1,7 +1,6 @@
 import "@/styles/platform-home-panels.css";
 import PlatformBodyClass from "@/components/platform/PlatformBodyClass";
-import PlatformSidebar from "@/components/platform/PlatformSidebar";
-import PlatformAuthGate from "@/components/platform/PlatformAuthGate";
+import PlatformShell from "@/components/platform/PlatformShell";
 
 /**
  * Auth is enforced *client-side* by `PlatformAuthGate` (JWT from
@@ -19,12 +18,7 @@ export default function PlatformLayout({
   return (
     <>
       <PlatformBodyClass />
-      <div className="pl-wrapper">
-        <PlatformSidebar />
-        <main className="pl-content">
-          <PlatformAuthGate>{children}</PlatformAuthGate>
-        </main>
-      </div>
+      <PlatformShell>{children}</PlatformShell>
     </>
   );
 }

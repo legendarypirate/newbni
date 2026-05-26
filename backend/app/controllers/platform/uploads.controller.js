@@ -15,9 +15,18 @@ async function uploadOne(req, res) {
   }
 
   try {
-    const up = await writePlatformUploadImage(accountId, file.buffer, file.mimetype, file.size, MAX_BYTES);
+    const up = await writePlatformUploadImage(
+      accountId,
+      file.buffer,
+      file.mimetype,
+      file.size,
+      MAX_BYTES,
+      file.originalname,
+    );
     if (!up.ok || !up.url) {
-      return res.status(400).json({ ok: false, error: up.error || "upload_failed" });
+      const err = up.error || "upload_failed";
+      const status = err === "too_large" || err === "invalid_type" ? 400 : 500;
+      return res.status(status).json({ ok: false, error: err });
     }
     return res.json({ ok: true, url: up.url });
   } catch (err) {
@@ -30,4 +39,5 @@ exports.uploadEventDetailHero = uploadOne;
 exports.uploadEventSpeakerPhoto = uploadOne;
 exports.uploadTripItineraryDayBanner = uploadOne;
 exports.uploadNewsCover = uploadOne;
+exports.uploadProfileImage = uploadOne;
 
