@@ -6,6 +6,8 @@ import { saveCompanyProfileAction, type ProfileSaveState } from "@/app/platform/
 import { FormPendingBackdrop, PendingSubmitButton } from "@/components/platform/FormPendingControls";
 import PlatformAuthTokenField from "@/components/platform/PlatformAuthTokenField";
 import BankSelectClient from "@/components/platform/profile/BankSelectClient";
+import ProfileImageUploadBox from "@/components/platform/profile/ProfileImageUploadBox";
+import { useImageFilePreview } from "@/components/platform/profile/useImageFilePreview";
 import { mediaUrl } from "@/lib/media-url";
 import { MONGOLIA_BANKS_CATALOG, PROFILE_INDUSTRY_OPTIONS } from "@/lib/mongolia-banks";
 
@@ -71,6 +73,8 @@ export default function CompanyProfileForm({
   const certsOk = Array.isArray(biz.certificates) && biz.certificates.length > 0;
 
   const memberPhotoUrl = str(biz.member_photo_url);
+  const memberPhotoSaved = memberPhotoUrl ? mediaUrl(memberPhotoUrl) : "";
+  const memberPhoto = useImageFilePreview(memberPhotoSaved);
 
   return (
     <>
@@ -247,44 +251,29 @@ export default function CompanyProfileForm({
                 <div>
                   <div className="pm-card-title">Лого болон хавтас зураг</div>
                   <div className="pm-card-subtitle">
-                    Зураг серверт шинээр байршуулагдана (тохируулга байвал CDN руу очих боломжтой).
+                    Файл сонгоход урьдчилсан харагдана. Хадгалах дарсны дараа серверт байршина.
                   </div>
                 </div>
               </div>
               <div className="pm-card-body">
                 <div className="pm-upload-grid">
-                  <div className="pm-upload-box">
-                    <div className="pm-label mb-2">Лого</div>
-                    <div className="pm-upload-preview">
-                      {pLogoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- remote logo URLs
-                        <img src={pLogoUrl} alt="" />
-                      ) : (
-                        <i className="fa-solid fa-image pm-upload-placeholder" />
-                      )}
-                    </div>
-                    <div className="pm-upload-info">PNG, JPG, WebP — серверт хадгалагдана.</div>
-                    <button type="button" className="pm-btn-upload" onClick={() => document.getElementById("logoInput")?.click()}>
-                      Файл сонгох
-                    </button>
-                    <input type="file" name="photo_file" id="logoInput" className="d-none" accept="image/*" />
-                  </div>
-                  <div className="pm-upload-box">
-                    <div className="pm-label mb-2">Хавтас зураг</div>
-                    <div className="pm-upload-preview">
-                      {coverSrc ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={coverSrc} alt="" />
-                      ) : (
-                        <i className="fa-solid fa-image pm-upload-placeholder" />
-                      )}
-                    </div>
-                    <div className="pm-upload-info">JPG, PNG, WebP</div>
-                    <button type="button" className="pm-btn-upload" onClick={() => document.getElementById("coverInput")?.click()}>
-                      Файл сонгох
-                    </button>
-                    <input type="file" name="cover_photo_file" id="coverInput" className="d-none" accept="image/*" />
-                  </div>
+                  <ProfileImageUploadBox
+                    label="Лого"
+                    inputId="logoInput"
+                    inputName="photo_file"
+                    savedSrc={pLogoUrl}
+                    hint="PNG, JPG, WebP, GIF"
+                    maxHint="дээд 10MB"
+                  />
+                  <ProfileImageUploadBox
+                    label="Хавтас зураг"
+                    inputId="coverInput"
+                    inputName="cover_photo_file"
+                    savedSrc={coverSrc}
+                    hint="JPG, PNG, WebP, GIF"
+                    maxHint="дээд 10MB"
+                    previewHeight={120}
+                  />
                 </div>
               </div>
             </div>
@@ -481,21 +470,44 @@ export default function CompanyProfileForm({
               </div>
               <div className="pm-card-body">
                 <div className="pm-upload-box" style={{ borderStyle: "dashed", background: "#f8fafc" }}>
-                  <i className="fa-solid fa-cloud-arrow-up text-muted fs-3 mb-2" />
-                  <div className="small fw-bold">
-                    Файл чирээд оруулна уу эсвэл{" "}
-                    <span className="text-primary cursor-pointer" onClick={() => document.getElementById("memberPhotoInput")?.click()}>
-                      Файл сонгох
-                    </span>
+                  <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+                    <span className="small fw-bold mb-0">Профайл зураг</span>
+                    {memberPhoto.hasPendingPreview ? (
+                      <span className="badge text-bg-primary" style={{ fontSize: "0.65rem" }}>
+                        Урьдчилсан харагдац
+                      </span>
+                    ) : null}
                   </div>
-                  <div className="pm-upload-info">JPG, PNG - дээд хэмжээ 5MB</div>
-                  <input type="file" name="profile_photo_file" id="memberPhotoInput" className="d-none" accept="image/*" />
-                  {memberPhotoUrl ? (
-                    <div className="mt-2">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={mediaUrl(memberPhotoUrl)} alt="" style={{ height: 40, borderRadius: 4 }} />
-                    </div>
+                  <div
+                    className="pm-upload-preview mx-auto mb-2"
+                    style={{ width: 96, height: 96, borderRadius: "50%" }}
+                  >
+                    {memberPhoto.displaySrc ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={memberPhoto.displaySrc} alt="" style={{ borderRadius: "50%" }} />
+                    ) : (
+                      <i className="fa-solid fa-user pm-upload-placeholder" />
+                    )}
+                  </div>
+                  <div className="pm-upload-info text-center">JPG, PNG, WebP, GIF · дээд 5MB</div>
+                  {memberPhoto.hasPendingPreview ? (
+                    <div className="small text-primary text-center mb-2">Хадгалах товч дарсны дараа серверт байршина.</div>
                   ) : null}
+                  <button
+                    type="button"
+                    className="pm-btn-upload d-block mx-auto"
+                    onClick={() => document.getElementById("memberPhotoInput")?.click()}
+                  >
+                    Файл сонгох
+                  </button>
+                  <input
+                    type="file"
+                    name="profile_photo_file"
+                    id="memberPhotoInput"
+                    className="d-none"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={memberPhoto.onFileChange}
+                  />
                 </div>
               </div>
             </div>
